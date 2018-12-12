@@ -1536,6 +1536,8 @@ SchedulerCommon::scheduleAndDoDataCopy( const GridP & grid )
           int level = -1;
           if (dep->m_patches) {        // just in case the task is over multiple levels...
             level = getLevel(dep->m_patches)->getIndex();
+          } else if (task->getType() == Task::OncePerProc) {
+            level = ps->getUnion()->get(0)->getLevel()->getIndex();
           } else if (ps) {
             level = getLevel(ps)->getIndex();
           }
