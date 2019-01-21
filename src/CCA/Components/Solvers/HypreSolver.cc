@@ -75,6 +75,7 @@ using namespace Uintah;
 //  setenv SCI_DEBUG "SOLVER_DOING_COUT:+"
 
 static DebugStream cout_doing("SOLVER_DOING_COUT", false);
+static DebugStream cout_assembling("SOLVER ASSEMBLING", false);
 
 namespace Uintah {
 
@@ -118,8 +119,6 @@ namespace Uintah {
     {
       // Time Step
       m_timeStepLabel    = VarLabel::create(timeStep_name, timeStep_vartype::getTypeDescription() );
-      m_hypre_solver_label = VarLabel::create("hypre_solver_label",
-                                            SoleVariable<hypre_solver_structP>::getTypeDescription());
       m_firstPassThrough = true;
       m_movingAverage    = 0.0;
     }
@@ -128,7 +127,6 @@ namespace Uintah {
 
     virtual ~HypreStencil7() {
       VarLabel::destroy(m_timeStepLabel);
-      VarLabel::destroy(m_hypre_solver_label);
     }
 
 
@@ -165,15 +163,19 @@ namespace Uintah {
     {
       //__________________________________
       // Create the vector
-      if( do_setup ){
-        HYPRE_StructVectorDestroy( *HQ );
+      if (timeStep == 1 || recompute) {
+        cout_assembling << "hyper "<< Q_label->getName() <<" vector setup" << std::endl;
+        HYPRE_StructVectorCreate( pg->getComm(), grid, HQ );
+        HYPRE_StructVectorInitialize( *HQ );
       }
-
-      if (timeStep == 1 || recompute || do_setup ) {
+      else if (do_setup) {
+        cout_assembling << "hyper "<< Q_label->getName() <<" vector destroy + setup" << std::endl;
+        HYPRE_StructVectorDestroy( *HQ );
         HYPRE_StructVectorCreate( pg->getComm(), grid, HQ );
         HYPRE_StructVectorInitialize( *HQ );
       }
 
+      cout_assembling << "hyper "<< Q_label->getName() <<" vector update coefficients" << std::endl;
       for(int p=0;p<patches->size();p++){
         const Patch* patch = patches->get(p);
 
@@ -211,6 +213,7 @@ namespace Uintah {
       }  // patch loop
 
       if (timeStep == 1 || recompute || do_setup){
+        cout_assembling << "hyper "<< Q_label->getName() <<" vector assemble" << std::endl;
         HYPRE_StructVectorAssemble( *HQ );
       }
 
@@ -224,6 +227,7 @@ namespace Uintah {
               , const MaterialSubset * matls
               ,       DataWarehouse  * old_dw
               ,       DataWarehouse  * new_dw
+              , const VarLabel       * hypre_solver_label
               ,       Handle<HypreStencil7<GridVarType>>
               )
     {
@@ -240,15 +244,35 @@ namespace Uintah {
       // get struct from data warehouse
       struct hypre_solver_struct* hypre_solver_s = 0;
 
-      if ( new_dw->exists( m_hypre_solver_label ) ) {
-        new_dw->get( m_hypre_solverP, m_hypre_solver_label );
+      if ( new_dw->exists( hypre_solver_label ) ) {
+        cout_assembling << "hyper solver exists in new DW" << std::endl;
+        new_dw->get( m_hypre_solverP, hypre_solver_label );
+      }
+      else if ( old_dw->exists( hypre_solver_label ) ) {
+        cout_assembling << "hyper solver moved from old to new DW" << std::endl;
+        old_dw->get( m_hypre_solverP, hypre_solver_label );
+        new_dw->put( m_hypre_solverP, hypre_solver_label );
       }
       else {
-        old_dw->get( m_hypre_solverP, m_hypre_solver_label );
-        new_dw->put( m_hypre_solverP, m_hypre_solver_label );
-      }
+        cout_assembling << "hyper solver crated in new DW" << std::endl;
 
+        hypre_solver_struct* hypre_struct = scinew hypre_solver_struct;
+
+        hypre_struct->solver_p         = scinew HYPRE_StructSolver( nullptr );
+        hypre_struct->precond_solver_p = scinew HYPRE_StructSolver( nullptr );
+        hypre_struct->HA_p             = scinew HYPRE_StructMatrix( nullptr );
+        hypre_struct->HX_p             = scinew HYPRE_StructVector( nullptr );
+        hypre_struct->HB_p             = scinew HYPRE_StructVector( nullptr );
+        hypre_struct->solver_type         = HypreSolver2::stringToSolverType( m_params->solvertype );
+        hypre_struct->precond_solver_type = HypreSolver2::stringToSolverType( m_params->precondtype );
+
+        hypre_struct->isRecomputeTimeStep = true;
+
+        m_hypre_solverP.setData( hypre_struct );
+        new_dw->put( m_hypre_solverP, hypre_solver_label );
+      }
       hypre_solver_s = m_hypre_solverP.get().get_rep();
+
       bool recompute = hypre_solver_s->isRecomputeTimeStep;
 
       //__________________________________
@@ -313,6 +337,7 @@ namespace Uintah {
         // Setup grid
         HYPRE_StructGrid grid;
         if (timeStep == 1 || do_setup || recompute) {
+          cout_assembling << "hyper grid setup" << std::endl;
           HYPRE_StructGridCreate(pg->getComm(), 3, &grid);
 
           for(int p=0;p<patches->size();p++){
@@ -348,6 +373,7 @@ namespace Uintah {
         // Create the stencil
         HYPRE_StructStencil stencil;
         if ( timeStep == 1 || do_setup || recompute) {
+          cout_assembling << "hyper stencil setup" << std::endl;
           if( m_params->getSymmetric()){
 
             HYPRE_StructStencilCreate(3, 4, &stencil);
@@ -377,22 +403,29 @@ namespace Uintah {
         // Create the matrix
         HYPRE_StructMatrix* HA = hypre_solver_s->HA_p;
 
-        if( do_setup ){
-          HYPRE_StructMatrixDestroy( *HA );
-        }
-
-        if (timeStep == 1 || recompute || do_setup) {
+        if (timeStep == 1 || recompute) {
+          cout_assembling << "hyper matrix setup" << std::endl;
           HYPRE_StructMatrixCreate( pg->getComm(), grid, stencil, HA );
           HYPRE_StructMatrixSetSymmetric( *HA, m_params->getSymmetric() );
           int ghost[] = {1,1,1,1,1,1};
           HYPRE_StructMatrixSetNumGhost( *HA, ghost );
           HYPRE_StructMatrixInitialize( *HA );
         }
+        else if (do_setup) {
+          cout_assembling << "hyper matrix destroy + setup" << std::endl;
+          HYPRE_StructMatrixDestroy( *HA );
+          HYPRE_StructMatrixCreate(pg->getComm(), grid, stencil, HA );
+          HYPRE_StructMatrixSetSymmetric( *HA, m_params->getSymmetric() );
+          int ghost[] = {1,1,1,1,1,1};
+          HYPRE_StructMatrixSetNumGhost( *HA, ghost );
+          HYPRE_StructMatrixInitialize(*HA );
+        }
 
         // setup the coefficient matrix ONLY on the first timeStep, if
         // we are doing a recompute, or if we set setupFrequency != 0,
         // or if UpdateCoefFrequency != 0
         if (timeStep == 1 || recompute || do_setup || updateCoefs) {
+          cout_assembling << "hyper matrix update coefficients" << std::endl;
           for(int p=0;p<patches->size();p++) {
             const Patch* patch = patches->get(p);
             printTask( patches, patch, cout_doing, "HypreSolver:solve: Create Matrix" );
@@ -507,6 +540,7 @@ namespace Uintah {
             }
           }
           if (timeStep == 1 || recompute || do_setup){
+            cout_assembling << "hyper matrix assemble" << std::endl;
             HYPRE_StructMatrixAssemble(*HA);
           }
         }
@@ -835,10 +869,10 @@ namespace Uintah {
         }
 
         timer.reset( true );
-        
+
         //__________________________________
         // Test for convergence failure
-        
+
         if( final_res_norm > m_params->tolerance || std::isfinite(final_res_norm) == 0 ){
           if( m_params->getRecomputeTimeStepOnFailure() ){
             proc0cout << "  WARNING:  HypreSolver not converged in " << num_iterations
@@ -1009,7 +1043,6 @@ namespace Uintah {
     bool               m_isFirstSolve;
 
     const VarLabel*    m_timeStepLabel;
-    const VarLabel*    m_hypre_solver_label;
     SoleVariable<hypre_solver_structP> m_hypre_solverP;
     bool   m_firstPassThrough;
     double m_movingAverage;
@@ -1035,7 +1068,7 @@ namespace Uintah {
     // Time Step
     m_timeStepLabel = VarLabel::create(timeStep_name, timeStep_vartype::getTypeDescription() );
 
-    hypre_solver_label = VarLabel::create("hypre_solver_label",
+    m_hypre_solver_label[0] = VarLabel::create("hypre_solver_label_" + std::to_string(0),
                                           SoleVariable<hypre_solver_structP>::getTypeDescription());
 
     m_params = scinew HypreParams();
@@ -1047,7 +1080,7 @@ namespace Uintah {
   HypreSolver2::~HypreSolver2()
   {
     VarLabel::destroy(m_timeStepLabel);
-    VarLabel::destroy(hypre_solver_label);
+    for (auto &&l : m_hypre_solver_label) VarLabel::destroy(l.second);
     delete m_params;
   }
 
@@ -1140,8 +1173,8 @@ namespace Uintah {
     task->setType(Task::OncePerProc);  // must run this task on every proc.  It's possible to have
                                        // no patches on this proc when scheduling
 
-    task->computes(hypre_solver_label);
-    
+    task->computes(hypre_solver_label(level));
+
     LoadBalancer * lb = sched->getLoadBalancer();
 
     sched->addTask(task, lb->getPerProcessorPatchSet(level), matls);
@@ -1160,7 +1193,7 @@ namespace Uintah {
     task->setType(Task::OncePerProc);  // must run this task on every proc.  It's possible to have
                                        // no patches  on this proc when scheduling restarts with regridding
 
-    task->computes(hypre_solver_label);
+    task->computes(hypre_solver_label(level));
 
     LoadBalancer * lb = sched->getLoadBalancer();
 
@@ -1170,6 +1203,7 @@ namespace Uintah {
   //---------------------------------------------------------------------------------------------
 
   void HypreSolver2::allocateHypreMatrices( DataWarehouse * new_dw,
+                                            const Level   * level,
                                             const bool isRecomputeTimeStep_in )
   {
     SoleVariable<hypre_solver_structP> hypre_solverP;
@@ -1186,21 +1220,21 @@ namespace Uintah {
     hypre_struct->isRecomputeTimeStep = isRecomputeTimeStep_in;
 
     hypre_solverP.setData( hypre_struct );
-    new_dw->put( hypre_solverP, hypre_solver_label );
+    new_dw->put( hypre_solverP, hypre_solver_label(level) );
   }
 
   //---------------------------------------------------------------------------------------------
 
   void
   HypreSolver2::initialize( const ProcessorGroup *
-                          , const PatchSubset    *
+                          , const PatchSubset    * patches
                           , const MaterialSubset *
                           ,       DataWarehouse  *
                           ,       DataWarehouse  * new_dw
                           , const bool  isRestart
                           )
   {
-    allocateHypreMatrices( new_dw, isRestart );
+    allocateHypreMatrices( new_dw, getLevel(patches), isRestart );
   }
 
   //---------------------------------------------------------------------------------------------
@@ -1259,35 +1293,35 @@ namespace Uintah {
       {
         HypreStencil7<SFCXTypes>* that = scinew HypreStencil7<SFCXTypes>(level.get_rep(), matls, A_label, which_A_dw, x_label, modifies_X, b_label, which_b_dw, guess_label, which_guess_dw, m_params, isFirstSolve);
         Handle<HypreStencil7<SFCXTypes> > handle = that;
-        task = scinew Task("Hypre:Matrix solve (SFCX)", that, &HypreStencil7<SFCXTypes>::solve, handle);
+        task = scinew Task("Hypre:Matrix solve (SFCX)", that, &HypreStencil7<SFCXTypes>::solve, hypre_solver_label(level), handle);
       }
       break;
     case TypeDescription::SFCYVariable:
       {
         HypreStencil7<SFCYTypes>* that = scinew HypreStencil7<SFCYTypes>(level.get_rep(), matls, A_label, which_A_dw, x_label, modifies_X, b_label, which_b_dw, guess_label, which_guess_dw, m_params, isFirstSolve);
         Handle<HypreStencil7<SFCYTypes> > handle = that;
-        task = scinew Task("Hypre:Matrix solve (SFCY)", that, &HypreStencil7<SFCYTypes>::solve, handle);
+        task = scinew Task("Hypre:Matrix solve (SFCY)", that, &HypreStencil7<SFCYTypes>::solve, hypre_solver_label(level), handle);
       }
       break;
     case TypeDescription::SFCZVariable:
       {
         HypreStencil7<SFCZTypes>* that = scinew HypreStencil7<SFCZTypes>(level.get_rep(), matls, A_label, which_A_dw, x_label, modifies_X, b_label, which_b_dw, guess_label, which_guess_dw, m_params, isFirstSolve);
         Handle<HypreStencil7<SFCZTypes> > handle = that;
-        task = scinew Task("Hypre:Matrix solve (SFCZ)", that, &HypreStencil7<SFCZTypes>::solve, handle);
+        task = scinew Task("Hypre:Matrix solve (SFCZ)", that, &HypreStencil7<SFCZTypes>::solve, hypre_solver_label(level), handle);
       }
       break;
     case TypeDescription::CCVariable:
       {
         HypreStencil7<CCTypes>* that = scinew HypreStencil7<CCTypes>(level.get_rep(), matls, A_label, which_A_dw, x_label, modifies_X, b_label, which_b_dw, guess_label, which_guess_dw, m_params, isFirstSolve);
         Handle<HypreStencil7<CCTypes> > handle = that;
-        task = scinew Task("Hypre:Matrix solve (CC)", that, &HypreStencil7<CCTypes>::solve, handle);
+        task = scinew Task("Hypre:Matrix solve (CC)", that, &HypreStencil7<CCTypes>::solve, hypre_solver_label(level), handle);
       }
       break;
     case TypeDescription::NCVariable:
       {
         HypreStencil7<NCTypes>* that = scinew HypreStencil7<NCTypes>(level.get_rep(), matls, A_label, which_A_dw, x_label, modifies_X, b_label, which_b_dw, guess_label, which_guess_dw, m_params, isFirstSolve);
         Handle<HypreStencil7<NCTypes> > handle = that;
-        task = scinew Task("Hypre:Matrix solve (NC)", that, &HypreStencil7<NCTypes>::solve, handle);
+        task = scinew Task("Hypre:Matrix solve (NC)", that, &HypreStencil7<NCTypes>::solve, hypre_solver_label(level), handle);
       }
       break;
     default:
@@ -1322,13 +1356,13 @@ namespace Uintah {
 
     // solve struct
     if (isFirstSolve) {
-      task->requires( Task::OldDW, hypre_solver_label);
-      task->computes( hypre_solver_label);
+      task->requires( Task::OldDW, hypre_solver_label(level) );
+      task->computes( hypre_solver_label(level) );
     }  else {
-      task->requires( Task::NewDW, hypre_solver_label);
+      task->requires( Task::NewDW, hypre_solver_label(level) );
     }
 
-    sched->overrideVariableBehavior(hypre_solver_label->getName(),false,true,false,false,true);
+    sched->overrideVariableBehavior(hypre_solver_label(level)->getName(),false,true,false,false,true);
 
     task->setType(Task::Hypre);
 
