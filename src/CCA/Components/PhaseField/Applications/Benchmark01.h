@@ -119,7 +119,6 @@ protected: // MEMBERS
 
     /// Label for the implicit vector in the DataWarehouse
     const VarLabel * rhs_label;
-
 #endif // HAVE_HYPRE
 
     /// Time step size
@@ -424,20 +423,24 @@ Benchmark01<VAR, STN>::Benchmark01 (
     dbg_out4 ( "Benchmark01", verbosity > 3 )
 {
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
-    matrix_label = VarLabel::create ( "A", Variable<VAR, Stencil7>::getTypeDescription() );
-    rhs_label = VarLabel::create ( "b", Variable<VAR, double>::getTypeDescription() );
     u0_label = VarLabel::create ( "u0", sum_vartype::getTypeDescription() );
     energy_label = VarLabel::create ( "energy", sum_vartype::getTypeDescription() );
+#ifdef HAVE_HYPRE
+    matrix_label = VarLabel::create ( "A", Variable<VAR, Stencil7>::getTypeDescription() );
+    rhs_label = VarLabel::create ( "b", Variable<VAR, double>::getTypeDescription() );
+#endif
 }
 
 template<VarType VAR, StnType STN>
 Benchmark01<VAR, STN>::~Benchmark01()
 {
     VarLabel::destroy ( u_label );
-    VarLabel::destroy ( matrix_label );
-    VarLabel::destroy ( rhs_label );
     VarLabel::destroy ( u0_label );
     VarLabel::destroy ( energy_label );
+#ifdef HAVE_HYPRE
+    VarLabel::destroy ( matrix_label );
+    VarLabel::destroy ( rhs_label );
+#endif
 }
 
 // SETUP
