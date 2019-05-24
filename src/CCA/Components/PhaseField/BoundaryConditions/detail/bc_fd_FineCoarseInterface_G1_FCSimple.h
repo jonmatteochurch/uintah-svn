@@ -346,7 +346,7 @@ public: // VIEW METHODS
         Point p_fine = DWInterface<VAR, DIM>::get_position ( m_level_fine, id );
         Point p0 = DWInterface<VAR, DIM>::get_position ( m_level_coarse, id0 );
         double w0, w1;
-        typename std::remove_const<T>::type u0 = coarse_value ( id ), u1;
+        V u0 = coarse_value ( id ), u1;
         IntVector id1 { id };
         for ( size_t d = 0; d < DIM; ++d )
             if ( p0.asVector() [d] < p_fine.asVector() [d] )

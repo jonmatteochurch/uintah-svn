@@ -235,7 +235,7 @@ public: // VIEW METHODS
         bool use_ghosts = use_ghosts_dflt
     ) override
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" );
+        ASSERTMSG ( !use_ghosts, "amr_restrictor doesn't support ghosts" );
         m_support.clear();
         m_view_fine->set ( dw, patch, use_ghosts );
         m_level_coarse = patch->getLevel();
@@ -270,7 +270,7 @@ public: // VIEW METHODS
         bool use_ghosts = use_ghosts_dflt
     ) override
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" );
+        ASSERTMSG ( !use_ghosts, "amr_restrictor doesn't support ghosts" );
         m_support.clear();
         m_view_fine->set ( dw, level, low, high, use_ghosts );
         m_level_coarse = level;

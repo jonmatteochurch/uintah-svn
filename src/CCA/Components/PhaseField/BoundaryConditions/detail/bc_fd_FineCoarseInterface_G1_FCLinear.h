@@ -362,9 +362,11 @@ public: // VIEW METHODS
         w0 = 2. / 3.;
         w1 = 2. / 3.;
         w2 = -1. / 3.;
-        typename std::remove_const<T>::type u0 = coarse_value ( id ),
-                                            u1 = fine_value ( id1 ),
-                                            u2 = fine_value ( id2 );
+
+        V u0 = coarse_value ( id );
+        V u1 = fine_value ( id1 );
+        V u2 = fine_value ( id2 );
+
         return w0 * u0 + w1 * u1 + w2 * u2;
     };
 
