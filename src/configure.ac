@@ -4096,10 +4096,12 @@ if test "$with_spatialops" != NOT_SET; then
 
   AC_MSG_CHECKING(for SpatialOps files (For now we are just verifying the existence of lib and .h files)) 
 
-  SPOPS_INCLUDE_DIR="include/spatialops"
+  SPOPS_INCLUDE_DIR="$with_spatialops/include"
+  SPOPS_LIB_DIR="$with_spatialops/lib/spatialops"
+  SPOPS_LDRUN=""
 
   # Determine if W3P has CUDA...
-  grep -q "#define ENABLE_CUDA" $with_spatialops/$SPOPS_INCLUDE_DIR/SpatialOpsConfigure.h
+  grep -q "#define ENABLE_CUDA" $SPOPS_INCLUDE_DIR/spatialops/SpatialOpsConfigure.h
   if test $? = 0; then
     # W3P has cuda, verify that Uintah has CUDA too...
     if test "$HAVE_CUDA" != "yes"; then
@@ -4116,24 +4118,27 @@ if test "$with_spatialops" != NOT_SET; then
   for file in Nebo.h OperatorDatabase.h \
               structured/SpatialField.h SpatialOpsConfigure.h SpatialOpsDefs.h SpatialOpsTools.h \
               particles structured; do
-    if test ! -e $with_spatialops/$SPOPS_INCLUDE_DIR/$file; then
+    if test ! -e $SPOPS_INCLUDE_DIR/spatialops/$file; then
       echo ""
-      AC_MSG_ERROR( '$with_spatialops/$SPOPS_INCLUDE_DIR/$file' does not exist. )
+      AC_MSG_ERROR( '$SPOPS_INCLUDE_DIR/spatialops/$file' does not exist. )
     fi
   done
+
   # Check lib
-  if test ! -f $with_spatialops/lib/spatialops/libspatialops.a; then
+  if test -f $SPOPS_LIB_DIR/libspatialops.a; then :
+  elif test "$static" != "full" && test -f $SPOPS_LIB_DIR/libspatialops.so; then
+    SPOPS_LDRUN="$LDRUN_PREFIX$SPOPS_LIB_DIR"
+  else
     echo ""
-    AC_MSG_ERROR( '$with_spatialops/lib/spatialops/libspatialops.a' does not exist. )
+    AC_MSG_ERROR( SpatialOps lib does not exist in '$SPOPS_LIB_DIR'. )
   fi
 
   AC_MSG_RESULT(yes)
+
   DEF_SPATIALOPS="#define HAVE_SPATIALOPS 1"
-  INC_SPATIALOPS_H="-I$with_spatialops/include"
-  SPATIALOPS_LIB_DIR_FLAG="-L$with_spatialops/lib/spatialops"
-
+  INC_SPATIALOPS_H="-I$SPOPS_INCLUDE_DIR"
+  SPATIALOPS_LIB_DIR_FLAG="$SPOPS_LDRUN -L$SPOPS_LIB_DIR"
   SPATIALOPS_LIB_FLAG="-lspatialops"
-
   HAVE_SPATIALOPS="yes"
 fi
 AC_SUBST(HAVE_SPATIALOPS)
@@ -4150,31 +4155,35 @@ if test "$with_exprlib" != NOT_SET; then
   fi
 
   AC_MSG_CHECKING(for Exprlib files (For now we are just verifying the existence of lib and .h files)) 
-  if test ! -d $with_exprlib; then
-    echo ""
-    AC_MSG_ERROR( '$with_exprlib' directory does not exist. )
-  fi
-  SPOPS_INCLUDE_DIR="include/expression"
+
+  EXPR_INCLUDE_DIR="$with_exprlib/include"
+  EXPR_LIB_DIR="$with_exprlib/lib/expression"
+  EXPR_LDRUN=""
+
   # Check includes
   for file in ExprDeps.h ExprLib.h Context.h Expression.h ExpressionID.h FieldManagerList.h \
               ExpressionBase.h ExpressionFactory.h ExpressionTree.h FieldManager.h FieldManagerBase.h \
               Functions.h Tag.h TransportEquation.h uintah; do
-    if test ! -e $with_exprlib/$SPOPS_INCLUDE_DIR/$file; then
+    if test ! -e $EXPR_INCLUDE_DIR/expression/$file; then
       echo ""
-      AC_MSG_ERROR( '$with_exprlib/$SPOPS_INCLUDE_DIR/$file' does not exist. )
+      AC_MSG_ERROR( '$EXPR_INCLUDE_DIR/expression/$file' does not exist. )
     fi
   done
+
   # Check lib
-  if test ! -f $with_exprlib/lib/expression/libexprlib.a; then
+  if test -f $EXPR_LIB_DIR/libexprlib.a; then :
+  elif test "$static" != "full" && test -f $EXPR_LIB_DIR/libexprlib.so; then
+    EXPR_LDRUN="$LDRUN_PREFIX$EXPR_LIB_DIR"
+  else
     echo ""
-    AC_MSG_ERROR( '$with_exprlib/lib/expression/libexprlib.a' does not exist. )
+    AC_MSG_ERROR( Exprlib lib does not exist in '$EXPR_LIB_DIR'. )
   fi
 
   AC_MSG_RESULT(yes)
 
   DEF_EXPRLIB="#define HAVE_EXPRLIB 1"
-  INC_EXPRLIB_H="-I$with_exprlib/include"
-  EXPRLIB_LIB_DIR_FLAG="-L$with_exprlib/lib/expression"
+  INC_EXPRLIB_H="-I$EXPR_INCLUDE_DIR"
+  EXPRLIB_LIB_DIR_FLAG="$EXPR_LDRUN -L$EXPR_LIB_DIR"
   EXPRLIB_LIB_FLAG="-lexprlib"
   HAVE_EXPRLIB="yes"
 fi
@@ -4190,17 +4199,33 @@ AC_SUBST(EXPRLIB_LIB_DIR_FLAG)
 if test "$with_tabprops" != NOT_SET; then
 
   AC_MSG_CHECKING(for TabProps files (For now we are just verifying the existence of lib and .h files)) 
-  for file in include/tabprops/StateTable.h lib/tabprops/libtabprops.a lib/tabprops/libinterp.a; do
-    if test ! -f $with_tabprops/$file; then
-      AC_MSG_ERROR( '$with_tabprops/$file' does not exist. )
+
+  TABP_INCLUDE_DIR="$with_tabprops/include"
+  TABP_LIB_DIR="$with_tabprops/lib/tabprops"
+  TABP_LDRUN=""
+
+  # Check includes
+  for file in StateTable.h; do
+    if test ! -f $TABP_INCLUDE_DIR/tabprops/$file; then
+      AC_MSG_ERROR( '$TABP_INCLUDE_DIR/tabprops/$file' does not exist. )
+    fi
+  done
+
+  # Check lib
+  for name in tabprops interp; do
+    if test -f $TABP_LIB_DIR/lib$name.a; then :
+    elif test "$static" != "full" && test -f $TABP_LIB_DIR/lib$name.so; then
+      TABP_LDRUN="$LDRUN_PREFIX$TABP_LIB_DIR"
+    else
+      AC_MSG_ERROR( $name lib does not exist in '$TABP_LIB_DIR'. )
     fi
   done
 
   AC_MSG_RESULT(yes)
 
   DEF_TABPROPS="#define HAVE_TABPROPS 1"
-  INC_TABPROPS_H="-I$with_tabprops/include"
-  TABPROPS_LIB_DIR_FLAG="-L$with_tabprops/lib/tabprops"
+  INC_TABPROPS_H="-I$TABP_INCLUDE_DIR"
+  TABPROPS_LIB_DIR_FLAG="$TABP_LDRUN -L$TABP_LIB_DIR"
   TABPROPS_LIB_FLAG="-ltabprops -linterp"
   HAVE_TABPROPS="yes"
 fi
@@ -4216,17 +4241,32 @@ AC_SUBST(TABPROPS_LIB_DIR_FLAG)
 if test "$with_radprops" != NOT_SET; then
 
   AC_MSG_CHECKING(for RadProps files (For now we are just verifying the existence of lib and .h files)) 
-  for file in include/radprops/AbsCoeffGas.h include/radprops/Particles.h include/radprops/RadiativeSpecies.h lib/radprops/libradprops.a; do
-    if test ! -f $with_radprops/$file; then
-      AC_MSG_ERROR( '$with_radprops/$file' does not exist. )
+
+  RADP_INCLUDE_DIR="$with_radprops/include"
+  RADP_LIB_DIR="$with_radprops/lib/radprops"
+  RADP_LDRUN=""
+
+  # Check includes
+  for file in AbsCoeffGas.h Particles.h RadiativeSpecies.h; do
+    if test ! -f $RADP_INCLUDE_DIR/radprops/$file; then
+      AC_MSG_ERROR( '$RADP_INCLUDE_DIR/radprops/$file' does not exist. )
     fi
   done
+
+  # Check lib
+  if test -f $RADP_LIB_DIR/libradprops.a; then :
+  elif test "$static" != "full" && test -f $RADP_LIB_DIR/libradprops.so; then
+    RADP_LDRUN="$LDRUN_PREFIX$RADP_LIB_DIR"
+  else
+    echo ""
+    AC_MSG_ERROR( RadProps lib does not exist in '$RADP_LIB_DIR'. )
+  fi
 
   AC_MSG_RESULT(yes)
 
   DEF_RADPROPS="#define HAVE_RADPROPS 1"
-  INC_RADPROPS_H="-I$with_radprops/include"
-  RADPROPS_LIB_DIR_FLAG="-L$with_radprops/lib/radprops"
+  INC_RADPROPS_H="-I$RADP_INCLUDE_DIR"
+  RADPROPS_LIB_DIR_FLAG="$RADP_LDRUN -L$RADP_LIB_DIR"
   RADPROPS_LIB_FLAG="-lradprops"
   HAVE_RADPROPS="yes"
 fi
