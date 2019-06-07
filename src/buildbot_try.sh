@@ -46,6 +46,12 @@ set trunkServers = ("Trunk:opt-full-try" "Trunk:dbg-full-try" "Trunk:opt-gpu-try
 set BUILDERS = ""
 set CREATE_PATCH = false
 set MY_PATCH     = false
+set PATCH_FILE = "buildbot_patch.txt"
+set USE_GIT = `svn info >& /dev/null && echo false || git svn info >& /dev/null && echo true || echo false`
+
+set VC = "--vc=svn"
+set REBOSITORY = ""
+set DIFF = ""
 
 # No args so all tests
 
@@ -100,6 +106,7 @@ while ( $#argv )
       end  
       shift
       breaksw
+
     default:
       echo " Error parsing inputs."
       echo " Usage: buildbot_try.sh   [options]"
@@ -115,7 +122,7 @@ while ( $#argv )
       exit(1)
       breaksw
   endsw
-end        
+end
 
 #______________________________________________________________________
 #
@@ -126,16 +133,42 @@ end
 # If your changes are huge manually create an svn patch with no
 # context - still has a max 640 Mbytes.
 
-set PATCH = ""
+# always create patch
+if ( $USE_GIT == "true" ) then
+  /bin/rm -rf "$PATCH_FILE" >& /dev/null
 
-if( $CREATE_PATCH == "true" ) then
-  /bin/rm -rf buildbot_patch.txt >& /dev/null
+  # retrieve last svn rev and corresponding git commit
+  set SVN_REV = `git svn info | grep Revision | cut -d ' ' -f 2`
+  set GIT_REV = `git svn find-rev r$SVN_REV`
+  # create diff with git (ommitting deleted as svn diff)
+  git diff --no-renames --relative --no-prefix -U0 $GIT_REV > $PATCH_FILE
+  # format it to match svn patch
+  sed -i '/^new file mode/d' $PATCH_FILE
+  sed -i '/^deleted file mode/d' $PATCH_FILE
+  sed -i 's|^diff --git \(.*\) .*$|Index: \1|g' $PATCH_FILE
+  sed -i 's|^index .*\.\..*$|===================================================================|g' $PATCH_FILE
+  sed -i 's|^\(@@ .* @@\).*$|\1|g' $PATCH_FILE
+  sed -i 's|^\(--- .*\)$|\1\t(revision '$SVN_REV')|g' $PATCH_FILE
+  sed -i 's|^\(+++ .*\)$|\1\t(working copy)|g' $PATCH_FILE
+  sed -i 'N;s|^--- \(.*\)\t\(.*\)\n+++ /dev/null.*$|--- \1\t\2\n+++ \1\t(nonexistent)|;P;D' $PATCH_FILE
+  sed -i 'N;s|^--- /dev/null.*\n+++ \(.*\)\t\(.*\)$|--- \1\t(nonexistent)\n+++ \1\t\2|;P;D' $PATCH_FILE
 
-  svn diff -x --context=0 > buildbot_patch.txt
+  ls -l $PATCH_FILE
 
-  ls -l buildbot_patch.txt
-  
-  set PATCH = "--diff=buildbot_patch.txt --repository=https://gforge.sci.utah.edu/svn/uintah/trunk/src" 
+  set VC = ""
+  set DIFF = "--diff=$PATCH_FILE"
+  set REPOSITORY = "--repository=https://gforge.sci.utah.edu/svn/uintah/trunk/src"
+
+else if( $CREATE_PATCH == "true" ) then
+  /bin/rm -rf "$PATCH_FILE" >& /dev/null
+
+  svn diff -x --context=0 > $PATCH_FILE
+
+  ls -l $PATCH_FILE
+
+  set VC = ""
+  set DIFF = "--diff=$PATCH_FILE"
+  set REPOSITORY = "--repository=https://gforge.sci.utah.edu/svn/uintah/trunk/src"
 endif
 #__________________________________
 # use a user created patch
@@ -145,7 +178,7 @@ if( $MY_PATCH == "true" ) then
     echo "  Error:  Could not find the patch file $PATCHFILE"
     exit 1
   endif
-  
+
   set PATCH = "--diff=$PATCHFILE --repository=https://gforge.sci.utah.edu/svn/uintah/trunk/src"
 endif
 
@@ -156,21 +189,29 @@ echo "  BUILDERS: $BUILDERS"
 
 #__________________________________
 
-buildbot --verbose try \
+echo buildbot --verbose try \
          --connect=pb \
          --master=uintah-build.chpc.utah.edu:8031 \
          --username=buildbot_try \
          --passwd=try_buildbot \
-         --vc=svn \
          --topdir=. \
          --who=`whoami` \
-         $PATCH $BUILDERS
+         $VC $DIFF $REPOSITORY $BUILDERS
+
+#buildbot --verbose try \
+#         --connect=pb \
+#         --master=uintah-build.chpc.utah.edu:8031 \
+#         --username=buildbot_try \
+#         --passwd=try_buildbot \
+#         --topdir=. \
+#         --who=`whoami` \
+#         $VC $DIFF $REPOSITORY $BUILDERS
 
 echo $status
 
 # cleanup
-if( $CREATE_PATCH == "true" ) then
-  /bin/rm -rf buildbot_patch.txt >& /dev/null
+if( $CREATE_PATCH == "true" || $USE_GIT == "true" ) then
+  /bin/rm -rf $PATCH_FILE >& /dev/null
 endif
 
 exit
