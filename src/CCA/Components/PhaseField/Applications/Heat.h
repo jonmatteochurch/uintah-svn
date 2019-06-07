@@ -3270,9 +3270,11 @@ Heat<VAR, DIM, STN, AMR>::initialize_solution (
 {
     Vector v ( this->get_position ( patch, id ).asVector() );
 
+#ifdef __INTEL_COMPILER
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
+#endif
 
     double a = M_PI_2 / L;
     u[id] = 1.;
@@ -3335,9 +3337,11 @@ Heat<VAR, DIM, STN, AMR>::time_advance_dbg_derivatives_error (
         Vector v ( this->get_position ( patch, id ).asVector() );
         Vector dCell ( level->dCell() );
 
+#ifdef __INTEL_COMPILER
         // BUG workaround
         std::stringstream ss;
         ss << v << std::endl;
+#endif
 
         double a = M_PI_2 / L;
         double da2 = a * a * static_cast<double> ( DIM );
@@ -3526,9 +3530,12 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
         Vector v ( this->get_position ( patch, id ).asVector() );
         Vector dCell ( level->dCell() );
 
+#ifdef __INTEL_COMPILER
         // BUG workaround
         std::stringstream ss;
         ss << v << std::endl;
+#endif
+
 
         double a = M_PI_2 / L;
         double da2 = a * a * static_cast<double> ( DIM );

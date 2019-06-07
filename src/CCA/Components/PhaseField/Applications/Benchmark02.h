@@ -795,9 +795,12 @@ void Benchmark02<VAR, STN>::initialize_solution (
 
     Vector v ( this->get_position ( patch, id ).asVector() );
 
+#ifdef __INTEL_COMPILER
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
+#endif
+
 
     for ( int i = 0; i < Ncirc; ++i )
     {

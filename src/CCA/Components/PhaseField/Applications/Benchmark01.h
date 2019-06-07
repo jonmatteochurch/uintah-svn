@@ -658,9 +658,11 @@ void Benchmark01<VAR, STN>::initialize_solution (
 {
     Vector v ( this->get_position ( patch, id ).asVector() );
 
+#ifdef __INTEL_COMPILER
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
+#endif
 
     v[0] -= M_PI;
     v[1] -= M_PI;

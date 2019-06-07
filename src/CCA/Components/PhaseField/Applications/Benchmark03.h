@@ -769,9 +769,11 @@ void Benchmark03<VAR, STN>::initialize_solution (
 {
     Vector v ( this->get_position ( patch, id ).asVector() );
 
+#ifdef __INTEL_COMPILER
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
+#endif
 
     const double & x = v[0];
     u[id] = cos ( 2. * x ) + 0.01 * exp ( cos ( x + 0.1 ) );
