@@ -66,7 +66,6 @@ public: // STATIC MEMBERS
     /// Finite difference stencil
     static constexpr StnType Stn = STN;
 
-
     /// class name as used by ApplicationFactory
     static const std::string Name;
 
@@ -167,7 +166,7 @@ private: // INDEXED CONSTRUCTOR
         m_high ( high ),
         m_face ( faces ),
         m_labels { labels... },
-             m_fd_view ( std::unique_ptr< FDView<Field, STN> > { BCFDViewFactory<Problem, I>::create ( labels, subproblems_label, material, level, faces, bcs ) } ... )
+        m_fd_view ( std::unique_ptr< FDView<Field, STN> > { BCFDViewFactory<Problem, I>::create ( labels, subproblems_label, material, level, faces, bcs ) } ... )
     {}
 
 public: // CONSTRUCTORS/DESTRUCTOR
@@ -198,7 +197,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
         m_high ( high ),
         m_face (),
         m_labels { labels... },
-             m_fd_view { std::unique_ptr< FDView<Field, STN> > { scinew DWFDView<Field, STN, VAR> ( labels, material, level ) } ... }
+        m_fd_view { std::unique_ptr< FDView<Field, STN> > { scinew DWFDView<Field, STN, VAR> ( labels, material, level ) } ... }
     {}
 
     /**

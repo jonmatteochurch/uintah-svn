@@ -181,7 +181,7 @@ protected: // MEMBERS
     const VarLabel * u_label;
 
     /// Label for the difference between computed and analytical solution
-    const VarLabel * delta_u_label;
+    const VarLabel * epsilon_u_label;
 
     /// Label for the local error in u in the DataWarehouse
     const VarLabel * error_u_label;
@@ -1551,7 +1551,7 @@ protected: // IMPLEMENTATIONS
      * @param L domain width
      * @param t simulation time
      * @param u view of the newly computed solution field in the new dw
-     * @param[out] delta_u view of the local error (difference between computed and
+     * @param[out] epsilon_u view of the local error (difference between computed and
      * analytical solution at each grid position)
      * @param[out] error_u interpolation error (L2 norm over the range of each
      * grid position of the difference between computed and
@@ -1567,7 +1567,7 @@ protected: // IMPLEMENTATIONS
         const double & L,
         const double & t,
         View < ScalarField<const double> > & u,
-        View < ScalarField<double> > & delta_u,
+        View < ScalarField<double> > & epsilon_u,
         View < ScalarField<double> > & error_u,
         double & u_normL2,
         double & error_normL2
@@ -1667,7 +1667,7 @@ Heat<VAR, DIM, STN, AMR>::Heat (
 {
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
     subproblems_label = VarLabel::create ( "subproblems", Variable < PP, SubProblems < HeatProblem<VAR, STN> > >::getTypeDescription() );
-    delta_u_label = VarLabel::create ( "delta_u", Variable<VAR, double>::getTypeDescription() );
+    epsilon_u_label = VarLabel::create ( "epsilon_u", Variable<VAR, double>::getTypeDescription() );
     error_u_label = VarLabel::create ( "error_u", Variable<VAR, double>::getTypeDescription() );
     u_normL2_label = VarLabel::create ( "u_normL2", sum_vartype::getTypeDescription() );
     error_normL2_label = VarLabel::create ( "error_normL2", sum_vartype::getTypeDescription() );
@@ -1717,7 +1717,7 @@ Heat<VAR, DIM, STN, AMR>::~Heat()
 {
     VarLabel::destroy ( u_label );
     VarLabel::destroy ( subproblems_label );
-    VarLabel::destroy ( delta_u_label );
+    VarLabel::destroy ( epsilon_u_label );
     VarLabel::destroy ( error_u_label );
     VarLabel::destroy ( u_normL2_label );
     VarLabel::destroy ( error_normL2_label );
@@ -2392,7 +2392,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_error (
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_error", this, &Heat::task_time_advance_solution_error );
     task->requires ( Task::NewDW, u_label, Ghost::None, 0 );
-    task->computes ( delta_u_label );
+    task->computes ( epsilon_u_label );
     task->computes ( error_u_label );
     task->computes ( u_normL2_label );
     task->computes ( error_normL2_label );
@@ -3120,13 +3120,13 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_error
 
         DWView < ScalarField<const double>, VAR, DIM > u ( dw_new, u_label, material, patch );
 
-        DWView < ScalarField<double>, VAR, DIM > delta_u ( dw_new, delta_u_label, material, patch );
+        DWView < ScalarField<double>, VAR, DIM > epsilon_u ( dw_new, epsilon_u_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
         dbg_out3 << "= Iterating over range " << range << std::endl;
 
-        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &delta_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, simTime, L[X], u, delta_u, error_u, norms[0], norms[1] ); }, norms );
+        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
     }
 
     dw_new->put ( sum_vartype ( norms[0] ), u_normL2_label );
@@ -3374,8 +3374,8 @@ Heat<VAR, DIM, STN, AMR>::time_advance_dbg_derivatives_error (
             double int_die2 = area * du[i][id] * du[i][id] - 2. * du[i][id] * int_diu + int_diu2;
             double int_ddie2 = area * ddu[i][id] * ddu[i][id] + 2. * a * a * ddu[i][id] * int_u + a * a * a * a * int_u2;
 
-            error_du[i][id] = sqrt ( int_die2 / area );
-            error_ddu[i][id] = sqrt ( int_ddie2 / area );
+            error_du[i][id] = sqrt ( int_die2 ) / area;
+            error_ddu[i][id] = sqrt ( int_ddie2 ) / area;
 
             u_normH10 += int_diu2;
             error_normH10 += int_die2;
@@ -3395,8 +3395,8 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_forward_euler (
     View < ScalarField<double> > & u_new
 )
 {
-    double delta_u = delt * alpha * u_old.laplacian ( id );
-    u_new[id] = u_old[id] + delta_u;
+    double epsilon_u = delt * alpha * u_old.laplacian ( id );
+    u_new[id] = u_old[id] + epsilon_u;
 }
 
 #ifdef HAVE_HYPRE
@@ -3509,7 +3509,7 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
     const double & t,
     const double & L,
     View < ScalarField<const double> > & u,
-    View < ScalarField<double> > & delta_u,
+    View < ScalarField<double> > & epsilon_u,
     View < ScalarField<double> > & error_u,
     double & u_normL2,
     double & error_normL2
@@ -3519,7 +3519,7 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
     if ( level->hasFinerLevel() && level->getFinerLevel()->containsCell ( level->mapCellToFiner ( id ) ) )
     {
         error_u[id] = 0;
-        delta_u[id] = 0;
+        epsilon_u[id] = 0;
     }
     else
     {
@@ -3549,8 +3549,8 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
 
         double int_e2 = area * u[id] * u[id] - 2. * u[id] * int_u + int_u2;
 
-        delta_u[id] = del_u - u[id];
-        error_u[id] = sqrt ( int_e2 / area );
+        epsilon_u[id] = del_u - u[id];
+        error_u[id] = sqrt ( int_e2 ) / area;
 
         u_normL2 += int_u2;
         error_normL2 += int_e2;

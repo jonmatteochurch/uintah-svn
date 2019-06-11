@@ -119,7 +119,7 @@ private: // METHODS
      * @param id coarse index
      * @return fine value at id
      */
-    const T
+    inline T
     coarse_value (
         const IntVector & id
     ) const

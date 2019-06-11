@@ -111,7 +111,4 @@ public: // CONSTRUCTORS/DESTRUCTOR
 } // namespace PhaseField
 } // namespace Uintah
 
-// #include <CCA/Components/PhaseField/DataWarehouse/DWViewP5.h>
-// #include <CCA/Components/PhaseField/DataWarehouse/DWViewP7.h>
-
 #endif // Packages_Uintah_CCA_Components_PhaseField_DataWarehouse_DWView_h

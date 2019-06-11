@@ -47,10 +47,10 @@ namespace PhaseField
  * @brief Benchmark III application: 1D Cahn Hilliard
  *
  * \f[
- * \dot u = \epsilon^2 v^{\prime\prime} + \nabla^2 W^\prime(u)
+ * \dot u = - v^{\prime\prime}
  * \f]
  * \f[
- * v = u^{\prime\prime}
+ * v = \epsilon^2 u^{\prime\prime} - W^{\prime}(u)
  * \f]
  * where
  * \f[
@@ -633,8 +633,8 @@ Benchmark03<VAR, STN>::task_initialize_solution (
         BlockRange range ( this->get_range ( patch ) );
         dbg_out3 << "= Iterating over range " << range << std::endl;
 
-        DWView < ScalarField<double>, VAR, DIM > u_view ( dw_new, u_label, material, patch );
-        parallel_for ( range, [patch, &u_view, this] ( int i, int j, int k )->void { initialize_solution ( {i, j, k}, patch, u_view ); } );
+        DWView < ScalarField<double>, VAR, DIM > u ( dw_new, u_label, material, patch );
+        parallel_for ( range, [patch, &u, this] ( int i, int j, int k )->void { initialize_solution ( {i, j, k}, patch, u ); } );
     }
 
     dbg_out2 << std::endl;
@@ -655,7 +655,6 @@ Benchmark03<VAR, STN>::task_compute_stable_timestep (
     dbg_out2 << std::endl;
 }
 
-
 template<VarType VAR, StnType STN>
 void Benchmark03<VAR, STN>::task_time_advance_v (
     const ProcessorGroup * myworld,
@@ -672,13 +671,13 @@ void Benchmark03<VAR, STN>::task_time_advance_v (
         const Patch * patch = patches->get ( p );
         dbg_out2 << "== Patch: " << *patch << std::endl;
 
-        DWFDView < ScalarField<const double>, STN, VAR > u_old_view ( dw_old, u_label, material, patch );
-        DWView < ScalarField<double>, VAR, DIM > v_new_view ( dw_new, v_label, material, patch );
+        DWFDView < ScalarField<const double>, STN, VAR > u_old ( dw_old, u_label, material, patch );
+        DWView < ScalarField<double>, VAR, DIM > v_new ( dw_new, v_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
         dbg_out3 << "= Iterating over range " << range << std::endl;
 
-        parallel_for ( range, [patch, &u_old_view, &v_new_view, this] ( int i, int j, int k )->void { time_advance_v ( {i, j, k}, u_old_view, v_new_view ); } );
+        parallel_for ( range, [patch, &u_old, &v_new, this] ( int i, int j, int k )->void { time_advance_v ( {i, j, k}, u_old, v_new ); } );
     }
 
     dbg_out2 << std::endl;
@@ -700,14 +699,14 @@ void Benchmark03<VAR, STN>::task_time_advance_u (
         const Patch * patch = patches->get ( p );
         dbg_out2 << "== Patch: " << *patch << std::endl;
 
-        DWView < ScalarField<const double>, VAR, DIM > u_old_view ( dw_old, u_label, material, patch );
-        DWFDView < ScalarField<const double>, STN, VAR > v_new_view ( dw_new, v_label, material, patch );
-        DWView < ScalarField<double>, VAR, DIM > u_new_view ( dw_new, u_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > u_old ( dw_old, u_label, material, patch );
+        DWFDView < ScalarField<const double>, STN, VAR > v_new ( dw_new, v_label, material, patch );
+        DWView < ScalarField<double>, VAR, DIM > u_new ( dw_new, u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
         dbg_out3 << "= Iterating over range " << range << std::endl;
 
-        parallel_for ( range, [patch, &u_old_view, &v_new_view, &u_new_view, this] ( int i, int j, int k )->void { time_advance_u ( {i, j, k}, u_old_view, v_new_view, u_new_view ); } );
+        parallel_for ( range, [patch, &u_old, &v_new, &u_new, this] ( int i, int j, int k )->void { time_advance_u ( {i, j, k}, u_old, v_new, u_new ); } );
     }
 
     dbg_out2 << std::endl;
@@ -730,12 +729,12 @@ Benchmark03<VAR, STN>::task_time_advance_postprocess (
         const Patch * patch = patches->get ( p );
         dbg_out2 << "== Patch: " << *patch << std::endl;
 
-        DWFDView < ScalarField<const double>, STN, VAR > u_view ( dw_new, u_label, material, patch );
+        DWFDView < ScalarField<const double>, STN, VAR > u ( dw_new, u_label, material, patch );
 
         IntVector i0;
         if ( this->find_point ( patch, {M_PI, 0., 0.}, i0 ) )
         {
-            double u0 = u_view[i0];
+            double u0 = u[i0];
             if ( fabs ( u0 ) > 2 ) SCI_THROW ( AssertionFailed ( "\n ERROR: Unstable simulation\n", __FILE__, __LINE__ ) );
             dw_new->put ( sum_vartype ( u0 ), u0_label );
         }
@@ -749,7 +748,7 @@ Benchmark03<VAR, STN>::task_time_advance_postprocess (
 
         parallel_reduce_sum (
             range,
-            [patch, &u_view, this] ( int i, int j, int k, double & energy )->void { time_advance_postprocess_energy ( {i, j, k}, patch, u_view, energy ); },
+            [patch, &u, this] ( int i, int j, int k, double & energy )->void { time_advance_postprocess_energy ( {i, j, k}, patch, u, energy ); },
             energy
         );
 
@@ -814,8 +813,8 @@ void Benchmark03<VAR, STN>::time_advance_postprocess_energy (
 {
     const double & u = u_new[id];
     auto grad = u_new.gradient ( id );
-    double A = patch->getLevel()->dCell() [0] * patch->getLevel()->dCell() [1];
-    energy += A * ( epsilon * epsilon * ( grad[0] * grad[0] + grad[1] * grad[1] ) / 2. + ( u * u * u * u - 2 * u * u + 1. ) / 4. );
+    double A = patch->getLevel()->dCell() [0];
+    energy += A * ( epsilon * epsilon * ( grad[0] * grad[0] ) / 2. + ( u * u * u * u - 2 * u * u + 1. ) / 4. );
 }
 
 } // namespace PhaseField

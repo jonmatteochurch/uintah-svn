@@ -151,7 +151,7 @@ private: // SINGLE INDEX METHODS
         std::vector< BCInfo< ScalarField<T> > > bci;
         for ( const auto & b : bcs )
             bci.push_back ( { b.value[J], b.bc, b.c2f } );
-        return this->m_view_ptr[J] = new bcfd_view < ScalarField<T>, STN, Problem, index_sequence<I, J>, P... > ( label[J], subproblems_label, material, level, bci );
+        return this->m_view_ptr[J] = scinew bcfd_view < ScalarField<T>, STN, Problem, index_sequence<I, J>, P... > ( label[J], subproblems_label, material, level, bci );
     }
 
     /**
@@ -183,7 +183,7 @@ private: // SINGLE INDEX METHODS
         std::vector< BCInfo< ScalarField<T> > > bci;
         for ( const auto & b : bcs )
             bci.push_back ( { b.value[J], b.bc, b.c2f } );
-        return this->m_view_ptr[J] = new bcfd_view < ScalarField<T>, STN, Problem, index_sequence<I, J>, P... > ( dw, label[J], subproblems_label, material, patch, bci, use_ghosts );
+        return this->m_view_ptr[J] = scinew bcfd_view < ScalarField<T>, STN, Problem, index_sequence<I, J>, P... > ( dw, label[J], subproblems_label, material, patch, bci, use_ghosts );
     }
 
 private: // INDEXED CONSTRUCTOR
@@ -241,9 +241,6 @@ private: // INDEXED CONSTRUCTOR
         bool use_ghosts
     )
     {
-        std::vector< BCInfo< ScalarField<T> > > bci;
-        for ( const auto & b : bcs )
-            bci.push_back ( { b.value[I], b.bc, b.c2f } );
         std::array<bool, N> {{ create_element<J> ( dw, label, subproblems_label, material, patch, bcs, use_ghosts )... }};
     }
 

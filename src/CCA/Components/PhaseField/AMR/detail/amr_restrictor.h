@@ -53,6 +53,8 @@ namespace detail
  * @tparam Problem type of PhaseField problem
  * @tparam Index index_sequence of Field within Problem (first element is variable index,
  * following ones, if present, are the component index within the variable)
+ * @tparam FCI order of interpolation
+ * @tparam VAR type of variable representation
  */
 template<typename Field, typename Problem, typename Index, FCIType FCI, VarType VAR> class amr_restrictor;
 
@@ -67,10 +69,12 @@ template<typename Field, typename Problem, typename Index, FCIType FCI, VarType 
  * @tparam Problem type of PhaseField problem
  * @tparam Index index_sequence of Field within Problem (first element is variable index,
  * following ones, if present, are the component index within the variable)
+ * @tparam FCI order of interpolation
+ * @tparam VAR type of variable representation
  */
-template<typename T, size_t N, typename Problem, typename Index, FCIType FCI, DimType DIM>
-class amr_restrictor < VectorField<T, N>, Problem, Index, FCI, DIM >
-    : public view_array < amr_restrictor < ScalarField<T>, Problem, Index, FCI, DIM >, ScalarField<T>, N >
+template<typename T, size_t N, typename Problem, typename Index, FCIType FCI, VarType VAR>
+class amr_restrictor < VectorField<T, N>, Problem, Index, FCI, VAR >
+    : public view_array < amr_restrictor < ScalarField<T>, Problem, Index, FCI, VAR >, ScalarField<T>, N >
 {
 private: // TYPES
 
@@ -78,7 +82,7 @@ private: // TYPES
     using Field = VectorField<T, N>;
 
     /// Type of View of each component
-    using View = amr_restrictor < ScalarField<T>, Problem, Index, FCI, DIM >;
+    using View = amr_restrictor < ScalarField<T>, Problem, Index, FCI, VAR >;
 
 public:
 

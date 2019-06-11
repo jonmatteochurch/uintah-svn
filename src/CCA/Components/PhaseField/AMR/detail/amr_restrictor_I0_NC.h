@@ -23,7 +23,7 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/AMR/detail/amr_restrictor_I1_CC.h
+ * @file CCA/Components/PhaseField/AMR/detail/amr_restrictor_I0_NC.h
  * @author Jon Matteo Church
  * @date 2018/12
  */
@@ -47,14 +47,11 @@ namespace detail
  * @brief Wrapper of grid variables for restriction from finer to coarser levels
  * (node-centered piecewise constant implementation)
  *
- * @brief implements  piecewise constant restriction of a variable from finer to
- *        coarser levels.
- *
  * @tparam T variable data type (must be constant)
  * @tparam Problem type of PhaseField problem
  * @tparam I list of indices corresponding to the variable within the subproblems
  *
- * @implements amr_restrictor< FCI, VAR, DIM, T, Problem, I >
+ * @implements amr_restrictor< Field, Problem, Index, FCI, VAR >
  */
 template<typename T, typename Problem, size_t... I>
 class amr_restrictor < ScalarField<T>, Problem, index_sequence<I...>, I0, NC >

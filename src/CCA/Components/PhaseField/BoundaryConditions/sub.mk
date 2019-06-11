@@ -32,7 +32,6 @@ SRCDIR := CCA/Components/PhaseField/BoundaryConditions
 SRCS += \
   $(SRCDIR)/BCFDViewFactory-bld.cc \
   $(SRCDIR)/BCFDViewHeatProblemCCP5-bld.cc \
-  $(SRCDIR)/BCFDViewHeatProblemCCP5-bld.cc \
   $(SRCDIR)/BCFDViewHeatProblemCCP7-bld.cc \
   $(SRCDIR)/BCFDViewHeatProblemNCP5-bld.cc \
   $(SRCDIR)/BCFDViewHeatProblemNCP7-bld.cc \

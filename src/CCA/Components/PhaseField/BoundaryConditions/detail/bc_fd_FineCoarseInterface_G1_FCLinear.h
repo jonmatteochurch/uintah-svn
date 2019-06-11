@@ -78,7 +78,7 @@ private: // STATIC MEMBERS
     static constexpr int SGN = get_face<F>::sgn;
 
     /// Boundary face normal vector sign (double)
-    static constexpr int DSGN = get_face<F>::dsgn;
+    static constexpr double DSGN = get_face<F>::dsgn;
 
 private: // TYPES
 

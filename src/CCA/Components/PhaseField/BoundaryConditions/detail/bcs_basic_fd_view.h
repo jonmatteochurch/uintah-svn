@@ -199,8 +199,8 @@ private: // INDEXED CONSTRUCTOR
         m_subproblems_label ( subproblems_label ),
         m_material ( material ),
         m_dw_view ( scinew dw_basic_fd_view < Field, STN, VAR>  { label, material, level } ),
-              m_fd_view ( DIM, m_dw_view.get () ),
-    m_bc_view { std::unique_ptr< bc_basic_fd_view< Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = scinew bc_basic_fd_view<Field, STN, VAR, P> ( this, label, material, level, get_value<J> ( bcs ) ) ) ) ...  }
+        m_fd_view ( DIM, m_dw_view.get () ),
+        m_bc_view { std::unique_ptr< bc_basic_fd_view< Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = scinew bc_basic_fd_view<Field, STN, VAR, P> ( this, label, material, level, get_value<J> ( bcs ) ) ) ) ...  }
     {
         std::array<bool, N> {{ push_back_bc<J> () ... }};
 

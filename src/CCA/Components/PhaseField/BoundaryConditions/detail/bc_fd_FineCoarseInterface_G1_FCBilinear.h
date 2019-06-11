@@ -61,7 +61,7 @@ namespace detail
  */
 template<typename T, StnType STN, VarType VAR, Patch::FaceType F>
 class bc_fd < ScalarField<T>, STN, VAR, F, BC::FineCoarseInterface, 1, FC::FCBilinear >
-    : virtual public basic_fd_view< ScalarField<T>, STN >
+    : virtual public basic_fd_view < ScalarField<T>, STN >
 {
 private: // STATIC MEMBERS
 
@@ -78,7 +78,7 @@ private: // STATIC MEMBERS
     static constexpr int SGN = get_face<F>::sgn;
 
     /// Boundary face normal vector sign (double)
-    static constexpr int DSGN = get_face<F>::dsgn;
+    static constexpr double DSGN = get_face<F>::dsgn;
 
 private: // TYPES
 
@@ -427,6 +427,7 @@ public: // VIEW METHODS
                ( low[Y] <= id[Y] && id[Y] < high[Y] ) &&
                ( low[Z] <= id[Z] && id[Z] < high[Z] );
     };
+
 
 public: // BASIC FD VIEW METHODS
 

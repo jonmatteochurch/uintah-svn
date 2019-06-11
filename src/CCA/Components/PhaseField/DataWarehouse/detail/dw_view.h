@@ -95,11 +95,6 @@ private: // TYPES
     /// Non const type of the field value
     using V = typename std::remove_const<T>::type;
 
-private: // FRIENDS
-
-    /// Grant virtual_view's (with virtual support) wrapper access
-    friend virtual_view<dw_view, Field>;
-
 private: // MEMBERS
 
     /// Variable label in the DataWarehouse
@@ -122,7 +117,7 @@ private: // MEMBERS
     KokkosView3<T> * m_view;
 #endif
 
-private: // COPY CONSTRUCTOR
+protected: // COPY CONSTRUCTOR
 
     /**
      * @brief Constructor

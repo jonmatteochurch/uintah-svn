@@ -46,7 +46,7 @@ namespace PhaseField
  *
  * @tparam Problem type of PhaseField problem
  * @tparam I index of the variable within the Problem
- * @tparam FCI problem dimension
+ * @tparam FCI order of interpolation
  */
 template<typename Problem, size_t I, FCIType FCI> using AMRInterpolator = detail::amr_interpolator < typename Problem::template get_field<I>::type, Problem, index_sequence<I>, FCI, Problem::Dim >;
 

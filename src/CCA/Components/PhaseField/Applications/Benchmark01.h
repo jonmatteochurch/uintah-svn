@@ -547,8 +547,8 @@ Benchmark01<VAR, STN>::task_initialize_solution (
         BlockRange range ( this->get_range ( patch ) );
         dbg_out3 << "= Iterating over range " << range << std::endl;
 
-        DWView < ScalarField<double>, VAR, DIM > u_view ( dw_new, u_label, material, patch );
-        parallel_for ( range, [patch, &u_view, this] ( int i, int j, int k )->void { initialize_solution ( {i, j, k}, patch, u_view ); } );
+        DWView < ScalarField<double>, VAR, DIM > u ( dw_new, u_label, material, patch );
+        parallel_for ( range, [patch, &u, this] ( int i, int j, int k )->void { initialize_solution ( {i, j, k}, patch, u ); } );
     }
 
     dbg_out2 << std::endl;
@@ -586,13 +586,13 @@ void Benchmark01<VAR, STN>::task_time_advance_solution (
         const Patch * patch = patches->get ( p );
         dbg_out2 << "== Patch: " << *patch << std::endl;
 
-        DWFDView < ScalarField<const double>, STN, VAR > u_old_view ( dw_old, u_label, material, patch );
-        DWView < ScalarField<double>, VAR, DIM > u_new_view ( dw_new, u_label, material, patch );
+        DWFDView < ScalarField<const double>, STN, VAR > u_old ( dw_old, u_label, material, patch );
+        DWView < ScalarField<double>, VAR, DIM > u_new ( dw_new, u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
         dbg_out3 << "= Iterating over range " << range << std::endl;
 
-        parallel_for ( range, [&u_old_view, &u_new_view, this] ( int i, int j, int k )->void { time_advance_solution ( {i, j, k}, u_old_view, u_new_view ); } );
+        parallel_for ( range, [&u_old, &u_new, this] ( int i, int j, int k )->void { time_advance_solution ( {i, j, k}, u_old, u_new ); } );
     }
 
     dbg_out2 << std::endl;
@@ -615,12 +615,12 @@ Benchmark01<VAR, STN>::task_time_advance_postprocess (
         const Patch * patch = patches->get ( p );
         dbg_out2 << "== Patch: " << *patch << std::endl;
 
-        DWFDView < ScalarField<const double>, STN, VAR > u_view ( dw_new, u_label, material, patch );
+        DWFDView < ScalarField<const double>, STN, VAR > u ( dw_new, u_label, material, patch );
 
         IntVector i0;
         if ( this->find_point ( patch, {M_PI, M_PI, 0.}, i0 ) )
         {
-            double u0 = u_view[i0];
+            double u0 = u[i0];
             if ( fabs ( u0 ) > 2 ) SCI_THROW ( AssertionFailed ( "\n ERROR: Unstable simulation\n", __FILE__, __LINE__ ) );
             dw_new->put ( sum_vartype ( u0 ), u0_label );
         }
@@ -634,7 +634,7 @@ Benchmark01<VAR, STN>::task_time_advance_postprocess (
 
         parallel_reduce_sum (
             range,
-            [patch, &u_view, this] ( int i, int j, int k, double & energy )->void { time_advance_postprocess_energy ( {i, j, k}, patch, u_view, energy ); },
+            [patch, &u, this] ( int i, int j, int k, double & energy )->void { time_advance_postprocess_energy ( {i, j, k}, patch, u, energy ); },
             energy
         );
 

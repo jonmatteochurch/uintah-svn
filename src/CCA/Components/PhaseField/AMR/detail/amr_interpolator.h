@@ -54,6 +54,8 @@ namespace detail
  * @tparam Problem type of PhaseField problem
  * @tparam Index index_sequence of Field within Problem (first element is variable index,
  * following ones, if present, are the component index within the variable)
+ * @tparam FCI order of interpolation
+ * @tparam DIM problem dimension
  */
 template<typename Field, typename Problem, typename Index, FCIType FCI, DimType DIM> class amr_interpolator;
 
@@ -68,6 +70,8 @@ template<typename Field, typename Problem, typename Index, FCIType FCI, DimType 
  * @tparam Problem type of PhaseField problem
  * @tparam Index index_sequence of Field within Problem (first element is variable index,
  * following ones, if present, are the component index within the variable)
+ * @tparam FCI order of interpolation
+ * @tparam DIM problem dimension
  */
 template<typename T, size_t N, typename Problem, typename Index, FCIType FCI, DimType DIM>
 class amr_interpolator < VectorField<T, N>, Problem, Index, FCI, DIM >

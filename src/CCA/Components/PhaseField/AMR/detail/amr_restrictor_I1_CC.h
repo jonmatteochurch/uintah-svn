@@ -51,7 +51,7 @@ namespace detail
  * @tparam Problem type of PhaseField problem
  * @tparam I list of indices corresponding to the variable within the subproblems
  *
- * @implements amr_restrictor< Field, Problem, Index, FCI, DIM >
+ * @implements amr_restrictor< Field, Problem, Index, FCI, VAR >
  */
 template<typename T, typename Problem, size_t... I>
 class amr_restrictor < ScalarField<T>, Problem, index_sequence<I...>, I1, CC >

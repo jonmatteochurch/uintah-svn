@@ -160,7 +160,7 @@ protected: // COPY CONSTRUCTOR
         m_support ( copy->m_support )
     {}
 
-public: // CONSTRUCTORS/DESTRUCTOR
+protected: // CONSTRUCTORS/DESTRUCTOR
 
     /**
      * @brief Constructor

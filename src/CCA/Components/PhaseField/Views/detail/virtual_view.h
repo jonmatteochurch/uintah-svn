@@ -225,7 +225,7 @@ public: // VIEW METHODS
         return View::operator[] ( id - m_offset );
     };
 
-}; // dw_virtual_view
+}; // virtual_view
 
 } // namespace detail
 } // namespace PhaseField

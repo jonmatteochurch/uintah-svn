@@ -38,7 +38,7 @@ namespace Uintah
 namespace PhaseField
 {
 
-template < VarType VAR, StnType STN> class BCInterface;
+template < VarType VAR, StnType STN> struct BCInterface;
 
 /**
  * @brief PhaseField Problem Container
