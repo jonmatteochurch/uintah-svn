@@ -280,7 +280,10 @@ public: // VIEW METHODS
 
         m_support.emplace_back ( l, h );
 
-        m_coarse_interp->set ( dw, level, l, h );
+        if ( C2F & FC::FCNew )
+            m_coarse_interp->set ( dw->getOtherDataWarehouse ( Task::NewDW ), level, l, h );
+        else
+            m_coarse_interp->set ( dw, level, l, h );
     };
 
     /**
