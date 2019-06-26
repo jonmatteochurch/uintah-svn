@@ -693,7 +693,7 @@ protected: // SCHEDULINGS
      * (AMR implementation)
      *
      * Switches between available implementations depending on the given time
-     * solver(non AMR implementation)
+     * solver
      *
      * @param level grid level to be updated
      * @param sched scheduler to manage the tasks
@@ -707,7 +707,7 @@ protected: // SCHEDULINGS
 
     /**
      * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypre
-     * (non AMR implementation)
+     * (coarsest level implementation)
      *
      * Defines the dependencies and output of the task which assembles the
      * implicit system allowing sched to control its execution order
@@ -724,7 +724,7 @@ protected: // SCHEDULINGS
 
     /**
      * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypre
-     * (AMR implementation)
+     * (refinement level implementation)
      *
      * Defines the dependencies and output of the task which assembles the
      * implicit system allowing sched to control its execution order
@@ -2952,7 +2952,11 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
     DataWarehouse * dw_new
 )
 {
-    if ( this->isRegridTimeStep() )
+    timeStep_vartype timeStepVar;
+    dw_old->get ( timeStepVar, VarLabel::find ( timeStep_name ) );
+    double timeStep = timeStepVar;
+
+    if ( timeStep == 1 || this->isRegridTimeStep() )
         task_time_advance_solution_crank_nicolson_assemble_hypre_all ( myworld, patches, matls, dw_old, dw_new );
     else
         task_time_advance_solution_crank_nicolson_assemble_hypre_rhs ( myworld, patches, matls, dw_old, dw_new );
