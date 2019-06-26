@@ -189,6 +189,9 @@ protected: // MEMBERS
     /// Label for the discrete H0-norm of the solution in the DataWarehouse
     const VarLabel * u_normL2_label;
 
+    /// Label for the global deiscrete error of the solution in the DataWarehouse
+    const VarLabel * error_discrete_label;
+
     /// Label for the global H0-error of the solution in the DataWarehouse
     const VarLabel * error_normL2_label;
 
@@ -1556,6 +1559,7 @@ protected: // IMPLEMENTATIONS
      * @param[out] error_u interpolation error (L2 norm over the range of each
      * grid position of the difference between computed and
      * analytical solution at each grid position)
+     * @param[out] error_discrete discrete-norm (global) of the solution error vector
      * @param[out] u_normL2 L2-norm (global) of the solution vector
      * @param[out] error_normL2 L2-norm (global) of the solution error vector
      *
@@ -1569,6 +1573,7 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<const double> > & u,
         View < ScalarField<double> > & epsilon_u,
         View < ScalarField<double> > & error_u,
+        double & error_discrete,
         double & u_normL2,
         double & error_normL2
     );
@@ -1671,6 +1676,7 @@ Heat<VAR, DIM, STN, AMR>::Heat (
     error_u_label = VarLabel::create ( "error_u", Variable<VAR, double>::getTypeDescription() );
     u_normL2_label = VarLabel::create ( "u_normL2", sum_vartype::getTypeDescription() );
     error_normL2_label = VarLabel::create ( "error_normL2", sum_vartype::getTypeDescription() );
+    error_discrete_label = VarLabel::create ( "error_discrete", sum_vartype::getTypeDescription() );
 
 #ifdef HAVE_HYPRE
     matrix_label = VarLabel::create ( "A", Variable<VAR, Stencil7>::getTypeDescription() );
@@ -1720,6 +1726,7 @@ Heat<VAR, DIM, STN, AMR>::~Heat()
     VarLabel::destroy ( epsilon_u_label );
     VarLabel::destroy ( error_u_label );
     VarLabel::destroy ( u_normL2_label );
+    VarLabel::destroy ( error_discrete_label );
     VarLabel::destroy ( error_normL2_label );
 #ifdef HAVE_HYPRE
     VarLabel::destroy ( matrix_label );
@@ -2395,6 +2402,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_error (
     task->computes ( epsilon_u_label );
     task->computes ( error_u_label );
     task->computes ( u_normL2_label );
+    task->computes ( error_discrete_label );
     task->computes ( error_normL2_label );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
@@ -3099,7 +3107,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_error
 
     dbg_out1 << myrank << "==== Heat::task_time_advance_solution_error ====" << std::endl;
 
-    std::array<double, 2> norms {{ 0., 0. }}; // { u_normL2, error_normL2 }
+    std::array<double, 3> norms {{ 0., 0., 0. }}; // { error_discrete, u_normL2, error_normL2 }
 
     simTime_vartype simTimeVar;
     dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
@@ -3126,11 +3134,12 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_error
         BlockRange range ( this->get_range ( patch ) );
         dbg_out3 << "= Iterating over range " << range << std::endl;
 
-        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
+        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 3> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1], norms[2] ); }, norms );
     }
 
-    dw_new->put ( sum_vartype ( norms[0] ), u_normL2_label );
-    dw_new->put ( sum_vartype ( norms[1] ), error_normL2_label );
+    dw_new->put ( sum_vartype ( norms[0] ), error_discrete_label );
+    dw_new->put ( sum_vartype ( norms[1] ), u_normL2_label );
+    dw_new->put ( sum_vartype ( norms[2] ), error_normL2_label );
 
     dbg_out2 << myrank << std::endl;
 }
@@ -3515,6 +3524,7 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
     View < ScalarField<const double> > & u,
     View < ScalarField<double> > & epsilon_u,
     View < ScalarField<double> > & error_u,
+    double & error_discrete,
     double & u_normL2,
     double & error_normL2
 )
@@ -3551,14 +3561,16 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
             area *= dCell[i];
             del_u *= cos ( a * v[i] );;
             int_u *= ( sin ( a * vi1 ) - sin ( a * vi0 ) ) / a;
-            int_u2 *= ( vi1 - vi0 ) / 2. + ( sin ( 2.*a * vi1 ) - sin ( 2.*a * vi0 ) ) / ( 4. * a );
+            int_u2 *= ( vi1 - vi0 ) / 2. + ( sin ( 2. * a * vi1 ) - sin ( 2. * a * vi0 ) ) / ( 4. * a );
         }
 
-        double int_e2 = area * u[id] * u[id] - 2. * u[id] * int_u + int_u2;
+        double e2 = area * u[id] * u[id];
+        double int_e2 = area * e2 - 2. * u[id] * int_u + int_u2;
 
         epsilon_u[id] = del_u - u[id];
         error_u[id] = sqrt ( int_e2 ) / area;
 
+        error_discrete += e2;
         u_normL2 += int_u2;
         error_normL2 += int_e2;
     }
