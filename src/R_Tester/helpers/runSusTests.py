@@ -155,7 +155,7 @@ def runSusTests(argv, TESTS, application, callback = nullCallback):
   max_parallelism = float(argv[5])
 
   global svn_revision
-  svn_revision = getoutput("svn info ../src |grep Revision")
+  svn_revision = getoutput("(svn info ../src || git svn info) 2>/dev/null | grep Revision")
   svn_revision = svn_revision.split(" ")[1]
 
   #check sus for CUDA capabilities

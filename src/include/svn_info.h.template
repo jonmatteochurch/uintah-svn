@@ -8,3 +8,6 @@
 
 // the svn URL:
 #define SVN_URL "UNKNOWN_URL"
+
+// if git svn is to be used insead of svn
+#define SVN_GIT "UNKNOWN_GIT"

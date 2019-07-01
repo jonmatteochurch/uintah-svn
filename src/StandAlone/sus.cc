@@ -583,13 +583,38 @@ int main( int argc, char *argv[], char *env[] )
         std::cout << "____SVN_____________________________________________________________\n";
         std::string sdir = std::string(sci_getenv("SCIRUN_SRCDIR"));
         if (do_svnDiff) {
+#if SVN_GIT
+          std::string cmd =
+            "cd " + sdir + " &&                                                                                      "
+            "SVN_REV=`git svn info | grep Revision | cut -d ' ' -f 2` &&                                             "
+            "GIT_REV=`git svn find-rev r$SVN_REV` &&                                                                 "
+            "git diff --no-renames --relative --no-prefix $GIT_REV                                                   "
+            " | sed -e '/^new file mode/d'                                                                           "
+            "       -e '/^deleted file mode/d'                                                                       "
+            "       -e 's|^diff --git \\(.*\\) .*$|Index: \\1|g'                                                     "
+            "       -e 's|^index .*\\.\\..*$|===================================================================|g'  "
+            "       -e 's|^\\(@@ .* @@\\).*$|\\1|g'                                                                  "
+            "       -e 's|^\\(--- .*\\)$|\\1\\t(revision '$SVN_REV')|g'                                              "
+            "       -e 's|^\\(+++ .*\\)$|\\1\\t(working copy)|g'                                                     "
+            "       -e 'N;s|^--- \\(.*\\)\\t\\(.*\\)\\n+++ /dev/null.*$|--- \\1\\t\\2\\n+++ \\1\\t(nonexistent)|;P;D'"
+            "       -e 'N;s|^--- /dev/null.*\\n+++ \\(.*\\)\\t\\(.*\\)$|--- \\1\\t(nonexistent)\\n+++ \\1\\t\\2|;P;D'";
+#else
           std::string cmd = "svn diff --username anonymous --password \"\" " + sdir;
+#endif
           std::system(cmd.c_str());
         }
         if (do_svnStat) {
+#if SVN_GIT
+          std::string cmd = "cd " + sdir + " && git svn info";
+#else
           std::string cmd = "svn info  --username anonymous --password \"\" " + sdir;
+#endif
           std::system(cmd.c_str());
+#if SVN_GIT
+          cmd = "cd " + sdir + " && git diff --name-status --no-renames";
+#else
           cmd = "svn stat -u  --username anonymous --password \"\" " + sdir;
+#endif
           std::system(cmd.c_str());
         }
         std::cout << "____SVN_______________________________________________________________\n";

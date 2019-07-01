@@ -197,7 +197,14 @@ def generateGS() :
     ##############################################################
     # Determine if the code has been modified (svn stat)
 
-    process = subprocess.Popen( "svn stat " + options.src_directory, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
+    svn_stat = subprocess.getoutput( "if   ! (svn info " + options.src_directory + "           > /dev/null 2>&1)       " +
+                                     "    && (cd " + options.src_directory + " && git svn info > /dev/null 2>&1);      " +
+                                     "then                                                                             " +
+                                     "  echo 'cd " + options.src_directory + " && git diff --name-status --no-renames';" +
+                                     "else                                                                             " +
+                                     "  echo 'svn stat " + options.src_directory + "';                                 " +
+                                     "fi                                                                               " );
+    process = subprocess.Popen( svn_stat, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
     ( stdout, sterr ) = process.communicate()
     result = process.returncode
 
