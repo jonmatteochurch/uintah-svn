@@ -77,7 +77,7 @@
         <save label="u_normL2" />
         <save label="u_normH10" />
         <save label="u_normH20" />
-        <save label="delta_u" />
+        <save label="epsilon_u" />
         <save label="error_u" />
         <save label="error_ux" />
         <save label="error_uy" />
