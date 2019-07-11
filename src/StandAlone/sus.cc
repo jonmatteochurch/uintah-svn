@@ -580,7 +580,7 @@ int main( int argc, char *argv[], char *env[] )
 
       // Run svn commands on Packages/Uintah 
       if (do_svnDiff || do_svnStat) {
-        std::cout << "____SVN_____________________________________________________________\n";
+        std::cout << "____SVN_____________________________________________________________" << std::endl; // scjmc need to sync before calling std::system
         std::string sdir = std::string(sci_getenv("SCIRUN_SRCDIR"));
         if (do_svnDiff) {
 #if SVN_GIT
@@ -611,13 +611,14 @@ int main( int argc, char *argv[], char *env[] )
 #endif
           std::system(cmd.c_str());
 #if SVN_GIT
-          cmd = "cd " + sdir + " && git diff --name-status --no-renames";
+          // git may have problem with the shell used by std::system to produce the output
+          cmd = "tmp=`mktemp` && cd " + sdir + " && git diff --name-status --no-renames > $tmp && cat $tmp";
 #else
           cmd = "svn stat -u  --username anonymous --password \"\" " + sdir;
 #endif
           std::system(cmd.c_str());
         }
-        std::cout << "____SVN_______________________________________________________________\n";
+        std::cout << "____SVN______________________________________________________________" << std::endl;
       }
     }
 

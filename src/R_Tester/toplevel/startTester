@@ -142,6 +142,24 @@ while [ "$#" -gt 0 ]; do
             TEST_DATA_DIR="$1"
         fi
         ;;
+    -checkpoints)
+        if [ "$#" -gt 1 ]; then
+            shift
+            CHECKPOINTS="$1"
+        fi
+        ;;
+    -common_group)
+        if [ "$#" -gt 1 ]; then
+            shift
+            COMMON_GROUP="$1"
+        fi
+        ;;
+    -which_tests)
+        if [ "$#" -gt 1 ]; then
+            shift
+            WHICH_TESTS="$1"
+        fi
+        ;;
     -j)
         if [ "$#" -gt 1 ]; then
             shift

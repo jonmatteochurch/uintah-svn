@@ -169,9 +169,9 @@ def generateGS() :
         #resource.setrlimit(resource.RLIMIT_AS, (90*Mega,100*Mega) )  If we ever want to limit the memory
 
         if debug_build :
-            maxAllowRunTime = 30*60   # 30 minutes
+            maxAllowRunTime = 1*60   # 30 minutes
         else:
-            maxAllowRunTime = 15*60   # 15 minutes
+            maxAllowRunTime = 1*60   # 15 minutes
 
         resource.setrlimit(resource.RLIMIT_CPU, (maxAllowRunTime,maxAllowRunTime) )
 
@@ -409,7 +409,7 @@ def generateGS() :
             np = int( np )
             my_mpirun = "%s -n %s  " % (MPIHEAD, np)
 
-            command = my_mpirun + sus + " " + SVN_FLAGS + " " + sus_options + " " + inputs + "/" + component + "/" + getUpsFile( test )  + " > sus_log.txt 2>&1 " 
+            command = my_mpirun + sus + " " + SVN_FLAGS + " " + sus_options + " " + inputs + "/" + component + "/" + getUpsFile( test )  + " > sus_log.txt 2>&1 "
 
             print( "Running command: " + command )
 

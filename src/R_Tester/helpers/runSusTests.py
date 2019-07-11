@@ -155,7 +155,7 @@ def runSusTests(argv, TESTS, application, callback = nullCallback):
   max_parallelism = float(argv[5])
 
   global svn_revision
-  svn_revision = getoutput("(svn info ../src || git svn info) 2>/dev/null | grep Revision")
+  svn_revision = getoutput("(svn info ../src || git svn info $(git rev-parse --show-toplevel)/src 2>/dev/null | grep Revision")
   svn_revision = svn_revision.split(" ")[1]
 
   #check sus for CUDA capabilities
@@ -186,7 +186,6 @@ def runSusTests(argv, TESTS, application, callback = nullCallback):
   do_plots = 0
   if environ['LOCAL_OR_NIGHTLY_TEST'] == "nightly" :
     do_plots = 1
-
 
   #__________________________________
   # bulletproofing
@@ -621,9 +620,9 @@ def runSusTest(test, susdir, inputxml, compare_root, application, dbg_opt, max_p
     #resource.setrlimit(resource.RLIMIT_AS, (90*Mega,100*Mega) )  If we ever want to limit the memory
 
     if dbg_opt == "dbg":
-      maxAllowRunTime = 30*60   # 30 minutes
+      maxAllowRunTime = 1*60   # 30 minutes
     else:
-      maxAllowRunTime = 15*60   # 15 minutes
+      maxAllowRunTime = 1*60   # 15 minutes
 
     resource.setrlimit(resource.RLIMIT_CPU, (maxAllowRunTime,maxAllowRunTime) )
 
