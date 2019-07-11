@@ -73,6 +73,7 @@
     <DataArchiver>
         <filebase>heat_test_cc_2d_fe_amr_fcbilinear.uda</filebase>
         <outputTimestepInterval>1</outputTimestepInterval>
+        <checkpoint cycle="2" timestepInterval="100"/>
         <save label="refineFlag" />
         <save label="u" />
         <save label="ux" />
@@ -82,7 +83,7 @@
         <save label="u_normL2" />
         <save label="u_normH10" />
         <save label="u_normH20" />
-        <save label="epsilon_u" />
+        <save label="delta_u" />
         <save label="error_u" />
         <save label="error_ux" />
         <save label="error_uy" />

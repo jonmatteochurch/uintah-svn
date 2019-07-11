@@ -50,6 +50,7 @@
     <DataArchiver>
         <filebase>heat_periodic_cc_3d_fe_amr_fc1.uda</filebase>
         <outputTimestepInterval>1</outputTimestepInterval>
+        <checkpoint cycle="2" timestepInterval="100"/>
         <save label="refineFlag" />
         <save label="u" />
         <save label="ux" />

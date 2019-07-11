@@ -35,6 +35,7 @@
     <DataArchiver>
         <filebase>heat_periodic_cc_3d_fe.uda</filebase>
         <outputTimestepInterval>1</outputTimestepInterval>
+        <checkpoint cycle="2" timestepInterval="100"/>
         <save label="u" />
         <save label="ux" />
         <save label="uy" />

@@ -30,7 +30,7 @@
   <DataArchiver>
     <filebase>benchmark04_cc_n192.uda</filebase>
     <outputInterval>0.05</outputInterval>
-    <checkpoint cycle="1230" interval="1"/>
+    <checkpoint cycle="2" timestepInterval = "100"/>
     <save label="u"/>
     <save label="energy"/>
   </DataArchiver>

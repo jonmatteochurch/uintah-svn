@@ -30,7 +30,7 @@
   <DataArchiver>
     <filebase>benchmark02_nc_eps010_n064_k1e-06.uda</filebase>
     <outputInterval>0.5</outputInterval>
-    <checkpoint cycle="32" interval="1"/>
+    <checkpoint cycle="2" timestepInterval = "100"/>
     <save label="u"/>
     <save label="u1"/>
     <save label="u2"/>
