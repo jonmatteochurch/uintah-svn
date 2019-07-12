@@ -34,6 +34,7 @@
   <DataArchiver>
     <filebase>pure_metal_cc_3d.uda</filebase>
     <outputTimestepInterval>1</outputTimestepInterval>
+    <checkpoint cycle="2" timestepInterval="5"/>
     <save label="psi" />
     <save label="u" />
     <save label="psi_x" />

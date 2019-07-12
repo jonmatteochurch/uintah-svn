@@ -53,6 +53,7 @@
   <DataArchiver>
     <filebase>pure_metal_nc_3d_amr_fc1.uda</filebase>
     <outputTimestepInterval>1</outputTimestepInterval>
+    <checkpoint cycle="2" timestepInterval="5"/>
     <save label="psi" />
     <save label="u" />
     <save label="psi_x" />
