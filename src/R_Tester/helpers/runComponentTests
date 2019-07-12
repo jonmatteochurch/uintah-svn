@@ -32,6 +32,7 @@ echo "setenv LOCAL_OR_NIGHTLY_TEST $LOCAL_OR_NIGHTLY_TEST" >> "$doTestScript"
 echo "setenv WHICH_TESTS $WHICH_TESTS"                     >> "$doTestScript"
 echo "setenv SCI_MALLOC_ENABLED $is_dbg"                   >> "$doTestScript"
 echo "setenv COMMON_GROUP $COMMON_GROUP"                   >> "$doTestScript"
+echo "setenv IGNORE_RLIMITS $IGNORE_RLIMITS"               >> "$doTestScript"
 
 echo "python3 TestScripts/$componentTest.py susdir inputs goldStandard $mode $PARALLELISM "'$1' >> "$doTestScript"
 

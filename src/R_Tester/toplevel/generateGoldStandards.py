@@ -68,6 +68,12 @@ parser.add_option( "-t", dest="test_file",                    help="Name of spec
 
 parser.add_option( "-v", action="store_true", dest="verbose", help="Enable verbosity" )
 
+parser.add_option( "-y", dest="assume_yes",                   help="Assume yes answer to all questions",
+                   action="store_true", default=False )
+
+parser.add_option( "-i", dest="ignore_rlimits",               help="Ignore any limit on resources usage at run time",
+                   action="store_true", default=False )
+
 ####################################################################################
 
 def error( error_msg ) :
@@ -154,19 +160,21 @@ def generateGS() :
     validateArgs( options, leftover_args )
     
     #__________________________________
-    # define the maximum run time
-    Giga = 2**30
-    Kilo = 2**10
-    Mega = 2**20
-    #resource.setrlimit(resource.RLIMIT_AS, (90 * Mega,100*Mega) )  If we ever want to limit the memory
+    # define resources limits
+    if not options.ignore_rlimits :
+        #Kilo = 2**10
+        #Mega = 2**20
+        #Giga = 2**30
 
-    if debug_build :
-      maxAllowRunTime = 30*60   # 30 minutes
-    else:
-      maxAllowRunTime = 15*60   # 15 minutes
+        #resource.setrlimit(resource.RLIMIT_AS, (90*Mega,100*Mega) )  If we ever want to limit the memory
 
-    resource.setrlimit(resource.RLIMIT_CPU, (maxAllowRunTime,maxAllowRunTime) )
-    
+        if debug_build :
+            maxAllowRunTime = 30*60   # 30 minutes
+        else:
+            maxAllowRunTime = 15*60   # 15 minutes
+
+        resource.setrlimit(resource.RLIMIT_CPU, (maxAllowRunTime,maxAllowRunTime) )
+
     #__________________________________
     # Does mpirun command exist or has the environmental variable been set?
     try :
@@ -195,6 +203,9 @@ def generateGS() :
 
     if result != 0 :
         answer = ""
+        if options.assume_yes :
+            print( "" )
+            answer = "y"
         while answer != "n" and answer != "y" :
             print( "" )
             print( "WARNING:  SVN 'stat' failed to run correctly, so generateGoldStandards.py cannot tell" )
@@ -253,6 +264,9 @@ def generateGS() :
 
     if some_dirs_already_exist :
         answer = ""
+        if options.assume_yes :
+            print( "" )
+            answer = "y"
         while answer != "n" and answer != "y" :
             print( "" )
             print( "Delete existing gold standards?  (If 'no', script will exit.) [y/n]" )
@@ -373,7 +387,7 @@ def generateGS() :
 
             SVN_FLAGS = " -svnStat -svnDiff "
             #SVN_FLAGS = "" # When debugging, if you don't want to spend time waiting for SVN, uncomment this line.
-            
+
             # adjustments for openmpi and mvapich
             # openmpi
             rc = system("%s -x TERM echo 'hello' > /dev/null 2>&1" % MPIRUN)

@@ -128,7 +128,7 @@ def modUPS(inputsDir, filename, changes):
 def modUPS2( inputsDir, filename, changes):
 
     org_filename = "%s/%s" % (inputsDir, filename)
-    tmp_filename  = "%s/tmp/%s.tmp" % (inputsDir, filename)
+    tmp_filename  = "%s/tmp/%s.tmp" % (inputsDir, path.basename(filename))
 
     bulletProofInputs(inputsDir, org_filename)
 
@@ -154,6 +154,9 @@ def modUPS2( inputsDir, filename, changes):
 
       if operation == "UPDATE":
         command = "xmlstarlet edit --update %s --value \"%s\"  %s > %s" % (option[0], option[1], mod_filename, tmp_filename )
+
+      elif operation == "APPEND":
+        command = "xmlstarlet edit --append %s --type %s -n %s --value \"%s\"  %s > %s" % (option[0], option[1], option[2], option[3], mod_filename, tmp_filename )
 
       elif operation == "DELETE":
         command = "xmlstarlet edit --delete %s %s > %s "% (option[0], mod_filename, tmp_filename )

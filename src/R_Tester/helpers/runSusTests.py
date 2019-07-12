@@ -612,18 +612,20 @@ def runSusTest(test, susdir, inputxml, compare_root, application, dbg_opt, max_p
     do_plots = 0
 
   #__________________________________
-  # define the maximum run time
-  Giga = 2**30
-  Kilo = 2**10
-  Mega = 2**20
-  #resource.setrlimit(resource.RLIMIT_AS, (90 * Mega,100*Mega) )  If we ever want to limit the memory
+  # define resources limits
+  if environ['IGNORE_RLIMITS'] != "yes" :
+    #Kilo = 2**10
+    #Mega = 2**20
+    #Giga = 2**30
 
-  if dbg_opt == "dbg":
-    maxAllowRunTime = 30*60   # 30 minutes
-  else:
-    maxAllowRunTime = 15*60   # 15 minutes
+    #resource.setrlimit(resource.RLIMIT_AS, (90*Mega,100*Mega) )  If we ever want to limit the memory
 
-  resource.setrlimit(resource.RLIMIT_CPU, (maxAllowRunTime,maxAllowRunTime) )
+    if dbg_opt == "dbg":
+      maxAllowRunTime = 30*60   # 30 minutes
+    else:
+      maxAllowRunTime = 15*60   # 15 minutes
+
+    resource.setrlimit(resource.RLIMIT_CPU, (maxAllowRunTime,maxAllowRunTime) )
 
   #__________________________________
   #  turn on malloc_stats

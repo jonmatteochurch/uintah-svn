@@ -35,7 +35,7 @@ fi
 
 if [ "$COMPILE" = "no" ]; then
   if [ -x ${BUILDROOT}/${mode}/StandAlone/sus ]; then
-    $didCompile=1
+    didCompile=1
   fi
   
 fi
