@@ -107,7 +107,7 @@ namespace {
   using  delsetDB_monitor      = Uintah::CrowdMonitor<delsetDB_tag>;
   using  task_access_monitor   = Uintah::CrowdMonitor<task_access_tag>;
 
-  Dout  g_foreign_dbg(    "ForeignVariables"   , "OnDemandDataWarehouse", "report when foreign variable is added to DW" , false );
+  Dout  g_foreign_dbg(    "ForeignVariables"   , "OnDemandDataWarehouse", "report when foreign variable is added to DW" , true );
   Dout  g_dw_get_put_dbg( "OnDemandDW"         , "OnDemandDataWarehouse", "report general dbg info for OnDemandDW"      , false );
   Dout  g_particles_dbg(  "DWParticleExchanges", "OnDemandDataWarehouse", "report MPI particle exchanges (sends/recvs)" , false );
   Dout  g_check_accesses( "DWCheckTaskAccess"  , "OnDemandDataWarehouse", "report on task DW access checking (DBG-only)", false );
@@ -270,11 +270,12 @@ OnDemandDataWarehouse::put(       Variable * var
                           )
 {
   union {
-      ReductionVariableBase * reduction;
-      SoleVariableBase      * sole;
-      PerPatchBase          * perpatch;
-      ParticleVariableBase  * particle;
-      GridVariableBase      * grid;
+      ReductionVariableBase   * reduction;
+      SoleVariableBase        * sole;
+      PerPatchBase            * perpatch;
+      ParticleVariableBase    * particle;
+      SubProblemsVariableBase * subproblem;
+      GridVariableBase        * grid;
   } castVar;
 
   if ((castVar.reduction = dynamic_cast<ReductionVariableBase*>(var)) != nullptr) {
@@ -288,6 +289,9 @@ OnDemandDataWarehouse::put(       Variable * var
   }
   else if ((castVar.particle = dynamic_cast<ParticleVariableBase*>(var)) != nullptr) {
     put(*castVar.particle, label);
+  }
+  else if ((castVar.subproblem = dynamic_cast<SubProblemsVariableBase*>(var) ) != nullptr) {
+    put(*castVar.subproblem, label, matlIndex, patch);
   }
   else if ((castVar.grid = dynamic_cast<GridVariableBase*>(var)) != nullptr) {
     put(*castVar.grid, label, matlIndex, patch);
@@ -816,6 +820,21 @@ OnDemandDataWarehouse::sendMPI(       DependencyBatch       * batch
       buffer.addSendlist( var->getRefCounted() );
       break;
     }
+    case TypeDescription::SubProblems : {
+      if (this==old_dw) {
+        DOUT(g_foreign_dbg, d_myworld->myRank() << " sendMPI - SubProblems on ghost layers should be already available in OldDW");
+        return;
+      }
+      if (!m_var_DB.exists(label, matlIndex, patch)) {
+        DOUT(true, d_myworld->myRank() << "  Needed by " << *dep << " on task " )
+        SCI_THROW(UnknownVariable(label->getName(), getID(), patch, matlIndex, "in Task OnDemandDataWarehouse::sendMPI", __FILE__, __LINE__));
+      }
+      SubProblemsVariableBase * var;
+      var = dynamic_cast<SubProblemsVariableBase *>( m_var_DB.get( label, matlIndex, patch ) );
+      var->getMPIBuffer ( buffer );
+      buffer.addSendlist( var->getRefCounted() );
+      break;
+    }
     case TypeDescription::PerPatch :
     case TypeDescription::ReductionVariable :
     case TypeDescription::SoleVariable :
@@ -933,6 +952,40 @@ OnDemandDataWarehouse::recvMPI(       DependencyBatch       * batch
       m_var_DB.putForeign( label, matlIndex, patch, var, d_scheduler->copyTimestep() );  //put new var in data warehouse
       var->getMPIBuffer( buffer, dep->m_low, dep->m_high );
 
+      break;
+    }
+    case TypeDescription::SubProblems : {
+      SubProblemsVariableBase * var = nullptr;
+
+      if (this==old_dw) {
+        DOUT(g_foreign_dbg, d_myworld->myRank() << " recvMPI - SubProblems on ghost layers should be already available in OldDW");
+        return;
+      }
+      if ( m_var_DB.exists(label, matlIndex, patch) ) {
+        DOUT(g_foreign_dbg, d_myworld->myRank() << "  Using exising SubProblems " << label->getName() << " ghost layer " << dep->m_low << dep->m_high << " from patch " << *patch << " and matl " << matlIndex );
+        var = dynamic_cast<SubProblemsVariableBase*>( m_var_DB.get( label, matlIndex, patch) );
+        ASSERT ( var->isForeign() );
+      } else {
+        DOUT ( g_foreign_dbg, d_myworld->myRank() << "  Creating new SubProblems " << label->getName() << " ghost layer " << dep->m_low << dep->m_high << " from patch " << *patch << " and matl " << matlIndex );
+        // allocate the variable which flags it as foreign
+        var = dynamic_cast<SubProblemsVariableBase*>( label->typeDescription()->createInstance() );
+        var->allocate( d_scheduler->getApplication(), label, matlIndex, patch );
+        var->setForeign();
+
+        //put new var in data warehouse
+        m_var_DB.put( label, matlIndex, patch, var, d_scheduler->copyTimestep(), false );
+      }
+
+      // The variable is now invalid because there is outstanding MPI pointing to the variable
+      var->setInvalid();
+
+      // Tell variable over which regions subbroblem are required (this info is not in the MPI message)
+      var->addGhostRegion( dep->m_low, dep->m_high );
+
+      // add the var to the dependency batch
+      batch->addVar( var );
+
+      var->getMPIBuffer( buffer );
       break;
     }
     case TypeDescription::PerPatch :
@@ -2211,6 +2264,40 @@ OnDemandDataWarehouse::put(       PerPatchBase & var
 }
 
 //______________________________________________________________________
+//
+void
+OnDemandDataWarehouse::get( SubProblemsVariableBase & var
+                          , const VarLabel          * label
+                          ,       int                 matlIndex
+                          , const Patch             * patch
+                          )
+{
+  checkGetAccess(label, matlIndex, patch);
+  if (!m_var_DB.exists(label, matlIndex, patch)) {
+    SCI_THROW(UnknownVariable(label->getName(), getID(), patch, matlIndex, "subproblems data", __FILE__, __LINE__));
+  }
+  m_var_DB.get(label, matlIndex, patch, var);
+}
+
+//______________________________________________________________________
+//
+void
+OnDemandDataWarehouse::put( SubProblemsVariableBase & var
+                          , const VarLabel          * label
+                          ,       int                 matlIndex
+                          , const Patch             * patch
+                          ,       bool                replace /* = false */
+                          )
+{
+  ASSERT( !m_finalized );
+  checkPutAccess( label, matlIndex, patch, replace );
+
+  // Put it in the database
+  printDebuggingPutInfo( label, matlIndex, patch, __LINE__ );
+  m_var_DB.put( label, matlIndex, patch, var.clone(), d_scheduler->copyTimestep(), replace );
+}
+
+//______________________________________________________________________
 // This returns a constGridVariable for *ALL* patches on a level.
 // This method is essentially identical to "getRegion" except the call to
 // level->selectPatches( ) has been replaced by level->allPatches()
@@ -2604,6 +2691,7 @@ OnDemandDataWarehouse::emit(       OutputContext & oc
 
       case TypeDescription::ParticleVariable :
       case TypeDescription::PerPatch :
+      case TypeDescription::SubProblems :
       default : {
         if (m_var_DB.exists(label, matlIndex, patch)) {
           var = m_var_DB.get(label, matlIndex, patch);
@@ -2660,10 +2748,8 @@ OnDemandDataWarehouse::emitPIDX(       PIDXOutputContext & pc
     case TypeDescription::CCVariable :
     case TypeDescription::SFCXVariable :
     case TypeDescription::SFCYVariable :
-    case TypeDescription::SFCZVariable :
-      //get list
-      {
-         std::vector<Variable*> varlist;
+    case TypeDescription::SFCZVariable : { // get list
+        std::vector<Variable*> varlist;
         m_var_DB.getlist( label, matlIndex, patch, varlist );
 
         GridVariableBase* v = nullptr;
@@ -2682,10 +2768,12 @@ OnDemandDataWarehouse::emitPIDX(       PIDXOutputContext & pc
           }
         }
         var = v;
-      }
       break;
+    }
+
     case TypeDescription::ParticleVariable :
     case TypeDescription::PerPatch :
+    case TypeDescription::SubProblems :
     default :
       if (m_var_DB.exists(label, matlIndex, patch)) {
         var = m_var_DB.get( label, matlIndex, patch );
@@ -2811,6 +2899,7 @@ OnDemandDataWarehouse::decrementScrubCount( const VarLabel * var
     case TypeDescription::SFCYVariable :
     case TypeDescription::SFCZVariable :
     case TypeDescription::PerPatch :
+    case TypeDescription::SubProblems :
     case TypeDescription::ParticleVariable : {
       count = m_var_DB.decrementScrubCount(var, matlIndex, patch);
       break;
@@ -2855,6 +2944,7 @@ OnDemandDataWarehouse::setScrubCount( const VarLabel * var
     case TypeDescription::SFCYVariable :
     case TypeDescription::SFCZVariable :
     case TypeDescription::PerPatch :
+    case TypeDescription::SubProblems :
     case TypeDescription::ParticleVariable : {
       m_var_DB.setScrubCount(var, matlIndex, patch, count);
       break;
@@ -2887,6 +2977,7 @@ OnDemandDataWarehouse::scrub( const VarLabel * var
     case TypeDescription::SFCYVariable :
     case TypeDescription::SFCZVariable :
     case TypeDescription::PerPatch :
+    case TypeDescription::SubProblems :
     case TypeDescription::ParticleVariable : {
       m_var_DB.scrub(var, matlIndex, patch);
       break;
@@ -3299,6 +3390,14 @@ OnDemandDataWarehouse::transferFrom(       DataWarehouse  * from
           }
           break;
         }
+        case TypeDescription::SubProblems : {
+          if ( !fromDW->m_var_DB.exists( label, matl, patch ) ) {
+            SCI_THROW(UnknownVariable(label->getName(), getID(), patch, matl, "in transferFrom", __FILE__, __LINE__ ) );
+          }
+          SubProblemsVariableBase* v = dynamic_cast<SubProblemsVariableBase*>( fromDW->m_var_DB.get( label, matl, patch ) );
+          m_var_DB.put ( label, matl, copyPatch, v->clone(), d_scheduler->copyTimestep(), replace );
+          break;
+        }
         case TypeDescription::PerPatch : {
           if( !fromDW->m_var_DB.exists( label, matl, patch ) ) {
             SCI_THROW(UnknownVariable(label->getName(), getID(), patch, matl, "in transferFrom", __FILE__, __LINE__) );
@@ -3322,6 +3421,34 @@ OnDemandDataWarehouse::transferFrom(       DataWarehouse  * from
           SCI_THROW(InternalError("Unknown variable type in transferFrom: " + label->getName(), __FILE__, __LINE__) );
         }
       }
+    }
+  }
+}
+
+//______________________________________________________________________
+//
+void
+OnDemandDataWarehouse::transferForeignFrom(       DataWarehouse * from
+                                          , const VarLabel      * label
+                                          )
+{
+  OnDemandDataWarehouse* fromDW = dynamic_cast<OnDemandDataWarehouse*>( from );
+  ASSERT( fromDW != nullptr );
+  ASSERT( !m_finalized );
+  switch ( label->typeDescription()->getType() ) {
+    case TypeDescription::SubProblems: {
+      std::vector<const Patch*> domlist;
+      std::vector<int> matlist;
+      std::vector<const Variable*> varlist;
+      fromDW->m_var_DB.getforeignlist( label, domlist, matlist, varlist );
+      for ( size_t idx=0; idx < varlist.size(); ++idx ) {
+          const SubProblemsVariableBase* v = dynamic_cast<const SubProblemsVariableBase*>( varlist[idx] );
+          m_var_DB.put ( label, matlist[idx], domlist[idx], v->clone(), d_scheduler->copyTimestep(), false );
+      }
+      break;
+    }
+    default : {
+      SCI_THROW(InternalError("Unhandled variable type " + label->typeDescription()->getName() + " in transferForeignFrom: " + label->getName(), __FILE__, __LINE__) );
     }
   }
 }

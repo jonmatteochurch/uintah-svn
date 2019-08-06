@@ -939,6 +939,45 @@ operator | (
     return ( BCF ) a | ( BCF ) ( b );
 }
 
+/**
+ * @brief TypeDescription Helper Function (fundamental type implementation)
+ *
+ * @tparam T fundamental type
+ * @return corresponding TypeDescription sungle instance
+ */
+template<typename T>
+static typename std::enable_if< std::is_fundamental<T>::value, const TypeDescription* >::type
+getTypeDescription()
+{
+    return fun_getTypeDescription((typename std::remove_cv<T>::type*)nullptr);
+}
+
+/**
+ * @brief TypeDescription Helper Function (non-fundamental type implementation)
+ *
+ * @tparam T fundamental type
+ * @return corresponding TypeDescription sungle instance
+ */
+template<typename T>
+static typename std::enable_if< !std::is_fundamental<T>::value, const TypeDescription* >::type
+getTypeDescription()
+{
+    return T::getTypeDescription();
+}
+
+/**
+ * @brief MPI_Datatype Helper Function
+ *
+ * @tparam T requested type
+ * @return corresponding MPI_Datatype enum value
+ */
+template<typename T>
+static const MPI_Datatype
+getMPIType()
+{
+    return getTypeDescription<T>()->getMPIType();
+}
+
 } // namespace PhaseField
 } // namespace Uintah
 

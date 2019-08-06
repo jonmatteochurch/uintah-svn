@@ -34,7 +34,6 @@
 #include <CCA/Components/PhaseField/Applications/Application.h>
 #include <CCA/Components/PhaseField/Factory/Implementation.h>
 #include <CCA/Components/PhaseField/Views/View.h>
-#include <CCA/Components/PhaseField/Util/BlockRangeIO.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
 
 #include <Core/Grid/SimpleMaterial.h>
@@ -68,7 +67,7 @@ namespace PhaseField
  */
 template < VarType VAR, StnType STN >
 class Benchmark01
-    : public Application<VAR, D2, STN, false>
+    : public Application< Problem<VAR, STN> >
     , public Implementation<Benchmark01<VAR, STN>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
 {
 private: // STATIC MEMBERS
@@ -91,18 +90,6 @@ public: // STATIC MEMBERS
     static const std::string Name;
 
 protected: // MEMBERS
-
-    /// Output stream for debugging (verbosity level 1)
-    DebugStream dbg_out1;
-
-    /// Output stream for debugging (verbosity level 2)
-    DebugStream dbg_out2;
-
-    /// Output stream for debugging (verbosity level 3)
-    DebugStream dbg_out3;
-
-    /// Output stream for debugging (verbosity level 4)
-    DebugStream dbg_out4;
 
     /// Label for u field into the DataWarehouse
     const VarLabel * u_label;
@@ -416,11 +403,7 @@ Benchmark01<VAR, STN>::Benchmark01 (
     const ProcessorGroup * myworld,
     const MaterialManagerP materialManager,
     int verbosity
-) : Application<VAR, DIM, STN> ( myworld, materialManager ),
-    dbg_out1 ( "Benchmark01", verbosity > 0 ),
-    dbg_out2 ( "Benchmark01", verbosity > 1 ),
-    dbg_out3 ( "Benchmark01", verbosity > 2 ),
-    dbg_out4 ( "Benchmark01", verbosity > 3 )
+) : Application< Problem<VAR, STN> > ( myworld, materialManager, verbosity )
 {
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
     u0_label = VarLabel::create ( "u0", sum_vartype::getTypeDescription() );
@@ -447,7 +430,11 @@ Benchmark01<VAR, STN>::~Benchmark01()
 
 template<VarType VAR, StnType STN>
 void
-Benchmark01<VAR, STN>::problemSetup ( ProblemSpecP const & params, ProblemSpecP const &, GridP & )
+Benchmark01<VAR, STN>::problemSetup (
+    ProblemSpecP const & params,
+    ProblemSpecP const &,
+    GridP &
+)
 {
     this->m_materialManager->registerSimpleMaterial ( scinew SimpleMaterial() );
 
@@ -540,21 +527,22 @@ Benchmark01<VAR, STN>::task_initialize_solution (
     DataWarehouse * dw_new
 )
 {
-    dbg_out1 << "==== Benchmark01::task_initialize_solution ====" << std::endl;
+    int myrank = myworld->myRank();
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_initialize_solution ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );;
 
         BlockRange range ( this->get_range ( patch ) );
-        dbg_out3 << "= Iterating over range " << range << std::endl;
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );;
 
         DWView < ScalarField<double>, VAR, DIM > u ( dw_new, u_label, material, patch );
         parallel_for ( range, [patch, &u, this] ( int i, int j, int k )->void { initialize_solution ( {i, j, k}, patch, u ); } );
     }
 
-    dbg_out2 << std::endl;
+    DOUT ( this->m_dbg_lvl2, myrank );;
 }
 
 template<VarType VAR, StnType STN>
@@ -567,9 +555,10 @@ Benchmark01<VAR, STN>::task_compute_stable_timestep (
     DataWarehouse * dw_new
 )
 {
-    dbg_out1 << "==== Benchmark01::task_compute_stable_timestep ====" << std::endl;
+    int myrank = myworld->myRank();
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_compute_stable_timestep ====" );;
     dw_new->put ( delt_vartype ( delt ), this->getDelTLabel(), getLevel ( patches ) );
-    dbg_out2 << std::endl;
+    DOUT ( this->m_dbg_lvl2, myrank );;
 }
 
 
@@ -582,41 +571,43 @@ void Benchmark01<VAR, STN>::task_time_advance_solution (
     DataWarehouse * dw_new
 )
 {
-    dbg_out1 << "==== Benchmark01<VAR,STN>::task_time_advance_solution ====" << std::endl;
+    int myrank = myworld->myRank();
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01<VAR,STN>::task_time_advance_solution ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );;
 
         DWFDView < ScalarField<const double>, STN, VAR > u_old ( dw_old, u_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > u_new ( dw_new, u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        dbg_out3 << "= Iterating over range " << range << std::endl;
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );;
 
         parallel_for ( range, [&u_old, &u_new, this] ( int i, int j, int k )->void { time_advance_solution ( {i, j, k}, u_old, u_new ); } );
     }
 
-    dbg_out2 << std::endl;
+    DOUT ( this->m_dbg_lvl2, myrank );;
 }
 
 template<VarType VAR, StnType STN>
 void
 Benchmark01<VAR, STN>::task_time_advance_postprocess (
-    const ProcessorGroup *,
+    const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset *,
     DataWarehouse * dw_old,
     DataWarehouse * dw_new
 )
 {
-    dbg_out1 << "==== Benchmark01<VAR,STN>::task_time_advance_postprocess ====" << std::endl;
+    int myrank = myworld->myRank();
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01<VAR,STN>::task_time_advance_postprocess ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );;
 
         DWFDView < ScalarField<const double>, STN, VAR > u ( dw_new, u_label, material, patch );
 
@@ -633,7 +624,7 @@ Benchmark01<VAR, STN>::task_time_advance_postprocess (
         double energy = 0.;
 
         BlockRange range ( this->get_range ( patch ) );
-        dbg_out3 << "= Iterating over range " << range << std::endl;
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );;
 
         parallel_reduce_sum (
             range,
@@ -644,7 +635,7 @@ Benchmark01<VAR, STN>::task_time_advance_postprocess (
         dw_new->put ( sum_vartype ( energy ), energy_label );
     }
 
-    dbg_out2 << std::endl;
+    DOUT ( this->m_dbg_lvl2, myrank );;
 }
 
 // IMPLEMENTATIONS

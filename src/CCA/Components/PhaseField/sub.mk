@@ -32,6 +32,7 @@ include $(SCIRUN_SCRIPTS)/smallso_prologue.mk
 SRCDIR := CCA/Components/PhaseField
 
 SUBDIRS := \
+  $(SRCDIR)/DataTypes \
   $(SRCDIR)/DataWarehouse \
   $(SRCDIR)/BoundaryConditions \
   $(SRCDIR)/AMR \

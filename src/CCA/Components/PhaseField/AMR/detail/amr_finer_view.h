@@ -136,13 +136,10 @@ private: // METHODS
                 offset = patch_fine->getVirtualOffset();
 
             // need to check which BC applies on finer level
-            Variable < PP, SubProblems<Problem> > subproblems_fine;
-
             // get fine subproblems (all logic for handling correctly all possible fine geometries is already there)
-            dw->getOtherDataWarehouse ( Task::NewDW )->get ( subproblems_fine, m_subproblems_label, m_material, patch_fine );
-            auto problems_fine = subproblems_fine.get().get_rep();
+            SubProblems<Problem> subproblems_fine ( dw->getOtherDataWarehouse ( Task::NewDW ), m_subproblems_label, m_material, patch_fine );
 
-            for ( const auto & p : *problems_fine )
+            for ( const auto & p : subproblems_fine )
             {
                 // check that the fine problem is above coarse region
                 IntVector low_fine { Max ( p.get_low() + offset, l_fine ) };

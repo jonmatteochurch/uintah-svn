@@ -73,7 +73,7 @@
 using namespace Uintah;
 
 namespace {
-  Dout g_schedulercommon_dbg( "SchedulerCommon_DBG", "SchedulerCommon", "general debug information"  , false );
+  Dout g_schedulercommon_dbg( "SchedulerCommon_DBG", "SchedulerCommon", "general debug information"  , true );
   Dout g_task_graph_compile(  "TaskGraphCompile"   , "SchedulerCommon", "task graph compilation info", false );
 }
 
@@ -1527,6 +1527,7 @@ SchedulerCommon::scheduleAndDoDataCopy( const GridP & grid )
           // Take care of reduction/sole variables in a different section
           TypeDescription::Type depType = dep->m_var->typeDescription()->getType();
           if ( depType == TypeDescription::ReductionVariable ||
+               depType == TypeDescription::SubProblems ||
                depType == TypeDescription::SoleVariable) {
             continue;
           }
@@ -1598,6 +1599,8 @@ SchedulerCommon::scheduleAndDoDataCopy( const GridP & grid )
   SchedulerP sched(dynamic_cast<Scheduler*>(this));
 
   m_is_copy_data_timestep = true;
+
+  m_application->scheduleRefineSystemVars(grid, m_loadBalancer->getPerProcessorPatchSet(grid), sched);
 
   for (int L = 0; L < grid->numLevels(); L++) {
     LevelP newLevel = grid->getLevel(L);

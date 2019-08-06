@@ -52,6 +52,7 @@ typedef int64_t long64;
  const TypeDescription* fun_getTypeDescription(short int*);
 // const TypeDescription* fun_getTypeDescription(long*);
  const TypeDescription* fun_getTypeDescription(long64*);
+ const TypeDescription* fun_getTypeDescription(long unsigned int*);
  const TypeDescription* fun_getTypeDescription(double*);
  const TypeDescription* fun_getTypeDescription(float*);
  const TypeDescription* fun_getTypeDescription(Point*);

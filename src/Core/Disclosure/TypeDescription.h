@@ -68,6 +68,7 @@ public:
   ,  SFCYVariable
   ,  SFCZVariable
   ,  ParticleVariable
+  ,  SubProblems
   ,  PerPatch
   ,  Point
   ,  Vector
@@ -81,6 +82,7 @@ public:
   ,  short_int_type
   ,  long_type
   ,  long64_type
+  ,  unsigned_long_type
   ,  Short27   // for Fracture
   ,  Int130 
   ,  Stencil4

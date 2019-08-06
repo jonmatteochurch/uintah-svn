@@ -33,11 +33,8 @@
 
 #include <CCA/Components/PhaseField/Util/Definitions.h>
 #include <CCA/Components/PhaseField/Util/Expressions.h>
-#include <CCA/Components/PhaseField/Util/BlockRangeIO.h>
 #include <CCA/Components/PhaseField/DataTypes/PureMetalProblem.h>
-#include <CCA/Components/PhaseField/DataTypes/SubProblemsP.h>
-#include <CCA/Components/PhaseField/DataTypes/SubProblems.h> // must be included after SubProblemsP where swapbyte soverride is defined
-#include <CCA/Components/PhaseField/DataTypes/Variable.h>
+#include <CCA/Components/PhaseField/DataTypes/SubProblems.h>
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 #include <CCA/Components/PhaseField/Applications/Application.h>
@@ -114,8 +111,8 @@ static DebugStream cout_pure_metal_scheduling { "PURE METAL SCHEDULING", false }
  */
 template<VarType VAR, DimType DIM, StnType STN, bool AMR = false>
 class PureMetal
-    : public Application<VAR, DIM, STN, AMR>
-    , public Implementation<PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
+    : public Application< PureMetalProblem<VAR, STN>, AMR >
+    , public Implementation < PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
 {
     /// Problem material index (only one SimpleMaterial)
     static constexpr int material = 0;
@@ -133,23 +130,22 @@ class PureMetal
     static constexpr size_t YZ = 2;
 
     /// Number of ghost elements required by STN (on the same level)
-    static constexpr int FGN = get_stn<STN>::ghosts;
+    using Application< PureMetalProblem<VAR, STN> >::FGN;
 
     /// Type of ghost elements required by VAR and STN (on coarser level)
-    static constexpr Ghost::GhostType FGT = FGN ? get_var<VAR>::ghost_type : Ghost::None;
+    using Application< PureMetalProblem<VAR, STN> >::FGT;
 
     /// Number of ghost elements required by STN (on coarser level)
-    /// @remark this should depend on FCI bc type but if fixed for simplicity
-    static constexpr int CGN = 1;
+    using Application< PureMetalProblem<VAR, STN> >::CGN;
 
     /// Type of ghost elements required by VAR and STN (on the same level)
-    static constexpr Ghost::GhostType CGT = CGN ? get_var<VAR>::ghost_type : Ghost::None;
+    using Application< PureMetalProblem<VAR, STN> >::CGT;
 
     /// Interpolation type for refinement
-    static constexpr FCIType C2F = ( VAR == CC ) ? I0 : I1; // TODO make template parameter
+    using Application< PureMetalProblem<VAR, STN> >::C2F;
 
     /// Restriction type for coarsening
-    static constexpr FCIType F2C = ( VAR == CC ) ? I1 : I0; // TODO make template parameter
+    using Application< PureMetalProblem<VAR, STN> >::F2C;
 
     /// If grad_psi_norm2 is less than tol than psi is considered constant when computing anisotropy terms
     static constexpr double tol = 1.e-6;
@@ -166,21 +162,6 @@ public: // STATIC MEMBERS
     static const std::string Name;
 
 protected: // MEMBERS
-
-    /// Output stream for debugging (verbosity level 1)
-    DebugStream dbg_out1;
-
-    /// Output stream for debugging (verbosity level 2)
-    DebugStream dbg_out2;
-
-    /// Output stream for debugging (verbosity level 3)
-    DebugStream dbg_out3;
-
-    /// Output stream for debugging (verbosity level 4)
-    DebugStream dbg_out4;
-
-    /// Label for subproblems in the DataWarehouse
-    const VarLabel * subproblems_label;
 
     /// Label for phase field in the DataWarehouse
     const VarLabel * psi_label;
@@ -229,12 +210,6 @@ protected: // MEMBERS
 
     /// Threshold for AMR
     double refine_threshold;
-
-    /// Store which fine/coarse interface conditions to use on each variable
-    std::map<std::string, FC> c2f;
-
-    /// Flag for avoiding multiple reinitialization of subproblems after regridding
-    bool is_first_schedule_refine;
 
 public: // CONSTRUCTORS/DESTRUCTOR
 
@@ -301,42 +276,10 @@ protected: // SCHEDULINGS
     ) override;
 
     /**
-     * @brief Schedule task_initialize_subproblems (non AMR implementation)
-     *
-     * Defines the dependencies and output of the task which initializes the
-     * subproblems allowing sched to control its execution order
-     *
-     * @param level grid level to be initialized
-     * @param sched scheduler to manage the tasks
-     */
-    template < bool MG >
-    typename std::enable_if < !MG, void >::type
-    scheduleInitialize_subproblems (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    /**
-     * @brief Schedule task_initialize_subproblems (AMR implementation)
-     *
-     * Defines the dependencies and output of the task which initializes the
-     * subproblems allowing sched to control its execution order
-     *
-     * @param level grid level to be initialized
-     * @param sched scheduler to manage the tasks
-     */
-    template < bool MG >
-    typename std::enable_if < MG, void >::type
-    scheduleInitialize_subproblems (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    /**
      * @brief Schedule task_initialize_solution (non AMR implementation)
      *
      * Defines the dependencies and output of the task which initializes the
-     * subproblems allowing sched to control its execution order
+     * solution allowing sched to control its execution order
      *
      * @param level grid level to be initialized
      * @param sched scheduler to manage the tasks
@@ -352,7 +295,7 @@ protected: // SCHEDULINGS
      * @brief Schedule task_initialize_solution (AMR implementation)
      *
      * Defines the dependencies and output of the task which initializes the
-     * subproblems allowing sched to control its execution order
+     * solution derivatives allowing sched to control its execution order
      *
      * @param level grid level to be initialized
      * @param sched scheduler to manage the tasks
@@ -403,9 +346,6 @@ protected: // SCHEDULINGS
      * Specify all tasks to be performed at fist timestep after a stop to
      * initialize not saved variables to the DataWarehouse
      *
-     * @remark only subproblems need to be reinitialized all other variables
-     * should be retrieved from saved checkpoints
-     *
      * @param level grid level to be initialized
      * @param sched scheduler to manage the tasks
      */
@@ -444,38 +384,6 @@ protected: // SCHEDULINGS
         const LevelP & level,
         SchedulerP & sched
     ) override;
-
-    /**
-     * @brief Schedule task_time_advance_solution (non AMR implementation)
-     *
-     * Defines the dependencies and output of the task which updates the
-     * subproblems allowing sched to control its execution order
-     *
-     * @param level grid level to be updated
-     * @param sched scheduler to manage the tasks
-     */
-    template < bool MG >
-    typename std::enable_if < !MG, void >::type
-    scheduleTimeAdvance_subproblems (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    /**
-     * @brief Schedule task_time_advance_solution (AMR implementation)
-     *
-     * Defines the dependencies and output of the task which updates the
-     * subproblems allowing sched to control its execution order
-     *
-     * @param level grid level to be updated
-     * @param sched scheduler to manage the tasks
-     */
-    template < bool MG >
-    typename std::enable_if < MG, void >::type
-    scheduleTimeAdvance_subproblems (
-        const LevelP & level,
-        SchedulerP & sched
-    );
 
     /**
      * @brief Schedule task_time_advance_grad_psi (non AMR implementation)
@@ -579,24 +487,6 @@ protected: // SCHEDULINGS
         const PatchSet * new_patches,
         SchedulerP & sched
     ) override;
-
-    /**
-     * @brief Schedule task_initialize_subproblems after regridding
-     *
-     * Defines the dependencies and output of the task which initializes the
-     * subproblems allowing sched to control its execution order
-     *
-     * @remark subproblems need to be reinitialized on all patches because
-     * even preexisting patches may have different neighbors
-     *
-     * @param grid grid to be populated
-     * @param sched scheduler to manage the tasks
-     */
-    void
-    scheduleRefine_subproblems (
-        const GridP & grid,
-        SchedulerP & sched
-    );
 
     /**
      * @brief Schedule task_refine_solution
@@ -748,26 +638,6 @@ protected: // SCHEDULINGS
 protected: // TASKS
 
     /**
-     * @brief Initialize subproblems task
-     *
-     * Create the SubProblems for each one of the patches and save it to dw_new
-     *
-     * @param myworld data structure to manage mpi processes
-     * @param patches list of patches to be initialized
-     * @param matls unused
-     * @param dw_old unused
-     * @param dw_new DataWarehouse to be initialized
-     */
-    void
-    task_initialize_subproblems (
-        const ProcessorGroup * myworld,
-        const PatchSubset * patches,
-        const MaterialSubset * matls,
-        DataWarehouse * dw_old,
-        DataWarehouse * dw_new
-    );
-
-    /**
      * @brief Initialize solution task
      *
      * Allocate and save variables for psi and u for each one of the patches
@@ -825,27 +695,6 @@ protected: // TASKS
      */
     void
     task_compute_stable_timestep (
-        const ProcessorGroup * myworld,
-        const PatchSubset * patches,
-        const MaterialSubset * matls,
-        DataWarehouse * dw_old,
-        DataWarehouse * dw_new
-    );
-
-    /**
-     * @brief Advance subproblems task
-     *
-     * Move SubProblems for each one of the patches and from dw_old to dw_new
-     * or, if not found in dw_old (after regrid), create new subproblems in dw_new
-     *
-     * @param myworld data structure to manage mpi processes
-     * @param patches list of patches to be initialized
-     * @param matls unused
-     * @param dw_old DataWarehouse for previous timestep
-     * @param dw_new DataWarehouse to be initialized
-     */
-    void
-    task_time_advance_subproblems (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -1173,13 +1022,8 @@ PureMetal<VAR, DIM, STN, AMR>::PureMetal (
     const ProcessorGroup * myworld,
     MaterialManagerP const materialManager,
     int verbosity
-) : Application<VAR, DIM, STN, AMR> ( myworld, materialManager ),
-    dbg_out1 ( "PureMetal", verbosity > 0 ),
-    dbg_out2 ( "PureMetal", verbosity > 1 ),
-    dbg_out3 ( "PureMetal", verbosity > 2 ),
-    dbg_out4 ( "PureMetal", verbosity > 3 )
+) : Application< PureMetalProblem<VAR, STN>, AMR > ( myworld, materialManager, verbosity )
 {
-    subproblems_label = VarLabel::create ( "subproblems", Variable< PP, SubProblems < PureMetalProblem<VAR, STN> > >::getTypeDescription() );
     psi_label = VarLabel::create ( "psi", Variable<VAR, double>::getTypeDescription() );
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
     grad_psi_norm2_label = VarLabel::create ( "grad_psi_norm2", Variable<VAR, double>::getTypeDescription() );
@@ -1198,12 +1042,13 @@ PureMetal<VAR, DIM, STN, AMR>::PureMetal (
         b_label[XZ] = VarLabel::create ( "Bxz", Variable<VAR, double>::getTypeDescription() );
         b_label[YZ] = VarLabel::create ( "Byz", Variable<VAR, double>::getTypeDescription() );
     }
+
+//     boundary_labels = { psi_label, u_label, a2_label, b_label };
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 PureMetal<VAR, DIM, STN, AMR>::~PureMetal()
 {
-    VarLabel::destroy ( subproblems_label );
     VarLabel::destroy ( psi_label );
     VarLabel::destroy ( u_label );
     VarLabel::destroy ( grad_psi_norm2_label );
@@ -1223,10 +1068,6 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     GridP & /*grid*/
 )
 {
-    // PerPatch variables are not copied automatically even if a task for copying
-    // them is scheduled, we need to prevent such task to be scheduled
-    this->m_scheduler->overrideVariableBehavior ( subproblems_label->getName(), false, false, false, true, true );
-
     // register default material
     this->m_materialManager->registerSimpleMaterial ( scinew SimpleMaterial() );
 
@@ -1243,12 +1084,16 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     // coupling parameter
     lambda = alpha / 0.6267;
 
+    this->setBoundaryVariables ( psi_label, u_label, a2_label, b_label );
+
     if ( AMR )
     {
         this->setLockstepAMR ( true );
 
         // read amr parameters
         pure_metal->require ( "refine_threshold", refine_threshold );
+
+        std::map<std::string, FC> c2f;
 
         ProblemSpecP amr, regridder, fci;
         if ( ! ( amr = params->findBlock ( "AMR" ) ) ) return;
@@ -1262,6 +1107,8 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
             c2f[label] = str_to_fc ( var );
         }
         while ( ( fci = fci->findNextBlock ( "FCIType" ) ) );
+
+        this->setC2F ( c2f );
     }
 }
 
@@ -1274,47 +1121,8 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize (
     SchedulerP & sched
 )
 {
-    scheduleInitialize_subproblems<AMR> ( level, sched );
     scheduleInitialize_solution<AMR> ( level, sched );
     scheduleInitialize_grad_psi<AMR> ( level, sched );
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-template < bool MG >
-typename std::enable_if < !MG, void >::type
-PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize_subproblems (
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    Task * task = scinew Task ( "PureMetal::task_initialize_subproblems", this, &PureMetal::task_initialize_subproblems );
-    task->computes ( subproblems_label );
-    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
-}
-
-/**
- * @remark we need to schedule all levels before task_error_estimate_grad_psi to
- * avoid the error "Failure finding [subproblems , coarseLevel, MI: none, NewDW
- * (mapped to dw index 1), ####] for PureMetal::task_error_estimate_grad_psi",
- * on patch #, Level #, on material #, resource (rank): #" while compiling the
- * TaskGraph
- */
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-template < bool MG >
-typename std::enable_if < MG, void >::type
-PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize_subproblems (
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    // since the SimulationController is calling this scheduler starting from
-    // the finest level we schedule only on the finest level
-    if ( level->hasFinerLevel() ) return;
-
-    GridP grid = level->getGrid();
-    for ( int l = 0; l < grid->numLevels(); ++l )
-        scheduleInitialize_subproblems < !MG > ( grid->getLevel ( l ), sched );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1344,7 +1152,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize_grad_psi (
 )
 {
     Task * task = scinew Task ( "PureMetal::task_initialize_grad_psi", this, &PureMetal::task_initialize_grad_psi );
-    task->requires ( Task::NewDW, subproblems_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::NewDW, psi_label, FGT, FGN );
     task->computes ( grad_psi_norm2_label );
     for ( size_t d = 0; d < DIM; ++d )
@@ -1388,11 +1196,10 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize_solution (
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
 PureMetal<VAR, DIM, STN, AMR>::scheduleRestartInitialize (
-    const LevelP & level,
-    SchedulerP & sched
+    const LevelP &,
+    SchedulerP &
 )
 {
-    scheduleInitialize_subproblems<AMR> ( level, sched );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1401,10 +1208,6 @@ void PureMetal<VAR, DIM, STN, AMR>::scheduleComputeStableTimeStep ( LevelP const
     Task * task = scinew Task ( "PureMetal::task_compute_stable_timestep", this, &PureMetal::task_compute_stable_timestep );
     task->computes ( this->getDelTLabel(), level.get_rep() );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
-
-    // reset flag here since TaskGraph compiler call scheduleComputeStableTimeStep
-    // after each regridding
-    is_first_schedule_refine = true;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1414,39 +1217,9 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance (
     SchedulerP & sched
 )
 {
-    scheduleTimeAdvance_subproblems<AMR> ( level, sched );
     scheduleTimeAdvance_grad_psi<AMR> ( level, sched );
     scheduleTimeAdvance_anisotropy_terms ( level, sched );
     scheduleTimeAdvance_solution<AMR> ( level, sched );
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-template < bool MG >
-typename std::enable_if < !MG, void >::type
-PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_subproblems (
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    Task * task = scinew Task ( "PureMetal::task_time_advance_subproblems", this, &PureMetal::task_time_advance_subproblems );
-    task->requires ( Task::OldDW, subproblems_label, Ghost::None, 0 );
-    task->computes ( subproblems_label );
-    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-template < bool MG >
-typename std::enable_if < MG, void >::type
-PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_subproblems (
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    if ( level->hasCoarserLevel() ) return;
-
-    GridP grid = level->getGrid();
-    for ( int l = 0; l < grid->numLevels(); ++l )
-        scheduleTimeAdvance_subproblems < !MG > ( grid->getLevel ( l ), sched );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1458,7 +1231,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_grad_psi (
 )
 {
     Task * task = scinew Task ( "PureMetal::task_time_advance_grad_psi", this, &PureMetal::task_time_advance_grad_psi );
-    task->requires ( Task::OldDW, subproblems_label, Ghost::None, 0 );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::OldDW, psi_label, FGT, FGN );
     task->computes ( grad_psi_norm2_label );
     for ( size_t d = 0; d < DIM; ++d )
@@ -1503,7 +1276,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
 )
 {
     Task * task = scinew Task ( "PureMetal::task_time_advance_solution", this, &PureMetal::task_time_advance_solution );
-    task->requires ( Task::OldDW, subproblems_label, Ghost::None, 0 );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::OldDW, psi_label, FGT, FGN );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
     for ( size_t d = 0; d < DIM; ++d )
@@ -1529,8 +1302,8 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
     else
     {
         Task * task = scinew Task ( "PureMetal::task_time_advance_solution", this, &PureMetal::task_time_advance_solution );
-        task->requires ( Task::OldDW, subproblems_label, Ghost::None, 0 );
-        task->requires ( Task::OldDW, subproblems_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+        task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->requires ( Task::OldDW, psi_label, FGT, FGN );
         task->requires ( Task::OldDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         for ( size_t d = 0; d < DIM; ++d )
@@ -1563,48 +1336,12 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine
     cout_pure_metal_scheduling << "scheduleRefine on: " << *new_patches << std::endl;
 
     const Level * level = getLevel ( new_patches );
-    const GridP & grid = level->getGrid();
-
-    // we need to create subproblems for new patches.
-    // moreover, since SchedulerCommon::copyDataToNewGrid is not copying PerPatch
-    // variable to the new grid (which is fine since the geometry -thus the subproblems-
-    // has changed) we need to schedule their creation within scheduleRefine/scheduleRefineInterface
-    // since this tasks are compiled separately from those scheduled by scheduleTimeAdvance
-    if ( is_first_schedule_refine )
-    {
-        scheduleRefine_subproblems ( grid, sched );
-        is_first_schedule_refine = false;
-    };
 
     // no need to refine on coarser level
     if ( level->hasCoarserLevel() )
     {
         scheduleRefine_solution ( new_patches, sched );
         scheduleRefine_grad_psi ( new_patches, sched );
-    }
-}
-
-/**
- * @remark we need to schedule all levels before task_error_estimate_grad_psi
- * to avoid the error "Failure finding [subproblems , coarseLevel, MI: none, NewDW
- * (mapped to dw index 1), ####] for PureMetal::task_error_estimate_grad_psi",
- * on patch #, Level #, on material #, resource (rank): #" while compiling the
- * TaskGraph
- */
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void
-PureMetal<VAR, DIM, STN, AMR>::scheduleRefine_subproblems (
-    const GridP & grid,
-    SchedulerP & sched
-)
-{
-    cout_pure_metal_scheduling << "scheduleRefine_subproblems" << std::endl;
-
-    for ( int l = 0; l < grid->numLevels(); ++l )
-    {
-        Task * task = scinew Task ( "PureMetal::task_initialize_subproblems", this, &PureMetal::task_initialize_subproblems );
-        task->computes ( subproblems_label );
-        sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
 }
 
@@ -1620,8 +1357,8 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine_solution (
     Task * task = scinew Task ( "PureMetal::task_refine_solution", this, &PureMetal::task_refine_solution );
     task->requires ( Task::NewDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-    task->requires ( Task::NewDW, subproblems_label, Ghost::None, 0 );
-    task->requires ( Task::NewDW, subproblems_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->computes ( psi_label );
     task->computes ( u_label );
     sched->addTask ( task, patches, this->m_materialManager->allMaterials() );
@@ -1637,7 +1374,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine_grad_psi (
     cout_pure_metal_scheduling << "scheduleRefine_grad_psi on: " << *patches << std::endl;
 
     Task * task = scinew Task ( "PureMetal::task_refine_grad_psi", this, &PureMetal::task_refine_grad_psi );
-    task->requires ( Task::NewDW, subproblems_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::NewDW, psi_label, nullptr, Task::ThisLevel, nullptr, Task::NormalDomain, FGT, FGN );
     task->computes ( grad_psi_norm2_label );
     for ( size_t d = 0; d < DIM; ++d )
@@ -1676,8 +1413,8 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleCoarsen_solution (
     Task * task = scinew Task ( "PureMetal::task_coarsen_solution", this, &PureMetal::task_coarsen_solution );
     task->requires ( Task::NewDW, psi_label, nullptr, Task::FineLevel, nullptr, Task::NormalDomain, Ghost::None, 0 );
     task->requires ( Task::NewDW, u_label, nullptr, Task::FineLevel, nullptr, Task::NormalDomain, Ghost::None, 0 );
-    task->requires ( Task::NewDW, subproblems_label, Ghost::None, 0 );
-    task->requires ( Task::NewDW, subproblems_label, nullptr, Task::FineLevel, nullptr, Task::NormalDomain, Ghost::None, 0 );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, nullptr, Task::NormalDomain, Ghost::None, 0 );
     task->modifies ( psi_label );
     task->modifies ( u_label );
     sched->addTask ( task, level_coarse->eachPatch(), this->m_materialManager->allMaterials() );
@@ -1703,7 +1440,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleErrorEstimate_grad_psi (
 )
 {
     Task * task = scinew Task ( "PureMetal::task_error_estimate_grad_psi", this, &PureMetal::task_error_estimate_grad_psi );
-    task->requires ( Task::NewDW, subproblems_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::NewDW, psi_label, FGT, FGN );
     task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
     task->modifies ( this->m_regridder->getRefinePatchFlagLabel(), this->m_regridder->refineFlagMaterials() );
@@ -1725,8 +1462,8 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleErrorEstimate_grad_psi (
     else
     {
         Task * task = scinew Task ( "PureMetal::task_error_estimate_grad_psi", this, &PureMetal::task_error_estimate_grad_psi );
-        task->requires ( Task::NewDW, subproblems_label, Ghost::None, 0 );
-        task->requires ( Task::NewDW, subproblems_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->requires ( Task::NewDW, psi_label, FGT, FGN );
         task->requires ( Task::NewDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
@@ -1752,32 +1489,6 @@ void PureMetal<VAR, DIM, STN, AMR>::scheduleInitialErrorEstimate
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
-PureMetal<VAR, DIM, STN, AMR>::task_initialize_subproblems (
-    const ProcessorGroup * myworld,
-    const PatchSubset * patches,
-    const MaterialSubset * /*matls*/,
-    DataWarehouse * /*dw_old*/,
-    DataWarehouse * dw_new
-)
-{
-    int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_initialize_subproblems ====" << std::endl;
-
-    for ( int p = 0; p < patches->size(); ++p )
-    {
-        const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << std::endl;
-
-        Variable < PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-        subproblems.setData ( scinew SubProblems < PureMetalProblem<VAR, STN> > ( this, psi_label, u_label, a2_label, b_label, subproblems_label, material, patch, &c2f ) );
-        dw_new->put ( subproblems, subproblems_label, material, patch );
-    }
-
-    dbg_out2 << myrank << std::endl;
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void
 PureMetal<VAR, DIM, STN, AMR>::task_initialize_solution (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -1787,12 +1498,12 @@ PureMetal<VAR, DIM, STN, AMR>::task_initialize_solution (
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_initialize_solution ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_initialize_solution ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch );;
 
         // Allocate solution variables into the new DataWarehouse
         DWView < ScalarField<double>, VAR, DIM > psi ( dw_new, psi_label, material, patch );
@@ -1800,7 +1511,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_initialize_solution (
 
         // Get patch range
         BlockRange range ( this->get_range ( patch ) );
-        dbg_out3 << myrank << "= Iterating over range " << range << std::endl;
+        DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over range " << range );;
 
         // Initialize solution variables in range
         parallel_for ( range, [patch, &psi, &u, this] ( int i, int j, int k )->void { initialize_solution ( {i, j, k}, patch, psi, u ); } );
@@ -1816,7 +1527,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_initialize_solution (
         b.initialize ( 0. );
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1830,27 +1541,25 @@ PureMetal<VAR, DIM, STN, AMR>::task_initialize_grad_psi (
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_initialize_grad_psi ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_initialize_grad_psi ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch );;
 
         // Allocate grad_psi and grad_psi_norm2 variables into the new DataWarehouse
         DWView < ScalarField<double>, VAR, DIM > grad_psi_norm2 ( dw_new, grad_psi_norm2_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > grad_psi ( dw_new, grad_psi_label, material, patch );
 
         // Retrieve subproblems from the DataWarehouse
-        Variable < PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-        dw_new->get ( subproblems, subproblems_label, material, patch );
-        const auto * problems = subproblems.get().get_rep();
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
 
         // Iterate over each subproblem
-        for ( const auto & p : *problems )
+        for ( const auto & p : subproblems )
         {
             // Get a view of psi that implements finite differences approximations
-            dbg_out3 << myrank << "= Iterating over " << p << std::endl;
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_new );
 
             // Compute psi derivatives on subproblem range
@@ -1858,7 +1567,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_initialize_grad_psi (
         }
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1872,52 +1581,11 @@ PureMetal<VAR, DIM, STN, AMR>::task_compute_stable_timestep (
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_compute_stable_timestep ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_compute_stable_timestep ====" );;
 
     dw_new->put ( delt_vartype ( delt ), this->getDelTLabel(), getLevel ( patches ) );
 
-    dbg_out2 << myrank << std::endl;
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void
-PureMetal<VAR, DIM, STN, AMR>::task_time_advance_subproblems (
-    const ProcessorGroup * myworld,
-    const PatchSubset * patches,
-    const MaterialSubset *,
-    DataWarehouse * dw_old,
-    DataWarehouse * dw_new
-)
-{
-    int myrank = myworld->myRank();
-
-    dbg_out1 << myrank << "==== PureMetal::task_time_advance_subproblems ====" << std::endl;
-
-    for ( int p = 0; p < patches->size(); ++p )
-    {
-        const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << std::endl;
-
-        if ( dw_old->exists ( subproblems_label, material, patch ) )
-        {
-            Variable < PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-            dw_old->get ( subproblems, subproblems_label, material, patch );
-            dw_new->put ( subproblems, subproblems_label, material, patch );
-            dbg_out4 << "subproblems moved from OldDW to NewDW" << std::endl;
-        }
-        else // after a regrid all patches are new thus subproblems does not exists in old db
-            // not bad since we want re recompute them!
-        {
-            auto * problems = scinew SubProblems < PureMetalProblem<VAR, STN> > ( this, psi_label, u_label, a2_label, b_label, subproblems_label, material, patch, &c2f );
-
-            Variable < PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-            subproblems.setData ( problems );
-            dw_new->put ( subproblems, subproblems_label, material, patch );
-            dbg_out4 << "subproblems initialized in NewDW" << std::endl;
-        }
-    }
-
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1931,29 +1599,27 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_grad_psi (
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_time_advance_grad_psi ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_time_advance_grad_psi ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch );;
 
         DWView < ScalarField<double>, VAR, DIM > grad_psi_norm2 ( dw_new, grad_psi_norm2_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > grad_psi ( dw_new, grad_psi_label, material, patch );
 
-        Variable < PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-        dw_new->get ( subproblems, subproblems_label, material, patch );
-        auto problems = subproblems.get().get_rep();
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
 
-        for ( const auto & p : *problems )
+        for ( const auto & p : subproblems )
         {
-            dbg_out3 << myrank << "= Iterating over " << p << std::endl;
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_old );
             parallel_for ( p.get_range(), [patch, &psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
         }
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1967,12 +1633,12 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_anisotropy_terms (
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_time_advance_anisotropy_terms ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_time_advance_anisotropy_terms ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch );;
 
         DWView < ScalarField<const double>, VAR, DIM > grad_psi_norm2 ( dw_old, grad_psi_norm2_label, material, patch );
         DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
@@ -1982,11 +1648,11 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_anisotropy_terms (
         DWView < VectorField<double, BSZ>, VAR, DIM > b ( dw_new, b_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        dbg_out3 << myrank << "= Iterating over range " << range << std::endl;
+        DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over range " << range );;
         parallel_for ( range, [&grad_psi, &grad_psi_norm2, &a, &a2, &b, this] ( int i, int j, int k )->void { time_advance_anisotropy_terms ( {i, j, k}, grad_psi, grad_psi_norm2, a, a2, b ); } );
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -2000,12 +1666,12 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_time_advance_solution ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_time_advance_solution ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch );;
 
         DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
         DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
@@ -2013,13 +1679,11 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
         DWView < ScalarField<double>, VAR, DIM > psi_new ( dw_new, psi_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > u_new ( dw_new, u_label, material, patch );
 
-        Variable < PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-        dw_new->get ( subproblems, subproblems_label, material, patch );
-        auto problems = subproblems.get().get_rep();
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
 
-        for ( const auto & p : *problems )
+        for ( const auto & p : subproblems )
         {
-            dbg_out3 << myrank << "= Iterating over " << p << std::endl;
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
             FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
@@ -2028,7 +1692,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
         }
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -2044,25 +1708,25 @@ PureMetal<VAR, DIM, STN, AMR>::task_refine_solution
 {
     int myrank = myworld->myRank();
 
-    dbg_out1 << myrank << "==== PureMetal::task_refine_solution ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_refine_solution ====" );;
 
     for ( int p = 0; p < patches_fine->size(); ++p )
     {
         const Patch * patch_fine = patches_fine->get ( p );
-        dbg_out2 << myrank << "== Fine Patch: " << *patch_fine << " Level: " << patch_fine->getLevel()->getIndex() << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Fine Patch: " << *patch_fine << " Level: " << patch_fine->getLevel()->getIndex() );;
 
         DWView < ScalarField<double>, VAR, DIM > psi_fine ( dw_new, psi_label, material, patch_fine );
         DWView < ScalarField<double>, VAR, DIM > u_fine ( dw_new, u_label, material, patch_fine );
 
-        AMRInterpolator < PureMetalProblem<VAR, STN>, PSI, C2F > psi_coarse_interp ( dw_new, psi_label, subproblems_label, material, patch_fine );
-        AMRInterpolator < PureMetalProblem<VAR, STN>, U, C2F > u_coarse_interp ( dw_new, u_label, subproblems_label, material, patch_fine );
+        AMRInterpolator < PureMetalProblem<VAR, STN>, PSI, C2F > psi_coarse_interp ( dw_new, psi_label, this->getSubProblemsLabel(), material, patch_fine );
+        AMRInterpolator < PureMetalProblem<VAR, STN>, U, C2F > u_coarse_interp ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_fine );
 
         BlockRange range_fine ( this->get_range ( patch_fine ) );
-        dbg_out3 << myrank << "= Iterating over fine range" << range_fine << std::endl;
+        DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over fine range" << range_fine );;
         parallel_for ( range_fine, [&psi_coarse_interp, &u_coarse_interp, &psi_fine, &u_fine, this] ( int i, int j, int k )->void { refine_solution ( {i, j, k}, psi_coarse_interp, u_coarse_interp, psi_fine, u_fine ); } );
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -2077,29 +1741,27 @@ PureMetal<VAR, DIM, STN, AMR>::task_refine_grad_psi
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_refine_grad_psi ====" << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_refine_grad_psi ====" );;
 
     for ( int p = 0; p < patches_fine->size(); ++p )
     {
         const Patch * patch_fine = patches_fine->get ( p );
-        dbg_out2 << myrank << "== Fine Patch: " << *patch_fine << " Level: " << patch_fine->getLevel()->getIndex() << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Fine Patch: " << *patch_fine << " Level: " << patch_fine->getLevel()->getIndex() );;
 
         DWView < ScalarField<double>, VAR, DIM > grad_psi_norm2 ( dw_new, grad_psi_norm2_label, material, patch_fine );
         DWView < VectorField<double, DIM>, VAR, DIM > grad_psi ( dw_new, grad_psi_label, material, patch_fine );
 
-        Variable < PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-        dw_new->get ( subproblems, subproblems_label, material, patch_fine );
-        auto problems = subproblems.get().get_rep();
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch_fine );
 
-        for ( const auto & p : *problems )
+        for ( const auto & p : subproblems )
         {
-            dbg_out3 << myrank << "= Iterating over " << p << std::endl;
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_new );
             parallel_for ( p.get_range(), [patch_fine, &psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
         }
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -2113,22 +1775,22 @@ PureMetal<VAR, DIM, STN, AMR>::task_coarsen_solution (
 )
 {
     int myrank = myworld->myRank();
-    dbg_out1 << myrank << "==== PureMetal::task_coarsen_solution " << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_coarsen_solution " );;
 
     for ( int p = 0; p < patches_coarse->size(); ++p )
     {
         const Patch * patch_coarse = patches_coarse->get ( p );
-        dbg_out2 << myrank << "== Coarse Patch: " << *patch_coarse << " Level: " << patch_coarse->getLevel()->getIndex() << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Coarse Patch: " << *patch_coarse << " Level: " << patch_coarse->getLevel()->getIndex() );;
 
         DWView < ScalarField<double>, VAR, DIM > psi_coarse ( dw_new, psi_label, material, patch_coarse );
         DWView < ScalarField<double>, VAR, DIM > u_coarse ( dw_new, u_label, material, patch_coarse );
 
-        AMRRestrictor < PureMetalProblem<VAR, STN>, PSI, F2C > psi_fine_restr ( dw_new, psi_label, subproblems_label, material, patch_coarse, false );
-        AMRRestrictor < PureMetalProblem<VAR, STN>, U, F2C > u_fine_restr ( dw_new, u_label, subproblems_label, material, patch_coarse, false );
+        AMRRestrictor < PureMetalProblem<VAR, STN>, PSI, F2C > psi_fine_restr ( dw_new, psi_label, this->getSubProblemsLabel(), material, patch_coarse, false );
+        AMRRestrictor < PureMetalProblem<VAR, STN>, U, F2C > u_fine_restr ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_coarse, false );
 
         for ( const auto & region : u_fine_restr.get_support() )
         {
-            dbg_out3 << myrank << "= Iterating over coarse cells region " << region << std::endl;
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over coarse cells region " << region );;
             BlockRange range_coarse (
                 Max ( region.getLow(), this->get_low ( patch_coarse ) ),
                 Min ( region.getHigh(), this->get_high ( patch_coarse ) )
@@ -2138,7 +1800,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_coarsen_solution (
         }
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -2154,12 +1816,12 @@ PureMetal<VAR, DIM, STN, AMR>::task_error_estimate_grad_psi
 {
     int myrank = myworld->myRank();
 
-    dbg_out1 << myrank << "==== PureMetal::task_error_estimate_grad_psi " << std::endl;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_error_estimate_grad_psi " );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        dbg_out2 << myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << std::endl;
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );;
 
         PerPatch<PatchFlagP> refine_patch_flag;
         dw_new->get ( refine_patch_flag, this->m_regridder->getRefinePatchFlagLabel(), material, patch );
@@ -2172,26 +1834,23 @@ PureMetal<VAR, DIM, STN, AMR>::task_error_estimate_grad_psi
         DWView < VectorField<double, DIM>, VAR, DIM > grad_psi ( dw_new, grad_psi_label, material, patch );
         DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
 
-        Variable<PP, SubProblems < PureMetalProblem<VAR, STN> > > subproblems;
-        dw_new->get ( subproblems, subproblems_label, material, patch );
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
 
-        auto problems = subproblems.get().get_rep();
-
-        for ( const auto & p : *problems )
+        for ( const auto & p : subproblems )
         {
-            dbg_out3 << myrank << "= Iterating over " << p << std::endl;
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_new );
             parallel_reduce_sum ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, &refine_flag, &refine_patch, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2, refine_flag, refine_patch ); }, refine_patch );
         }
 
         if ( refine_patch )
         {
-            dbg_out3 << myrank << "= Setting refine flag" << std::endl;
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Setting refine flag" );;
             patch_flag_refine->set();
         }
     }
 
-    dbg_out2 << myrank << std::endl;
+    DOUT ( this->m_dbg_lvl2,  myrank );;
 }
 
 // IMPLEMENTATIONS
@@ -2383,7 +2042,7 @@ PureMetal<VAR, DIM, STN, AMR>::error_estimate_grad_psi (
     }
 
     refine = grad_psi_norm2[id] > refine_threshold * refine_threshold;
-    if (VAR == CC) // static if
+    if ( VAR == CC ) // static if
     {
         refine_flag[id] = refine;
         refine_patch |= refine;
@@ -2393,10 +2052,10 @@ PureMetal<VAR, DIM, STN, AMR>::error_estimate_grad_psi (
         // loop over all cells sharing node id
         IntVector id0 = id - get_dim<DIM>::unit_vector();
         IntVector i;
-        for ( i[Z]=id0[Z]; i[Z]<=id[Z]; ++i[Z] )
-            for ( i[Y]=id0[Y]; i[Y]<=id[Y]; ++i[Y] )
-                for ( i[X]=id0[X]; i[X]<=id[X]; ++i[X] )
-                    if (refine_flag.is_defined_at(i))
+        for ( i[Z] = id0[Z]; i[Z] <= id[Z]; ++i[Z] )
+            for ( i[Y] = id0[Y]; i[Y] <= id[Y]; ++i[Y] )
+                for ( i[X] = id0[X]; i[X] <= id[X]; ++i[X] )
+                    if ( refine_flag.is_defined_at ( i ) )
                     {
                         refine_flag[i] = refine;
                         refine_patch |= refine;

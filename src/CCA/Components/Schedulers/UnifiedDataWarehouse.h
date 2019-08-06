@@ -248,12 +248,19 @@ public:
          const Patch* patch, Ghost::GhostType gtype = Ghost::None,
          int numGhostCells = 0) = 0;
 
-
   // PerPatch Variables
+
   virtual void get(PerPatchBase&, const VarLabel*,
        int matlIndex, const Patch*) = 0;
   virtual void put(PerPatchBase&, const VarLabel*,
        int matlIndex, const Patch*, bool replace = false) = 0;
+
+  // SubProblemsVariable Variables
+
+  virtual void get(SubProblemsVariableBase&, const VarLabel*,
+                   int matlIndex, const Patch*) = 0;
+  virtual void put(SubProblemsVariableBase&, const VarLabel*,
+                   int matlIndex, const Patch*, bool replace = false) = 0;
 
   // this is so we can get reduction information for regridding
   virtual void getVarLabelMatlLevelTriples(std::vector<VarLabelMatl<Level> >& vars ) const = 0;
@@ -282,6 +289,8 @@ public:
   virtual void transferFrom(DataWarehouse*, const VarLabel*,
                             const PatchSubset*, const MaterialSubset*, void * detailedTask,
                             bool replace, const PatchSubset*) = 0;
+
+  virtual void transferForeignFrom(DataWarehouse* from, const VarLabel* label) = 0;
 
   virtual size_t emit(OutputContext&, const VarLabel* label,
         int matlIndex, const Patch* patch) = 0;

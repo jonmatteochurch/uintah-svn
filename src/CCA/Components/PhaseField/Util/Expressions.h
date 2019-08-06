@@ -124,6 +124,46 @@ using std::index_sequence_for;
 #endif
 
 /**
+ * @brief Compile time power
+ *
+ * expression template for computing the power \f$ N^M \f$ at compile time
+ * @tparam N integer base \f$ N \f$
+ * @tparam M integer exponent \f$ M \f$
+ */
+template<size_t N, size_t M>
+struct power
+{
+    /// value of \f$ N^M \f$
+    static constexpr size_t value = power<N,M/2>::value * power<N,M-M/2>::value;
+};
+
+/**
+ * @brief Compile time factorial (M = O case)
+ *
+ * expression template for computing the power \f$ N^0 \f$ at compile time
+ * @tparam N integer base \f$ N \f$
+ */
+template<size_t N>
+struct power<N,0>
+{
+    /// value of \f$ N^0 \f$
+    static constexpr size_t value = 1;
+};
+
+/**
+ * @brief Compile time factorial (M = 1 case)
+ *
+ * expression template for computing the power \f$ N^1 \f$ at compile time
+ * @tparam N integer base \f$ N \f$
+ */
+template<size_t N>
+struct power<N,1>
+{
+    /// value of \f$ N^1 \f$
+    static constexpr size_t value = N;
+};
+
+/**
  * @brief Compile time factorial
  *
  * expression template for computing the factorial \f$ N! \f$ at compile time

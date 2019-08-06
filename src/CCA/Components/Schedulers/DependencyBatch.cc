@@ -96,7 +96,9 @@ DependencyBatch::received( const ProcessorGroup * pg )
 
   // set all the toVars to valid, meaning the MPI has been completed
   for (auto iter = m_to_vars.begin(); iter != m_to_vars.end(); ++iter) {
-    (*iter)->setValid();
+    if ( (*iter)->onMPIReceived() ) {
+      (*iter)->setValid();
+    }
   }
 
   // prepare for placement into the external ready queue

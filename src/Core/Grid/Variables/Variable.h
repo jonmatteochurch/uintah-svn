@@ -77,6 +77,8 @@ public:
   
   virtual const TypeDescription* virtualGetTypeDescription() const = 0;
 
+  virtual bool onMPIReceived() { return true; }
+
   void setForeign();
 
   bool isForeign() const { return d_foreign; }

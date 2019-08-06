@@ -31,8 +31,7 @@
 #ifndef Packages_Uintah_CCA_Components_PhaseField_Views_detail_virtual_view_h
 #define Packages_Uintah_CCA_Components_PhaseField_Views_detail_virtual_view_h
 
-#include <CCA/Components/PhaseField/DataTypes/SubProblemsP.h>
-#include <CCA/Components/PhaseField/DataTypes/Variable.h> // must be included after handles where swapbytes override is defined
+#include <CCA/Components/PhaseField/DataTypes/Variable.h>
 #include <CCA/Components/PhaseField/Views/detail/view.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWInterface.h>
 

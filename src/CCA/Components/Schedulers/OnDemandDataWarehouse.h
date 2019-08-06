@@ -427,6 +427,24 @@ public:
                   ,       bool           replace = false
                   );
 
+  // SubProblemsVariable Variables
+  virtual void get(       SubProblemsVariableBase & var
+                  , const VarLabel                * label
+                  ,       int                       matlIndex
+                  , const Patch                   * patch
+                  );
+
+  virtual void put(       SubProblemsVariableBase & var
+                  , const VarLabel                * label
+                  ,       int                       matlIndex
+                  , const Patch                   * patch
+                  ,       bool                      replace = false
+                  );
+
+  virtual void transferForeignFrom(       DataWarehouse * from
+                                  , const VarLabel      * label
+                                  );
+
   virtual ScrubMode setScrubbing(ScrubMode);
 
 

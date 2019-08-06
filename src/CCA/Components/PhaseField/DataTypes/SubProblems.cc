@@ -23,50 +23,19 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/DataTypes/SubProblemsP.h
+ * @file CCA/Components/PhaseField/DataTypes/SubProblems.cc
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2018/12
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_DataTypes_SubProblemsP_h
-#define Packages_Uintah_CCA_Components_PhaseField_DataTypes_SubProblemsP_h
+#include <CCA/Components/PhaseField/DataTypes/SubProblems.h>
 
-#include <Core/Util/Handle.h>
+namespace Uintah {
+namespace PhaseField {
 
-namespace Uintah
-{
-namespace PhaseField
-{
-
-template <typename Problem> struct SubProblems;
-
-/**
- * @brief Handle for SubProblems
- *
- * @tparam Problem type of PhaseField problem
- */
-template <typename Problem> using SubProblemsP = Handle < SubProblems<Problem> >;
+/// @cond DOXYIGNORE
+Dout  g_subproblems_dbg ( "setGhostRegion", "SubProblems", "report when foreign subproblems are added to list" , true );
+/// @endcond
 
 } // namespace PhaseField
-
-/**
- * @brief Fix Endianess
- *
- * Ovverride for preventing compiler errors
- * @remark Should never be called
- *
- * @tparam Problem type of PhaseField problem
- * @param problem unused argument
- */
-template <typename Problem>
-inline void
-swapbytes (
-    PhaseField::SubProblemsP<Problem> & _DOXYARG ( problem )
-)
-{
-    SCI_THROW ( InternalError ( "Swap bytes for ProblemsP is not implemented", __FILE__, __LINE__ ) );
-};
-
 } // namespace Uintah
-
-#endif // Packages_Uintah_CCA_Components_PhaseField_DataTypes_SubProblemsP_h

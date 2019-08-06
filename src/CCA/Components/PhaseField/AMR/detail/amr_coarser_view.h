@@ -140,13 +140,10 @@ private: // METHODS
                 offset = patch_coarse->getVirtualOffset();
 
             // need to check which BC applies on coarse level
-            Variable < PP, SubProblems<Problem> > subproblems_coarse;
-
             // get coarse subproblems (all logic for handling correctly all possible coarse geometries is already there)
-            dw->getOtherDataWarehouse ( Task::NewDW )->get ( subproblems_coarse, m_subproblems_label, m_material, patch_coarse );
-            auto problems_coarse = subproblems_coarse.get().get_rep();
+            SubProblems<Problem> subproblems_coarse ( dw->getOtherDataWarehouse ( Task::NewDW ), m_subproblems_label, m_material, patch_coarse );
 
-            for ( const auto & p : *problems_coarse )
+            for ( const auto & p : subproblems_coarse )
             {
                 // check that the coarse problem is under fine region
                 IntVector low_coarse { Max ( p.get_low() + offset, l_coarse ) };

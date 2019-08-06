@@ -354,6 +354,7 @@ Level::computeVariableExtents( const TypeDescription::Type   type
   switch( type ) {
     case TypeDescription::CCVariable :
     case TypeDescription::ParticleVariable :
+    case TypeDescription::SubProblems:
       lo = CCLo;
       hi = CCHi;
       break;

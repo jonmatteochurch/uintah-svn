@@ -203,12 +203,21 @@ WARNING
     virtual void scheduleInitializeSystemVars(const GridP      & grid,
                                               const PatchSet   * perProcPatchSet,
                                                     SchedulerP & scheduler) = 0;
-    
+
+    // Schedule the time step advancement of system values.
+    virtual void scheduleAdvanceSystemVars(const GridP      & grid,
+                                           const PatchSet   * perProcPatchSet,
+                                                 SchedulerP & scheduler) = 0;
+
     // Schedule the updating of system values such at the time step.
     virtual void scheduleUpdateSystemVars(const GridP      & grid,
                                           const PatchSet   * perProcPatchSet,
                                                 SchedulerP & scheduler) = 0;
-    
+
+    virtual void scheduleRefineSystemVars(const GridP      & grid,
+                                          const PatchSet   * perProcPatchSet,
+                                                SchedulerP & scheduler) = 0;
+
     // Methods used for scheduling AMR regridding.
     virtual void scheduleRefine( const PatchSet   * patches,
                                        SchedulerP & scheduler ) = 0;

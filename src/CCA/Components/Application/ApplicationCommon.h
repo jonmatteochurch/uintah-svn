@@ -177,7 +177,12 @@ WARNING
                                            DataWarehouse  * old_dw,
                                            DataWarehouse  * new_dw ) {};
     
-    // Schedule the initialization of system values such at the time step.
+    // Schedule the time step advancement of system variables.
+    virtual void scheduleAdvanceSystemVars(const GridP      & /*grid*/,
+                                           const PatchSet   * /*perProcPatchSet*/,
+                                                 SchedulerP & /*scheduler*/) {};
+
+    // Schedule the initialization of system values such as the time step.
     virtual void scheduleInitializeSystemVars(const GridP      & grid,
                                               const PatchSet   * perProcPatchSet,
                                                     SchedulerP & scheduler);
@@ -188,7 +193,7 @@ WARNING
                                      DataWarehouse  * /*old_dw*/,
                                      DataWarehouse  * new_dw );
     
-    // Schedule the updating of system values such at the time step.
+    // Schedule the updating of system values such as the time step.
     virtual void scheduleUpdateSystemVars(const GridP      & grid,
                                           const PatchSet   * perProcPatchSet,
                                                 SchedulerP & scheduler);
@@ -207,6 +212,11 @@ WARNING
                                                 SchedulerP & scheduler,
                                                 bool         needCoarseOld,
                                                 bool         needCoarseNew );
+
+    // Schedule the initialization of system variables on refined levels when regridding occurs.
+    virtual void scheduleRefineSystemVars(const GridP      & /*grid*/,
+                                          const PatchSet   * /*perProcPatchSet*/,
+                                                SchedulerP & /*scheduler*/) {};
 
     virtual void scheduleCoarsen( const LevelP     & coarseLevel, 
                                         SchedulerP & scheduler );

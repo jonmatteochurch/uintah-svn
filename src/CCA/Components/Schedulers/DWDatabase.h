@@ -29,6 +29,7 @@
 
 #include <Core/Grid/UnknownVariable.h>
 #include <Core/Grid/Variables/ReductionVariableBase.h>
+#include <Core/Grid/Variables/SubProblemsVariableBase.h>
 #include <Core/Grid/Variables/ScrubItem.h>
 #include <Core/Grid/Variables/VarLabel.h>
 #include <Core/Grid/Variables/VarLabelMatl.h>
@@ -173,6 +174,11 @@ class DWDatabase {
                 ,       std::vector<Variable*> & varlist
                 ) const;
 
+    void getforeignlist( const VarLabel                       * label
+                       ,       std::vector<const DomainType*> & domlist
+                       ,       std::vector<int>               & matlist
+                       ,       std::vector<const Variable*>   & varlist
+                       ) const;
 
     inline Variable* get( const VarLabel   * label
                         ,       int          matlindex
@@ -297,6 +303,7 @@ DWDatabase<DomainType>::cleanForeign()
 {
   for (auto iter = m_vars.begin(); iter != m_vars.end(); ++iter) {
     if (*iter && (*iter)->m_var->isForeign()) {
+      if ( dynamic_cast<SubProblemsVariableBase*>( (*iter)->m_var ) ) continue;
       delete (*iter);
       (*iter) = nullptr;
     }
@@ -710,6 +717,33 @@ DWDatabase<DomainType>::getlist( const VarLabel               * label
 
   for (DataItem* dataItem = getDataItem(label, matlIndex, dom); dataItem != nullptr; dataItem = dataItem->m_next) {
     varlist.push_back(dataItem->m_var);
+  }
+}
+
+//______________________________________________________________________
+//
+template<class DomainType>
+void
+DWDatabase<DomainType>::getforeignlist( const VarLabel                       * label
+                                      ,       std::vector<const DomainType*> & domlist
+                                      ,       std::vector<int>               & matlist
+                                      ,       std::vector<const Variable*>   & varlist
+                                      ) const
+{
+  std::lock_guard<Uintah::MasterLock> get_list_lock(g_keyDB_lock);
+
+  for (auto keyiter = m_keyDB->m_keys.begin(); keyiter != m_keyDB->m_keys.end(); ++keyiter) {
+    const auto & key = keyiter->first;
+    const auto & val = m_vars[keyiter->second];
+    if (val) {
+      const VarLabel* iterLabel = key.m_label;
+      const Variable* iterVariable = val->m_var;
+      if (iterVariable->isForeign() && iterLabel->equals(label) ) {
+        domlist.push_back(key.m_domain);
+        matlist.push_back(key.m_matl_index);
+        varlist.push_back(iterVariable);
+      }
+    }
   }
 }
 

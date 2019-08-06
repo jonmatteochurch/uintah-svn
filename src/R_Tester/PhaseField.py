@@ -144,28 +144,26 @@ for dim in DIM:
       HEATAMRBCTEST   .append( ( "heat_test_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
       HEATAMRBCMPITEST.append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
 
-HEATHYPRETEST        = []
-HEATHYPREMPITEST     = []
-HEATHYPRECN2DMPITEST = [] # FIXME Caught exception: A ConvergenceFailure exception was thrown.
+HEATHYPREBETEST    = [] # FIXME Caught exception: Unknown variable: hypre_solver_label
+HEATHYPRECNTEST    = [] # FIXME Caught exception: Unknown variable: A
+HEATHYPREBEMPITEST = [] # FIXME Caught exception: Unknown variable: hypre_solver_label
+HEATHYPRECNMPITEST = [] # FIXME Caught exception: Unknown variable: A
 
-freq = {"2d": 25, "3d": 1}
 for dim in DIM:
   # for var in VAR:
     for var in CC:
       for im in IM:
-        ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_%s.ups" % (var,dim,im), [ \
-          ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
-          ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
-        ])
-        HEATHYPRETEST         .append( ( "heat_periodic_%s_%s_%s"     % (var,dim,im), ups, 1, "All", ["exactComparison"] ) )
-        if   im=="cn" and dim =="2d":
-          HEATHYPRECN2DMPITEST.append( ( "heat_periodic_%s_%s_%s_mpi" % (var,dim,im), ups, 4, "All", ["exactComparison"] ) )
-        else:
-          HEATHYPREMPITEST    .append( ( "heat_periodic_%s_%s_%s_mpi" % (var,dim,im), ups, 4, "All", ["exactComparison"] ) )
+        ups = "heat/heat_periodic_%s_%s_%s.ups" % (var,dim,im)
+        if   im=="be":
+          HEATHYPREBETEST   .append( ( "heat_periodic_%s_%s_%s"     % (var,dim,im), ups, 1, "All", ["exactComparison"] ) )
+          HEATHYPREBEMPITEST.append( ( "heat_periodic_%s_%s_%s_mpi" % (var,dim,im), ups, 4, "All", ["exactComparison"] ) )
+        elif im=="cn":
+          HEATHYPRECNTEST   .append( ( "heat_periodic_%s_%s_%s"     % (var,dim,im), ups, 1, "All", ["exactComparison"] ) )
+          HEATHYPRECNMPITEST.append( ( "heat_periodic_%s_%s_%s_mpi" % (var,dim,im), ups, 4, "All", ["exactComparison"] ) )
 
-HEATHYPREAMRTEST     = []
-HEATHYPREAMRCN3DTEST = [] # FIXME Caught exception: A ConvergenceFailure exception was thrown.
-HEATHYPREAMRMPITEST  = [] # FIXME Caught exception: Unknown variable: subproblems
+HEATHYPREAMRBETEST  = [] # FIXME Caught exception: Unknown variable: hypre_solver_label
+HEATHYPREAMRCNTEST  = [] # FIXME Caught exception: Unknown variable: A
+HEATHYPREAMRMPITEST = [] # FIXME Caught exception: Unknown variable: subproblems
 
 for dim in DIM:
   # for var in VAR:
@@ -173,15 +171,16 @@ for dim in DIM:
       for im in IM:
         for f2c in FCN:
           ups = "heat/heat_periodic_%s_%s_%s_amr_hypre_%s.ups" % (var,dim,im,f2c)
-          if im!="cn" or dim!="3d":
-            HEATHYPREAMRTEST    .append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          else:
-            HEATHYPREAMRCN3DTEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREAMRMPITEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          if   im=="be":
+            HEATHYPREAMRBETEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
+          elif im=="cn":
+            HEATHYPREAMRCNTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
+          HEATHYPREAMRMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
 
-HEATHYPREAMRBC2DTEST  = []
-HEATHYPREAMRBC3DTEST  = [] # FIXME Caught exception: Unknown variable: subproblems
-HEATHYPREAMRBCMPITEST = [] # FIXME Caught exception: Unknown variable: subproblems
+HEATHYPREAMRBC2DBETEST = [] # FIXME Caught exception: Unknown variable: hypre_solver_label
+HEATHYPREAMRBC2DCNTEST = [] # FIXME Caught exception: Unknown variable: A
+HEATHYPREAMRBC3DTEST   = [] # FIXME Caught exception: An IntVectorOutOfBounds exception was thrown.
+HEATHYPREAMRBCMPITEST  = [] # FIXME Caught exception: Unknown variable: subproblems
 
 for dim in DIM:
   # for var in VAR:
@@ -189,8 +188,10 @@ for dim in DIM:
       for im in IM:
         for f2c in FCN:
           ups = "heat/heat_test_%s_%s_%s_amr_hypre_%s.ups" % (var,dim,im,f2c)
-          if   dim=="2d":
-            HEATHYPREAMRBC2DTEST.append( ( "heat_test_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
+          if   dim=="2d" and im=="be":
+            HEATHYPREAMRBC2DBETEST.append( ( "heat_test_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
+          elif dim=="2d" and im=="cn":
+            HEATHYPREAMRBC2DCNTEST.append( ( "heat_test_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
           elif dim=="3d":
             HEATHYPREAMRBC3DTEST .append( ( "heat_test_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
           HEATHYPREAMRBCMPITEST  .append( ( "heat_test_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
@@ -232,7 +233,8 @@ for dim in DIM:
     PUREMETALTEST   .append( ( "pure_metal_%s_%s"     % (var,dim), ups, 1, "All", ["exactComparison"] ) )
     PUREMETALMPITEST.append( ( "pure_metal_%s_%s_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
 
-PUREMETALAMRTEST    = []
+PUREMETALAMRCCTEST  = []
+PUREMETALAMRNCTEST  = [] # Caught exception: An InternalError exception was thrown (Failed to find comp for dep!).
 PUREMETALAMRMPITEST = [] # FIXME Caught exception: Unknown variable: subproblems
 
 freq = {"2d": 25, "3d": 1}
@@ -243,13 +245,16 @@ for dim in DIM:
       ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
-      PUREMETALAMRTEST   .append( ( "pure_metal_%s_%s_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
-      PUREMETALAMRMPITEST.append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      if   var=="cc":
+        PUREMETALAMRCCTEST.append( ( "pure_metal_%s_%s_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
+      elif var=="nc":
+        PUREMETALAMRNCTEST.append( ( "pure_metal_%s_%s_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
+      PUREMETALAMRMPITEST .append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
 
 #__________________________________
 # The following list is parsed by the local RT script
 # and allows the user to select the tests to run
-#LIST: BENCHTEST HEATTEST HEATMPITEST HEATBCTEST HEATBCMPITEST HEATAMRTEST HEATAMRMPITEST HEATAMRBCTEST HEATAMRBCMPITEST HEATHYPRETEST HEATHYPREMPITEST HEATHYPRECN2DMPITEST HEATHYPREAMRTEST HEATHYPREAMRCN3DTEST HEATHYPREAMRMPITEST HEATHYPREAMRBC2DTEST HEATHYPREAMRBC3DTEST HEATHYPREAMRBCMPITEST HEATHYPREFACTEST HEATHYPREFACMPITEST HEATHYPREFACBCTEST HEATHYPREFACBCMPITEST PUREMETALTEST PUREMETALMPITEST PUREMETALAMRTEST PUREMETALAMRMPITEST
+#LIST: BENCHTEST HEATTEST HEATMPITEST HEATBCTEST HEATBCMPITEST HEATAMRTEST HEATAMRMPITEST HEATAMRBCTEST HEATAMRBCMPITEST HEATHYPREBETEST HEATHYPREBEMPITEST HEATHYPRECNTEST HEATHYPRECNMPITEST HEATHYPREAMRBETEST HEATHYPREAMRCNTEST HEATHYPREAMRMPITEST HEATHYPREAMRBC2DBETEST HEATHYPREAMRBC2DCNTEST HEATHYPREAMRBC3DTEST HEATHYPREAMRBCMPITEST HEATHYPREFACTEST HEATHYPREFACMPITEST HEATHYPREFACBCTEST HEATHYPREFACBCMPITEST PUREMETALTEST PUREMETALMPITEST PUREMETALAMRCCTEST PUREMETALAMRNCTEST PUREMETALAMRMPITEST
 #___________________________________
 
 # returns the list
@@ -325,17 +330,17 @@ def getTestList(me) :
     TESTS = PUREMETALAMRMPITEST
 
   elif me == "AMRTESTS":
-    TESTS = HEATAMRTEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRCN3DTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBC2DTEST + HEATHYPREAMRBC3DTEST + HEATHYPREAMRBCMPITEST + PUREMETALAMRTEST + PUREMETALAMRMPITEST
+    TESTS = HEATAMRTEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBC2DBETEST + HEATHYPREAMRBC2DCNTEST + HEATHYPREAMRBC3DTEST + HEATHYPREAMRBCMPITEST + PUREMETALAMRTEST + PUREMETALAMRMPITEST
 
   elif me == "DEBUGTESTS":
-    TESTS = HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPRECN2DMPITEST + HEATHYPREAMRCN3DTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBC3DTEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACTEST + HEATHYPREFACMPITEST + HEATHYPREFACBCTEST + HEATHYPREFACBCMPITEST + PUREMETALAMRMPITEST
+    TESTS = HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREBETEST + HEATHYPRECNTEST + HEATHYPREBEMPITEST + HEATHYPRECNMPITEST + HEATHYPREAMRBETEST + HEATHYPREAMRCNTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBC2DBETEST + HEATHYPREAMRBC2DCNTEST + HEATHYPREAMRBC3DTEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACTEST + HEATHYPREFACMPITEST + HEATHYPREFACBCTEST + HEATHYPREFACBCMPITEST + PUREMETALAMRNCTEST + PUREMETALAMRMPITEST
 
   elif me == "LOCALTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + HEATHYPREMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRBC2DTEST + PUREMETALMPITEST + PUREMETALAMRTEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
   elif me == "NIGHTLYTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + HEATHYPREMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRBC2DTEST + PUREMETALMPITEST + PUREMETALAMRTEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
   elif me == "BUILDBOTTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + HEATHYPREMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRBC2DTEST + PUREMETALMPITEST + PUREMETALAMRTEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
 
   else:
     print("\nERROR:PhaseField.py  getTestList:  The test list (%s) does not exist!\n\n" % me)

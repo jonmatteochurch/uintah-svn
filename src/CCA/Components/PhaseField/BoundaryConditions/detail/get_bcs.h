@@ -58,7 +58,6 @@ class get_bcs
      * identified by the given label on the given patch
      *
      * @tparam F list of faces to check
-     *
      * @param unused to allow template argument deduction
      * @param patch grid patch to be checked
      * @param child child index of face boundary condition (as per input file)
@@ -80,7 +79,7 @@ class get_bcs
         std::array<bool, get_dim<DIM>::face_end> & flags
     )
     {
-        return { get_bc<Field>::exec ( patch, ( Patch::FaceType ) F, child, material, label, c2f, flags[F] )... };
+        return {{ get_bc<Field>::exec ( patch, ( Patch::FaceType ) F, child, material, label, c2f, flags[F] )... }};
     }
 
 public:
@@ -90,13 +89,12 @@ public:
      * For each face constuct the list of faces for the patch and call the
      * internal indexed implementation
      *
-     * @tparam F list of faces to check
      * @param patch grid patch to be checked
      * @param child child index of face boundary condition (as per input file)
      * @param material problem material index
      * @param label variable label to check
      * @param c2f which fine/coarse interface conditions to use on each variable
-     * @param[in,out] flags array of flags to check if any bc is applied to each one of faces
+     * @param[out] flags array of flags to check if any bc is applied to each one of faces
      * @return array of BCInfo
      */
     inline static std::array < BCInfo<Field>, get_dim<DIM>::face_end >

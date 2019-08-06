@@ -104,6 +104,14 @@ const TypeDescription* fun_getTypeDescription(long64*)
   return td;
 }
 
+const TypeDescription* fun_getTypeDescription(long unsigned int*)
+{
+  static TypeDescription* td;
+  if (!td) {
+    td = scinew TypeDescription(TypeDescription::unsigned_long_type, "long unsigned int", true, MPI_UNSIGNED_LONG);
+  }
+  return td;
+}
 
 #if !defined( OSX_SNOW_LEOPARD_OR_LATER ) &&  !defined( SCI_32BITS )
 const TypeDescription* fun_getTypeDescription(long long*)

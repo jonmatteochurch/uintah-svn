@@ -875,6 +875,11 @@ AMRSimulationController::compileTaskGraph( int totalFine )
   m_scheduler->mapDataWarehouse( Task::CoarseNewDW, totalFine );
   
   int my_rank = d_myworld->myRank();
+
+  m_application->scheduleAdvanceSystemVars( m_current_gridP,
+                                              m_loadBalancer->getPerProcessorPatchSet(m_current_gridP),
+                                              m_scheduler );
+
   if (m_do_multi_taskgraphing) {
     for (int i = 0; i < m_current_gridP->numLevels(); i++) {
       // taskgraphs 0-numlevels-1

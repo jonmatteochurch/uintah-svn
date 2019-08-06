@@ -34,7 +34,6 @@
 #include <CCA/Components/PhaseField/Views/detail/view.h>
 #include <CCA/Components/PhaseField/Views/detail/virtual_view.h>
 
-#include <CCA/Components/PhaseField/DataTypes/SubProblemsP.h>
 #include <CCA/Components/PhaseField/DataTypes/Variable.h>
 
 #include <CCA/Components/PhaseField/DataWarehouse/DWInterface.h>

@@ -26,7 +26,7 @@
 #include <Core/Exceptions/InternalError.h>
 #include <Core/Malloc/Allocator.h>
 #include <Core/Parallel/CrowdMonitor.hpp>
-#include <Core/Parallel/MasterLock.h>
+#include <Core/Parallel/ReentrantLock.h>
 #include <Core/Util/Assert.h>
 
 #include <iostream>
@@ -42,7 +42,7 @@ namespace {
 using register_monitor = Uintah::CrowdMonitor<TypeDescription::register_tag>;
 using lookup_monitor   = Uintah::CrowdMonitor<TypeDescription::lookup_tag>;
 
-Uintah::MasterLock get_mpi_type_lock{};
+Uintah::ReentrantLock get_mpi_type_lock{};
 std::map<std::string, const TypeDescription*> * types_g     = nullptr;
 std::vector<const TypeDescription*>           * typelist_g  = nullptr;
 bool killed = false;
@@ -180,7 +180,7 @@ TypeDescription::getMPIType() const
   if (d_mpitype == MPI_Datatype(-1)) {
     // scope the lock_guard
     {
-      std::lock_guard<Uintah::MasterLock> guard(get_mpi_type_lock);
+      std::lock_guard<Uintah::ReentrantLock> guard(get_mpi_type_lock);
       if (d_mpitype == MPI_Datatype(-1)) {
         if (d_mpitypemaker) {
           d_mpitype = (*d_mpitypemaker)();

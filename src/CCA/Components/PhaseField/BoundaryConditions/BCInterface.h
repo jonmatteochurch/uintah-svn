@@ -53,17 +53,55 @@ namespace PhaseField
 template < VarType VAR, StnType STN>
 struct BCInterface
 {
+    /// Problem dimension
+    static constexpr DimType DIM = get_stn<STN>::dim;
+
+    /// Problem highest direction
+    static constexpr DirType DIR = get_dim<DIM>::highest_dir;
+
+    /// Number of ghost elements required by STN
+    static constexpr int GN = get_stn<STN>::ghosts;
+
+    /**
+     * @brief Get boundary conditions on multiple faces static
+     *
+     * Execute the detail::get_bcs < DIM, Field > functor
+     *
+     * @tparam Field list of type of fields (ScalarField < T > or VectorField < T, N >) of the Problems
+     * @param patch grid patch to be checked
+     * @param child child index of face boundary condition (as per input file)
+     * @param material problem material index
+     * @param label variable label to check
+     * @param c2f which fine/coarse interface conditions to use on each variable
+     * @param[out] flags array of flags to check if any bc is applied to each one of faces
+     * @return array of BCInfo
+     */
+    template <typename Field>
+    static std::array< BCInfo<Field>, get_dim<DIM>::face_end >
+    get_bcs (
+        const Patch * patch,
+        const int & child,
+        const int & material,
+        const typename Field::label_type & label,
+        std::array<bool, 2 * get_stn<STN>::dim> & flags,
+        const std::map < std::string, FC > * c2f = nullptr
+    )
+    {
+        return detail::get_bcs<DIM, Field>::exec ( patch, child, material, label, c2f, flags );
+    }
+
     /**
      * @brief Partition a patch into a list of Problems
      *
-     * Retrieves boundary conditions and partirion a patch accordingly
+     * Partition a patch accordingly to given boundary conditions
      *
-     * @tparam Field list of type of fields (ScalarField < T> or VectorField < T, N >) of the Problems
+     * @tparam Field list of type of fields (ScalarField < T > or VectorField < T, N >) of the Problems
      * @param labels list of lables for each variable of the problem
      * @param subproblems_label label of subproblems in the DataWarehouse
      * @param material problem material index
      * @param patch grid patch to be partitioned
-     * @param c2f which fine/coarse interface conditions to use on each variable
+     * @param bcs list of arrays of BC info for each one of face of the patch for each one of the problem labels
+     * @param flags array of flags to check if any bc is applied to each one of faces
      * @return list of partitioned Problems
      */
     template <typename... Field>
@@ -73,23 +111,52 @@ struct BCInterface
         const VarLabel * subproblems_label,
         int material,
         const Patch * patch,
-        const std::map<std::string, FC> * c2f = nullptr
+        std::array< BCInfo<Field>, get_dim<DIM>::face_end >... bcs,
+        const std::array<bool, 2 * DIM> & flags
     )
     {
-        /// Problem Dimension
-        constexpr DimType DIM = get_stn<STN>::dim;
-        constexpr DirType DIR = get_dim<DIM>::highest_dir;
-        constexpr int GN = get_stn<STN>::ghosts;
-
         // output container
         std::list < Problem<VAR, STN, Field...> > problems;
 
-        // one flag for each patch face to store if it is a boundary face
-        std::array<bool, 2 * DIM> flags;
-        flags.fill ( false );
+        // start partitioning from the highest_dir detail::partition_range iterates on lower directions
+        detail::partition_range < DIR, GN, 0, Field... >::template exec<VAR, STN> ( labels..., subproblems_label, material, patch->getLevel(), DWInterface<VAR, DIM>::get_low ( patch ), DWInterface<VAR, DIM>::get_high ( patch ), {}, bcs..., flags, problems );
+        return problems;
+    }
+
+    /**
+     * @brief Partition a ghost layer into a list of Problems
+     *
+     * Partition a ghost layer accordingly to given boundary conditions
+     *
+     * @tparam Field list of type of fields (ScalarField < T > or VectorField < T, N >) of the Problems
+     * @param labels list of lables for each variable of the problem
+     * @param subproblems_label label of subproblems in the DataWarehouse
+     * @param material problem material index
+     * @param patch grid patch at the ghost region to be partitioned
+     * @param low lower bound of the ghost region to partition
+     * @param high higher bound of the ghost region to partition
+     * @param bcs list of arrays of BC info for each one of face of the patch for each one of the problem labels
+     * @param flags array of flags to check if any bc is applied to each one of faces
+     * @return list of partitioned Problems
+     */
+    template <typename... Field>
+    static std::list < Problem<VAR, STN, Field...> >
+    partition_ghost_layer (
+        const typename Field::label_type & ...  labels,
+        const VarLabel * subproblems_label,
+        int material,
+        const Patch * patch,
+        const IntVector & low,
+        const IntVector & high,
+        std::array< BCInfo<Field>, get_dim<DIM>::face_end >... bcs,
+        const std::array<bool, 2 * DIM> & flags
+    )
+    {
+        // output container
+        std::list < Problem<VAR, STN, Field...> > problems;
 
         // start partitioning from the highest_dir detail::partition_range iterates on lower directions
-        detail::partition_range < DIR, GN, 0, Field... >::template exec<VAR, STN> ( labels..., subproblems_label, material, patch->getLevel(), DWInterface<VAR, DIM>::get_low ( patch ), DWInterface<VAR, DIM>::get_high ( patch ), {}, detail::get_bcs<DIM, Field>::exec ( patch, 0, 0, labels, c2f, flags )..., flags, problems );
+        detail::partition_range < DIR, GN, 0, Field... >::template exec<VAR, STN> ( labels..., subproblems_label, material, patch->getLevel(), low, high, {}, bcs..., flags, problems );
         return problems;
     }
 

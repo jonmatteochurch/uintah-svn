@@ -36,6 +36,7 @@
 #include <CCA/Components/PhaseField/Views/FDView.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWFDView.h>
 #include <CCA/Components/PhaseField/BoundaryConditions/BCFDViewFactory.h>
+#include <CCA/Components/PhaseField/Util/BlockRangeIO.h>
 
 namespace Uintah
 {

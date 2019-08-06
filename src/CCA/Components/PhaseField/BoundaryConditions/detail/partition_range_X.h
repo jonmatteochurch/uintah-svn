@@ -110,7 +110,7 @@ public:
         IntVector high,
         std::list<Patch::FaceType> faces,
         const std::array < BCInfo<Field>, 2 * get_stn<STN>::dim > & ... bcs,
-        std::array<bool, 2 * get_stn<STN>::dim> & flags,
+        const std::array<bool, 2 * get_stn<STN>::dim> & flags,
         std::list < Problem<VAR, STN, Field...> > & problems
     )
     {

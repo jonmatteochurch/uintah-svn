@@ -55,6 +55,7 @@ SRCS += \
         $(SRCDIR)/StaticInstantiate.cc          \
         $(SRCDIR)/Stencil7.cc                   \
         $(SRCDIR)/Stencil4.cc                   \
+        $(SRCDIR)/SubProblemsVariableBase.cc    \
         $(SRCDIR)/Utils.cc                      \
         $(SRCDIR)/ugc_templates.cc              \
         $(SRCDIR)/VarLabel.cc                   \

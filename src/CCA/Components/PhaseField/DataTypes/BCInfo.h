@@ -35,6 +35,8 @@
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 
+#include <cstddef>
+
 namespace Uintah
 {
 namespace PhaseField
@@ -61,6 +63,19 @@ template<typename Field> struct BCInfo;
 template<typename T>
 struct BCInfo< ScalarField<T> >
 {
+private: // STATIC MEMBERS
+
+    /// Register
+    /// @remark Cause the (instantiated) type of this class to be registered with the Core/Disclosure/TypeDescription class when this class.
+    /// @remark It is not used for anything else in the
+    // program.
+    static TypeDescription::Register registerMe;
+
+    /// Unique instance of TypeDescription
+    static TypeDescription * td;
+
+public: // MEMBERS
+
     /// value to impose on boundary
     typename std::remove_const<T>::type value;
 
@@ -69,6 +84,68 @@ struct BCInfo< ScalarField<T> >
 
     /// type of fine/coarse interface conditions
     FC c2f;
+
+private: // STATIC METHODS
+
+    /**
+     * @brief Create and commit MPI_Datatype for BCInfo
+     *
+     * Define a new struct datatype for communicating BCInfo with MPI and commit it
+
+     * @remark the reference to this private method is passed to the TypeDescription
+     * constructor to enure a single instance of MPI_Datatype is created
+     *
+     * @return MPI_Datatype for the BCInfo struct instance
+     */
+    static MPI_Datatype
+    make_mpitype()
+    {
+        static constexpr int count = 4;
+
+        MPI_Datatype datatype;
+        int blocklengths[count] = {1, 1, 1, 1};
+
+        MPI_Aint displacements[count] =
+        {
+            offsetof ( BCInfo, value ),
+            offsetof ( BCInfo, bc ),
+            offsetof ( BCInfo, c2f ),
+            sizeof ( BCInfo )
+        };
+
+        MPI_Datatype types[count] =
+        {
+            PhaseField::getTypeDescription<T>()->getMPIType(),
+            PhaseField::getTypeDescription<size_t>()->getMPIType(),
+            PhaseField::getTypeDescription<size_t>()->getMPIType(),
+            MPI_UB
+        };
+
+        Uintah::MPI::Type_create_struct ( count, blocklengths, displacements, types, &datatype );
+        Uintah::MPI::Type_commit ( &datatype );
+
+        return datatype;
+    }
+
+public: // STATIC METHODS
+
+    /**
+     * @brief Get the TypeDescription for BCInfo
+     *
+     * Get the pointer to the single instance of TypeDescription for the BCInfo
+     * type instance. If this is not yet initialized then a new instance is created.
+     *
+     * @return Pointer to the TypeDescription for the BCInfo struct instance
+     */
+    static const TypeDescription *
+    getTypeDescription()
+    {
+        if ( !td )
+        {
+            td = scinew TypeDescription ( TypeDescription::Other, "BCInfo", true, BCInfo::make_mpitype );
+        }
+        return td;
+    }
 };
 
 /**
@@ -83,6 +160,19 @@ struct BCInfo< ScalarField<T> >
 template<typename T, size_t N>
 struct BCInfo< VectorField<T, N> >
 {
+private: // STATIC MEMBERS
+
+    /// Register
+    /// @remark Cause the (instantiated) type of this class to be registered with the Core/Disclosure/TypeDescription class when this class.
+    /// @remark It is not used for anything else in the
+    // program.
+    static TypeDescription::Register registerMe;
+
+    /// Unique instance of TypeDescription
+    static TypeDescription * td;
+
+public: // MEMBERS
+
     /// array of values to impose on boundary
     std::array < typename std::remove_const<T>::type, N > value;
 
@@ -92,10 +182,13 @@ struct BCInfo< VectorField<T, N> >
     /// type of fine/coarse interface conditions
     FC c2f;
 
+public: // CONSTRUCTORS
+
     /**
      * @brief Constructor
      *
      * From a list of BCInfo
+     *
      * @tparam I0 first BCInfo type
      * @tparam I following BCInfo types
      * @param i0 first BCInfo
@@ -107,7 +200,82 @@ struct BCInfo< VectorField<T, N> >
           bc ( i0.bc ),
           c2f ( i0.c2f )
     {};
+
+    /**
+     * @brief Default Constructor
+     */
+    BCInfo() = default;
+
+private: // STATIC METHODS
+
+    /**
+     * @brief Create and commit MPI_Datatype for BCInfo
+     *
+     * Define a new struct datatype for communicating BCInfo with MPI and commit it
+
+     * @remark the reference to this private method is passed to the TypeDescription 
+     * constructor to enure a single instance of MPI_Datatype is created
+     *
+     * @return MPI_Datatype for the BCInfo struct instance
+     */
+    static MPI_Datatype
+    make_mpitype()
+    {
+        static constexpr int count = 4;
+
+        MPI_Datatype datatype;
+        int blocklengths[count] = {N, 1, 1, 1};
+
+        MPI_Aint displacements[count] =
+        {
+            offsetof ( BCInfo, value ),
+            offsetof ( BCInfo, bc ),
+            offsetof ( BCInfo, c2f ),
+            sizeof ( BCInfo )
+        };
+
+        MPI_Datatype types[count] =
+        {
+            getMPIType<T>(),
+            getMPIType<size_t>(),
+            getMPIType<size_t>(),
+            MPI_UB
+        };
+
+        Uintah::MPI::Type_create_struct ( count, blocklengths, displacements, types, &datatype );
+        Uintah::MPI::Type_commit ( &datatype );
+
+        return datatype;
+    }
+
+public: // STATIC METHODS
+
+    /**
+     * @brief Get the TypeDescription for BCInfo
+     *
+     * Get the pointer to the single instance of TypeDescription for the BCInfo
+     * type instance. If this is not yet initialized then a new instance is created.
+     *
+     * @return Pointer to the TypeDescription for the BCInfo struct instance
+     */
+    static const TypeDescription *
+    getTypeDescription()
+    {
+        if ( !td )
+        {
+            td = scinew TypeDescription ( TypeDescription::Other, "SubProblemsMpiData", true, BCInfo::make_mpitype );
+        }
+        return td;
+    }
 };
+
+template<typename T> TypeDescription * BCInfo < ScalarField<T> >::td = nullptr;
+
+template<typename T> TypeDescription::Register BCInfo< ScalarField<T> >::registerMe ( getTypeDescription() );
+
+template<typename T, size_t N> TypeDescription * BCInfo < VectorField<T, N> >::td = nullptr;
+
+template<typename T, size_t N> TypeDescription::Register BCInfo< VectorField<T, N> >::registerMe ( getTypeDescription() );
 
 } // namespace PhaseField
 } // namespace Uintah
