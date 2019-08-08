@@ -2420,6 +2420,7 @@ OnDemandDataWarehouse::getRegionModifiable(       GridVariableBase & var
     //  For this patch find the intersection of the requested region
     IntVector patchLo = patch->getLowIndex(basis);
     IntVector patchHi = patch->getHighIndex(basis);
+
     if (useBoundaryCells) {
       patchLo = patch->getExtraLowIndex(  basis, label->getBoundaryLayer() );
       patchHi = patch->getExtraHighIndex( basis, label->getBoundaryLayer() );
@@ -2429,9 +2430,6 @@ OnDemandDataWarehouse::getRegionModifiable(       GridVariableBase & var
     if (patch->isVirtual()) {
       offset = patch->getVirtualOffset();
     }
-
-    patchLo -= offset;
-    patchHi -= offset;
 
     IntVector l = Max( patchLo, reqLow );
     IntVector h = Min( patchHi, reqHigh );
@@ -2460,6 +2458,9 @@ OnDemandDataWarehouse::getRegionModifiable(       GridVariableBase & var
 
       IntVector varLo = v->getLow();
       IntVector varHi = v->getHigh();
+
+      varLo += offset;
+      varHi += offset;
 
       bool doesCoverRegion = ( Min(l, varLo) == varLo && Max(h, varHi) == varHi );
       if ( (v != nullptr) && v->isValid() && doesCoverRegion) {
