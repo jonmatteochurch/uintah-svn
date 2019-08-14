@@ -73,7 +73,7 @@
 using namespace Uintah;
 
 namespace {
-  Dout g_schedulercommon_dbg( "SchedulerCommon_DBG", "SchedulerCommon", "general debug information"  , true );
+  Dout g_schedulercommon_dbg( "SchedulerCommon_DBG", "SchedulerCommon", "general debug information"  , false );
   Dout g_task_graph_compile(  "TaskGraphCompile"   , "SchedulerCommon", "task graph compilation info", false );
 }
 
@@ -1526,8 +1526,9 @@ SchedulerCommon::scheduleAndDoDataCopy( const GridP & grid )
         
           // Take care of reduction/sole variables in a different section
           TypeDescription::Type depType = dep->m_var->typeDescription()->getType();
-          if ( depType == TypeDescription::ReductionVariable ||
-               depType == TypeDescription::SubProblems ||
+          if ( depType == TypeDescription::CCSubProblems ||
+               depType == TypeDescription::NCSubProblems ||
+               depType == TypeDescription::ReductionVariable ||
                depType == TypeDescription::SoleVariable) {
             continue;
           }

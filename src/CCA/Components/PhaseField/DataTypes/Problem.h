@@ -158,8 +158,8 @@ private: // INDEXED CONSTRUCTOR
         const VarLabel * subproblems_label,
         int material,
         const Level * level,
-        IntVector low,
-        IntVector high,
+        const IntVector & low,
+        const IntVector & high,
         const std::list<Patch::FaceType> & faces,
         std::vector< BCInfo<Field> > ... bcs
     ) : m_level ( level ),
@@ -191,8 +191,8 @@ public: // CONSTRUCTORS/DESTRUCTOR
         const typename Field::label_type & ... labels,
         int material,
         const Level * level,
-        IntVector low,
-        IntVector high
+        const IntVector & low,
+        const IntVector & high
     ) : m_level ( level ),
         m_low ( low ),
         m_high ( high ),
@@ -228,6 +228,32 @@ public: // CONSTRUCTORS/DESTRUCTOR
         std::vector< BCInfo<Field> > ... bcs
     ) : Problem ( make_index_sequence<sizeof... ( labels ) > {}, labels..., subproblems_label, material, level, low, high, faces, bcs... )
     {
+    }
+
+    /**
+     * @brief Restrict Problem range
+     *
+     * Check if given region intersects problem range. If true
+     * reset the range to the intersection and return true,
+     * otherwise retrns false
+     *
+     * @param low lower bound of the region to check
+     * @param high higher bound of the region to check
+     * @return if given region intersects problem range
+     */
+    inline bool
+    restrict_range(
+        const IntVector & low,
+        const IntVector & high
+    )
+    {
+        if ( doesIntersect(low, high, m_low, m_high) ) {
+            m_low = Max(m_low,low);
+            m_high = Min(m_high,high);
+            return true;
+        }
+
+        return false;
     }
 
     /**

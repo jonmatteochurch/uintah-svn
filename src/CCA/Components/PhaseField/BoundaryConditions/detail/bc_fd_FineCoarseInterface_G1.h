@@ -278,12 +278,14 @@ public: // VIEW METHODS
             if ( use_ghosts ) l[D] -= GN;
         }
 
+        if ( use_ghosts )
+        {
+            if ( C2F & FC::FCNew )
+                m_coarse_interp->set ( dw->getOtherDataWarehouse ( Task::NewDW ), level, l, h, use_ghosts );
+            else
+                m_coarse_interp->set ( dw, level, l, h, use_ghosts );
+        }
         m_support.emplace_back ( l, h );
-
-        if ( C2F & FC::FCNew )
-            m_coarse_interp->set ( dw->getOtherDataWarehouse ( Task::NewDW ), level, l, h );
-        else
-            m_coarse_interp->set ( dw, level, l, h );
     };
 
     /**

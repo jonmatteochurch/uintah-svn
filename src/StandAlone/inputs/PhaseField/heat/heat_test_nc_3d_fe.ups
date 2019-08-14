@@ -26,7 +26,7 @@
             <Box label="1">
                 <lower>[  0.,  0.,  0.]</lower>
                 <upper>[ 32., 32., 32.]</upper>
-                <patches>[4,4,1]</patches>
+                <patches>[2,2,1]</patches>
             </Box>
 
             <spacing>[1.,1.,1.]</spacing>

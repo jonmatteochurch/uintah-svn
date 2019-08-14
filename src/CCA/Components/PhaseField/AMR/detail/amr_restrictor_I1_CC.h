@@ -257,7 +257,8 @@ public: // VIEW METHODS
      * @param high past the end index for the coarse region
      * @param use_ghosts if ghosts value are to be retrieved (must be false)
      */
-    virtual void set (
+    virtual void
+    set (
         DataWarehouse * dw,
         const Level * level,
         const IntVector & low,

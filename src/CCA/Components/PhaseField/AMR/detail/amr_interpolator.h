@@ -103,7 +103,7 @@ public:
     )
     {
         for ( size_t i = 0; i < N; ++i )
-            this->m_view_ptr[i] = new View ( label[i], subproblems_label, material );
+            this->m_view_ptr[i] = scinew View ( label[i], subproblems_label, material );
     }
 
     /**
@@ -128,7 +128,7 @@ public:
     )
     {
         for ( size_t i = 0; i < N; ++i )
-            this->m_view_ptr[i] = new View ( dw, label[i], material, subproblems_label, patch, use_ghosts );
+            this->m_view_ptr[i] = scinew View ( dw, label[i], material, subproblems_label, patch, use_ghosts );
     }
 
     /// Destructor

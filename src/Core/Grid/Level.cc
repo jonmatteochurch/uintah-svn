@@ -353,8 +353,8 @@ Level::computeVariableExtents( const TypeDescription::Type   type
 
   switch( type ) {
     case TypeDescription::CCVariable :
+    case TypeDescription::CCSubProblems:
     case TypeDescription::ParticleVariable :
-    case TypeDescription::SubProblems:
       lo = CCLo;
       hi = CCHi;
       break;
@@ -371,6 +371,7 @@ Level::computeVariableExtents( const TypeDescription::Type   type
       hi = CCHi + ( IntVector(0, 0, 1) * not_periodic );
       break;
     case TypeDescription::NCVariable :
+    case TypeDescription::NCSubProblems:
       // Dav's fix: findInteriorCellIndexRange( lo, hi );
       findNodeIndexRange(lo, hi);
       break;

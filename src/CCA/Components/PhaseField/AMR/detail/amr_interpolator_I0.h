@@ -184,7 +184,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
         m_level_fine ( patch->getLevel() ),
         m_level_coarse ( m_level_fine->getCoarserLevel().get_rep() )
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" );
+        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts on patches" );
         m_support.emplace_back ( DWInterface<VAR, DIM>::get_low ( patch ), DWInterface<VAR, DIM>::get_high ( patch ) );
     }
 
@@ -221,7 +221,7 @@ public: // VIEW METHODS
         bool use_ghosts = use_ghosts_dflt
     ) override
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" );
+        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts on patches" );
         m_support.clear();
         m_view_coarse->set ( dw, patch );
         m_level_fine = patch->getLevel();
@@ -240,17 +240,17 @@ public: // VIEW METHODS
      * @param level level of the fine region
      * @param low start index for the fine region
      * @param high past the end index for the fine region
-     * @param use_ghosts if ghosts value are to be retrieved (must be false)
+     * @param use_ghosts if ghosts value are to be retrieved (since interpolation order is 0 it is unused)
      */
-    virtual void set (
+    virtual void
+    set (
         DataWarehouse * dw,
         const Level * level,
         const IntVector & low,
         const IntVector & high,
-        bool use_ghosts = use_ghosts_dflt
+        bool _DOXYARG(use_ghosts) = use_ghosts_dflt
     ) override
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" );
         m_support.clear();
         m_view_coarse->set ( dw, level, low, high );
         m_level_fine = level;

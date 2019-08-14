@@ -34,7 +34,7 @@ namespace Uintah {
 namespace PhaseField {
 
 /// @cond DOXYIGNORE
-Dout  g_subproblems_dbg ( "setGhostRegion", "SubProblems", "report when foreign subproblems are added to list" , true );
+Dout  g_subproblems_dbg ( "setGhostRegion", "SubProblems", "report when foreign subproblems are added to list" , false );
 /// @endcond
 
 } // namespace PhaseField

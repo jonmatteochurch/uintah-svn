@@ -10,7 +10,7 @@
         <delt>.1</delt>
         <alpha>1.</alpha>
         <test>true</test>
-        <verbosity>4</verbosity>
+        <verbosity>0</verbosity>
         <refine_threshold>0.0475</refine_threshold>
     </PhaseField>
 <!--__________________________________-->

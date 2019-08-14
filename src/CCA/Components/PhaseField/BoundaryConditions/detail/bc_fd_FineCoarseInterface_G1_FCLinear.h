@@ -316,7 +316,10 @@ public: // VIEW METHODS
         m_level_coarse = level->getCoarserLevel().get_rep();
         m_h = level->dCell();
 
-        m_coarse_view->set ( dw, level, l, h );
+        if ( use_ghosts )
+        {
+            m_coarse_view->set ( dw, level, l, h );
+        }
     };
 
     /**

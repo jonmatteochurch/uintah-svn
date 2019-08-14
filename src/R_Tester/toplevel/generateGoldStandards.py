@@ -171,7 +171,7 @@ def generateGS() :
         if debug_build :
             maxAllowRunTime = 1*60   # 30 minutes
         else:
-            maxAllowRunTime = 1*60   # 15 minutes
+            maxAllowRunTime = 2*60   # 15 minutes
 
         resource.setrlimit(resource.RLIMIT_CPU, (maxAllowRunTime,maxAllowRunTime) )
 

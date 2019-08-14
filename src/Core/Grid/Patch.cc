@@ -1646,8 +1646,10 @@ Patch::VariableBasis Patch::translateTypeToBasis(Uintah::TypeDescription::Type t
 {
   switch(type){
   case TypeDescription::CCVariable:
+  case TypeDescription::CCSubProblems:
     return CellBased;
   case TypeDescription::NCVariable:
+  case TypeDescription::NCSubProblems:
     return NodeBased;
   case TypeDescription::SFCXVariable:
     return XFaceBased;
@@ -1657,7 +1659,6 @@ Patch::VariableBasis Patch::translateTypeToBasis(Uintah::TypeDescription::Type t
     return ZFaceBased;
   case TypeDescription::ParticleVariable:
   case TypeDescription::PerPatch:
-  case TypeDescription::SubProblems:
   case TypeDescription::SoleVariable:
     return CellBased;
   default:

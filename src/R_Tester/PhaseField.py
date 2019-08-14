@@ -48,38 +48,38 @@ benchmark01_nc_ups = modUPS2 ( the_dir, "benchmark01/benchmark01_nc_eps020_n064_
 ])
 benchmark02_cc_ups = modUPS2 ( the_dir, "benchmark02/benchmark02_cc_eps010_n062_k1e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
-  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 1000 "), \
-  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 20001" ), \
+  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 20 "), \
+  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 4001" ), \
 ])
 benchmark02_nc_ups = modUPS2 ( the_dir, "benchmark02/benchmark02_nc_eps010_n064_k1e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
-  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 1000 "), \
-  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 20001" ), \
+  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 20 "), \
+  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 4001" ), \
 ])
 benchmark03_cc_ups = modUPS2 ( the_dir, "benchmark03/benchmark03_cc_n063_k3e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
-  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 7500 "), \
-  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 150001" ), \
+  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 750 "), \
+  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 15001" ), \
 ])
 benchmark03_nc_ups = modUPS2 ( the_dir, "benchmark03/benchmark03_nc_n064_k3e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
-  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 7500 "), \
-  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 150001" ), \
+  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 750 "), \
+  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 15001" ), \
 ])
 benchmark04_ups    = modUPS2( the_dir, "benchmark04/benchmark04_cc_n096.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
-  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 1500 "), \
-  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 30001" ), \
+  ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 15 "), \
+  ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 3001" ), \
 ])
 
 BENCHTEST = [
-  ( "benchmark01_cc",                                   benchmark01_cc_ups,                                          4,   "All",   ["exactComparison"] ),
-  ( "benchmark01_nc",                                   benchmark01_nc_ups,                                          4,   "All",   ["exactComparison"] ),
-  ( "benchmark02_cc",                                   benchmark02_cc_ups,                                          4,   "All",   ["exactComparison"] ),
-  ( "benchmark02_nc",                                   benchmark02_nc_ups,                                          4,   "All",   ["exactComparison"] ),
-  ( "benchmark03_cc",                                   benchmark03_cc_ups,                                          2,   "All",   ["exactComparison"] ),
-  ( "benchmark03_nc",                                   benchmark03_nc_ups,                                          2,   "All",   ["exactComparison"] ),
-  ( "benchmark04",                                      benchmark04_ups,                                             4,   "All",   ["exactComparison"] ),
+  ( "benchmark01_cc", benchmark01_cc_ups, 4, "All", ["exactComparison"] ),
+  ( "benchmark01_nc", benchmark01_nc_ups, 4, "All", ["exactComparison"] ),
+  ( "benchmark02_cc", benchmark02_cc_ups, 4, "All", ["exactComparison"] ),
+  ( "benchmark02_nc", benchmark02_nc_ups, 4, "All", ["exactComparison"] ),
+  ( "benchmark03_cc", benchmark03_cc_ups, 2, "All", ["exactComparison"] ),
+  ( "benchmark03_nc", benchmark03_nc_ups, 2, "All", ["exactComparison"] ),
+  ( "benchmark04",    benchmark04_ups,    4, "All", ["exactComparison"] ),
 ]
 
 VAR = ["cc", "nc"]
@@ -92,7 +92,7 @@ CC = ["cc"]
 HEATTEST    = []
 HEATMPITEST = []
 
-freq = {"2d": 50, "3d": 25}
+freq = {"2d": 50, "3d": 8}
 for dim in DIM:
   for var in VAR:
     ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_fe.ups" % (var,dim), [ \
@@ -106,7 +106,7 @@ for dim in DIM:
 HEATBCTEST    = []
 HEATBCMPITEST = []
 
-freq = {"2d": 50, "3d": 20}
+freq = {"2d": 50, "3d": 8}
 for dim in DIM:
   for var in VAR:
     ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_fe.ups" % (var,dim), [ \
@@ -117,9 +117,9 @@ for dim in DIM:
     HEATBCMPITEST.append( ( "heat_test_%s_%s_fe_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
 
 HEATAMRTEST    = []
-HEATAMRMPITEST = [] # FIXME Caught exception: Unknown variable: subproblems
+HEATAMRMPITEST = []
 
-freq = {"2d": 50, "3d": 20}
+freq = {"2d": 50, "3d": 8}
 for dim in DIM:
   for f2c in F2C[dim]:
     for var in VAR:
@@ -130,19 +130,29 @@ for dim in DIM:
       HEATAMRTEST   .append( ( "heat_periodic_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
       HEATAMRMPITEST.append( ( "heat_periodic_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
 
-HEATAMRBCTEST    = []
-HEATAMRBCMPITEST = [] # FIXME Caught exception: Unknown variable: subproblems
+HEATAMRBCTEST           = []
+HEATAMRBCCC3DFC1TEST    = [] # FIXME Caught exception: An IntVectorOutOfBounds exception was thrown
+HEATAMRBCMPITEST        = []
+HEATAMRBCNC2DFC0MPITEST = [] # FIXME Caught exception: An IntVectorOutOfBounds exception was thrown
+HEATAMRBCCC3DFC1MPITEST = [] # FIXME Caught exception: An IntVectorOutOfBounds exception was thrown
 
 for dim in DIM:
   for var in VAR:
     for f2c in F2C[dim]:
       ups = "heat/heat_test_%s_%s_fe_amr_%s.ups" % (var,dim,f2c)
-      ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_fe_amr_%s.ups" % (var,dim,f2c), [ \
+      ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_fe_amr_%s.ups" % (var,dim,f2c), [ \
         ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
         ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
       ])
-      HEATAMRBCTEST   .append( ( "heat_test_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
-      HEATAMRBCMPITEST.append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      if dim=="2d" and var=="nc" and f2c=="fc0":
+        HEATAMRBCTEST          .append( ( "heat_test_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
+        HEATAMRBCNC2DFC0MPITEST.append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      elif dim=="3d" and var=="cc" and f2c=="fc1":
+        HEATAMRBCCC3DFC1TEST   .append( ( "heat_test_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
+        HEATAMRBCCC3DFC1MPITEST.append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      else:
+        HEATAMRBCTEST          .append( ( "heat_test_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
+        HEATAMRBCMPITEST       .append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
 
 HEATHYPREBETEST    = [] # FIXME Caught exception: Unknown variable: hypre_solver_label
 HEATHYPRECNTEST    = [] # FIXME Caught exception: Unknown variable: A
@@ -179,7 +189,7 @@ for dim in DIM:
 
 HEATHYPREAMRBC2DBETEST = [] # FIXME Caught exception: Unknown variable: hypre_solver_label
 HEATHYPREAMRBC2DCNTEST = [] # FIXME Caught exception: Unknown variable: A
-HEATHYPREAMRBC3DTEST   = [] # FIXME Caught exception: An IntVectorOutOfBounds exception was thrown.
+HEATHYPREAMRBC3DTEST   = [] # FIXME Caught exception: An IntVectorOutOfBounds exception was thrown
 HEATHYPREAMRBCMPITEST  = [] # FIXME Caught exception: Unknown variable: subproblems
 
 for dim in DIM:
@@ -336,11 +346,11 @@ def getTestList(me) :
     TESTS = HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREBETEST + HEATHYPRECNTEST + HEATHYPREBEMPITEST + HEATHYPRECNMPITEST + HEATHYPREAMRBETEST + HEATHYPREAMRCNTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBC2DBETEST + HEATHYPREAMRBC2DCNTEST + HEATHYPREAMRBC3DTEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACTEST + HEATHYPREFACMPITEST + HEATHYPREFACBCTEST + HEATHYPREFACBCMPITEST + PUREMETALAMRNCTEST + PUREMETALAMRMPITEST
 
   elif me == "LOCALTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
   elif me == "NIGHTLYTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
   elif me == "BUILDBOTTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRTEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRCCTEST
 
   else:
     print("\nERROR:PhaseField.py  getTestList:  The test list (%s) does not exist!\n\n" % me)

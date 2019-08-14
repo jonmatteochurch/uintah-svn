@@ -81,7 +81,7 @@ namespace Uintah {
 // These are used externally, keep them visible outside this unit
   Dout g_task_order( "TaskOrder", "MPIScheduler", "task order debug stream", false );
   Dout g_task_dbg(   "TaskDBG"  , "MPIScheduler", "output each task name as it begins/ends or when threaded, ready", false );
-  Dout g_task_run(   "TaskRun"  , "MPIScheduler", "output each task name as it runs", true );
+  Dout g_task_run(   "TaskRun"  , "MPIScheduler", "output each task name as it runs", false );
   Dout g_mpi_dbg(    "MPIDBG"   , "MPIScheduler", "MPI debug stream", false );
   Dout g_exec_out(   "ExecOut"  , "MPIScheduler", "exec debug stream", false );
 
@@ -98,7 +98,7 @@ namespace {
   Uintah::MasterLock g_recv_time_mutex{};         // for reporting thread-safe MPI recv times
   Uintah::MasterLock g_wait_time_mutex{};         // for reporting thread-safe MPI wait times
   
-  Dout g_dbg(          "MPIScheduler_DBG"       , "MPIScheduler", "general dbg info for MPIScheduler", true );
+  Dout g_dbg(          "MPIScheduler_DBG"       , "MPIScheduler", "general dbg info for MPIScheduler", false );
   Dout g_send_stats(   "MPISendStats"           , "MPIScheduler", "MPI send statistics, num_sends, send volume", false );
   Dout g_reductions(   "ReductionTasks"         , "MPIScheduler", "rank-0 reports each reduction task", false );
   Dout g_time_out(     "MPIScheduler_TimingsOut", "MPIScheduler", "write MPI timing files: timingstats.avg, timingstats.max", false );

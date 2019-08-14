@@ -107,7 +107,7 @@ namespace {
   using  delsetDB_monitor      = Uintah::CrowdMonitor<delsetDB_tag>;
   using  task_access_monitor   = Uintah::CrowdMonitor<task_access_tag>;
 
-  Dout  g_foreign_dbg(    "ForeignVariables"   , "OnDemandDataWarehouse", "report when foreign variable is added to DW" , true );
+  Dout  g_foreign_dbg(    "ForeignVariables"   , "OnDemandDataWarehouse", "report when foreign variable is added to DW" , false );
   Dout  g_dw_get_put_dbg( "OnDemandDW"         , "OnDemandDataWarehouse", "report general dbg info for OnDemandDW"      , false );
   Dout  g_particles_dbg(  "DWParticleExchanges", "OnDemandDataWarehouse", "report MPI particle exchanges (sends/recvs)" , false );
   Dout  g_check_accesses( "DWCheckTaskAccess"  , "OnDemandDataWarehouse", "report on task DW access checking (DBG-only)", false );
@@ -820,7 +820,8 @@ OnDemandDataWarehouse::sendMPI(       DependencyBatch       * batch
       buffer.addSendlist( var->getRefCounted() );
       break;
     }
-    case TypeDescription::SubProblems : {
+    case TypeDescription::CCSubProblems :
+    case TypeDescription::NCSubProblems : {
       if (this==old_dw) {
         DOUT(g_foreign_dbg, d_myworld->myRank() << " sendMPI - SubProblems on ghost layers should be already available in OldDW");
         return;
@@ -954,7 +955,8 @@ OnDemandDataWarehouse::recvMPI(       DependencyBatch       * batch
 
       break;
     }
-    case TypeDescription::SubProblems : {
+    case TypeDescription::CCSubProblems :
+    case TypeDescription::NCSubProblems : {
       SubProblemsVariableBase * var = nullptr;
 
       if (this==old_dw) {
@@ -2689,9 +2691,10 @@ OnDemandDataWarehouse::emit(       OutputContext & oc
         break;
       }
 
+      case TypeDescription::CCSubProblems :
+      case TypeDescription::NCSubProblems :
       case TypeDescription::ParticleVariable :
       case TypeDescription::PerPatch :
-      case TypeDescription::SubProblems :
       default : {
         if (m_var_DB.exists(label, matlIndex, patch)) {
           var = m_var_DB.get(label, matlIndex, patch);
@@ -2898,8 +2901,9 @@ OnDemandDataWarehouse::decrementScrubCount( const VarLabel * var
     case TypeDescription::SFCXVariable :
     case TypeDescription::SFCYVariable :
     case TypeDescription::SFCZVariable :
+    case TypeDescription::CCSubProblems :
+    case TypeDescription::NCSubProblems :
     case TypeDescription::PerPatch :
-    case TypeDescription::SubProblems :
     case TypeDescription::ParticleVariable : {
       count = m_var_DB.decrementScrubCount(var, matlIndex, patch);
       break;
@@ -2943,8 +2947,9 @@ OnDemandDataWarehouse::setScrubCount( const VarLabel * var
     case TypeDescription::SFCXVariable :
     case TypeDescription::SFCYVariable :
     case TypeDescription::SFCZVariable :
+    case TypeDescription::CCSubProblems :
+    case TypeDescription::NCSubProblems :
     case TypeDescription::PerPatch :
-    case TypeDescription::SubProblems :
     case TypeDescription::ParticleVariable : {
       m_var_DB.setScrubCount(var, matlIndex, patch, count);
       break;
@@ -2976,8 +2981,9 @@ OnDemandDataWarehouse::scrub( const VarLabel * var
     case TypeDescription::SFCXVariable :
     case TypeDescription::SFCYVariable :
     case TypeDescription::SFCZVariable :
+    case TypeDescription::CCSubProblems :
+    case TypeDescription::NCSubProblems :
     case TypeDescription::PerPatch :
-    case TypeDescription::SubProblems :
     case TypeDescription::ParticleVariable : {
       m_var_DB.scrub(var, matlIndex, patch);
       break;
@@ -3390,7 +3396,8 @@ OnDemandDataWarehouse::transferFrom(       DataWarehouse  * from
           }
           break;
         }
-        case TypeDescription::SubProblems : {
+        case TypeDescription::CCSubProblems :
+        case TypeDescription::NCSubProblems : {
           if ( !fromDW->m_var_DB.exists( label, matl, patch ) ) {
             SCI_THROW(UnknownVariable(label->getName(), getID(), patch, matl, "in transferFrom", __FILE__, __LINE__ ) );
           }
@@ -3436,7 +3443,8 @@ OnDemandDataWarehouse::transferForeignFrom(       DataWarehouse * from
   ASSERT( fromDW != nullptr );
   ASSERT( !m_finalized );
   switch ( label->typeDescription()->getType() ) {
-    case TypeDescription::SubProblems: {
+    case TypeDescription::CCSubProblems:
+    case TypeDescription::NCSubProblems: {
       std::vector<const Patch*> domlist;
       std::vector<int> matlist;
       std::vector<const Variable*> varlist;

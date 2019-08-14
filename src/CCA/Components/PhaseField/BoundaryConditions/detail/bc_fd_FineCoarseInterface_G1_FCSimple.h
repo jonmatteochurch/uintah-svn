@@ -314,7 +314,10 @@ public: // VIEW METHODS
         m_level_coarse = level->getCoarserLevel().get_rep();
         m_h = level->dCell();
 
-        m_coarse_view->set ( dw, level, low - get_dim<DIM>::unit_vector(), high + get_dim<DIM>::unit_vector() );
+        if ( use_ghosts )
+        {
+            m_coarse_view->set ( dw, level, low - get_dim<DIM>::unit_vector(), high + get_dim<DIM>::unit_vector() );
+        }
     };
 
     /**

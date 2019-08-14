@@ -123,43 +123,6 @@ struct BCInterface
         return problems;
     }
 
-    /**
-     * @brief Partition a ghost layer into a list of Problems
-     *
-     * Partition a ghost layer accordingly to given boundary conditions
-     *
-     * @tparam Field list of type of fields (ScalarField < T > or VectorField < T, N >) of the Problems
-     * @param labels list of lables for each variable of the problem
-     * @param subproblems_label label of subproblems in the DataWarehouse
-     * @param material problem material index
-     * @param patch grid patch at the ghost region to be partitioned
-     * @param low lower bound of the ghost region to partition
-     * @param high higher bound of the ghost region to partition
-     * @param bcs list of arrays of BC info for each one of face of the patch for each one of the problem labels
-     * @param flags array of flags to check if any bc is applied to each one of faces
-     * @return list of partitioned Problems
-     */
-    template <typename... Field>
-    static std::list < Problem<VAR, STN, Field...> >
-    partition_ghost_layer (
-        const typename Field::label_type & ...  labels,
-        const VarLabel * subproblems_label,
-        int material,
-        const Patch * patch,
-        const IntVector & low,
-        const IntVector & high,
-        std::array< BCInfo<Field>, get_dim<DIM>::face_end >... bcs,
-        const std::array<bool, 2 * DIM> & flags
-    )
-    {
-        // output container
-        std::list < Problem<VAR, STN, Field...> > problems;
-
-        // start partitioning from the highest_dir detail::partition_range iterates on lower directions
-        detail::partition_range < DIR, GN, 0, Field... >::template exec<VAR, STN> ( labels..., subproblems_label, material, patch->getLevel(), low, high, {}, bcs..., flags, problems );
-        return problems;
-    }
-
 }; // struct BCInterface
 
 } // namespace PhaseField

@@ -229,7 +229,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
         m_level_fine ( patch->getLevel() ),
         m_level_coarse ( m_level_fine->getCoarserLevel().get_rep() )
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" );
+        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts on patches" );
         set ( dw, patch );
     }
 
@@ -266,7 +266,7 @@ public: // VIEW METHODS
         bool use_ghosts = use_ghosts_dflt
     ) override
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" );
+        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts on patches" );
         set ( dw, patch->getLevel(), DWInterface<Problem::VAR, Problem::DIM>::get_low ( patch ), DWInterface<Problem::VAR, Problem::DIM>::get_high ( patch ) );
     }
 
@@ -281,7 +281,7 @@ public: // VIEW METHODS
      * @param level level of the fine region
      * @param low start index for the fine region
      * @param high past the end index for the fine region
-     * @param use_ghosts if ghosts value are to be retrieved (must be false)
+     * @param use_ghosts if ghosts value are to be retrieved
      */
     virtual void
     set (
@@ -292,11 +292,10 @@ public: // VIEW METHODS
         bool use_ghosts = use_ghosts_dflt
     ) override
     {
-        ASSERTMSG ( !use_ghosts, "amr_interpolator doesn't support ghosts" )
         m_support.clear();
         m_level_fine = level;
         m_level_coarse = m_level_fine->getCoarserLevel().get_rep();
-        Region fine_region = compute_fine_region ( low, high );
+        Region fine_region = use_ghosts ? compute_fine_region ( low, high ) : Region(low, high);
         m_view_coarse.set ( dw, level, fine_region.low(), fine_region.high() );
         m_support.emplace_back ( low, high );
     };

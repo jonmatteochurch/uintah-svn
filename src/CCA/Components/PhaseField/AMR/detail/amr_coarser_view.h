@@ -141,7 +141,7 @@ private: // METHODS
 
             // need to check which BC applies on coarse level
             // get coarse subproblems (all logic for handling correctly all possible coarse geometries is already there)
-            SubProblems<Problem> subproblems_coarse ( dw->getOtherDataWarehouse ( Task::NewDW ), m_subproblems_label, m_material, patch_coarse );
+            SubProblems<Problem> subproblems_coarse ( dw, m_subproblems_label, m_material, patch_coarse );
 
             for ( const auto & p : subproblems_coarse )
             {

@@ -77,6 +77,9 @@ public: // STATIC MEMBERS
     /// Problem number of faces
     static constexpr size_t NF = 2 * DIM;
 
+    /// SubProblems TypeDescription::Type value
+    static constexpr TypeDescription::Type TD = (VAR==CC) ? TypeDescription::CCSubProblems : TypeDescription::NCSubProblems;
+
 private: // TYPES
 
     /**
@@ -505,7 +508,7 @@ public: // STATIC METHODS
     {
         if ( !td )
         {
-            td = scinew TypeDescription ( TypeDescription::SubProblems, "SubProblems", &maker, MpiData::getTypeDescription() );
+            td = scinew TypeDescription ( TD, "SubProblems", &maker, MpiData::getTypeDescription() );
         }
         return td;
     }
@@ -556,44 +559,60 @@ private:
         // this should by set when OnDemandDataWarehouse::recvMPI calls allocate
         ASSERT ( m_boundary_labels );
 
-        int world_rank;
-        MPI_Comm_rank ( MPI_COMM_WORLD, &world_rank );
+        DOUTR ( g_subproblems_dbg, "processing subproblem on ghost region " << low << high << " from patch " << *m_patch );
+        auto problems = BCInterface<VAR, STN>::template partition_patch <Field...> ( std::get<I> ( *m_boundary_labels )..., m_subproblems_label, *m_material, m_patch, std::get<I> ( m_mpi_data->m_bcs )..., m_mpi_data->m_flags );
+        auto p1 = problems.begin();
+        while ( p1 != problems.end() )
+        {
+            if ( p1->restrict_range( low, high ) )
+            {
+                ++p1;
+            }
+            else
+            {
+                DOUTR ( g_subproblems_dbg,  "   not adding problem " << *p1 << " because out of ghost region limits" );
+                p1 = problems.erase ( p1 );
+            }
+        }
+
         if ( m_list )
         {
-            auto problems = BCInterface<VAR, STN>::template partition_ghost_layer <Field...> (
-                std::get<I> ( *m_boundary_labels )...,
-                m_subproblems_label,
-                *m_material,
-                m_patch,
-                low,
-                high,
-                std::get<I> ( m_mpi_data->m_bcs )..., m_mpi_data->m_flags );
-
-            for ( auto p1 = problems.begin(); p1 != problems.end(); ++p1 )
+            if ( !m_list->empty() )
             {
-                for ( auto p0 = m_list->begin(); p0 != m_list->end(); ++p0 )
+                auto p1 = problems.begin();
+                auto p0 = m_list->begin();
+                while ( p1 != problems.end() )
                 {
+                    if ( p0 == m_list->end() )
+                    {
+                        ++p1;
+                        p0 = m_list->begin();
+                        continue;
+                    }
                     if ( p0->get_low() <= p1->get_low() && p1->get_high() <= p0->get_high() )
                     {
                         // no need to add to list
-                        DOUT ( g_subproblems_dbg, world_rank << ": not adding problem " << *p1 << " because " << *p0 << " already added" );
-                        problems.erase ( p1 );
-                        break;
+                        DOUTR ( g_subproblems_dbg,  "   not adding problem " << *p1 << " because " << *p0 << " already added" );
+                        p1 = problems.erase ( p1 );
+                        p0 = m_list->begin();
                     }
                     else if ( p1->get_low() <= p0->get_low() && p0->get_high() <= p1->get_high() )
                     {
                         // no need to add to list
-                        DOUT ( g_subproblems_dbg, world_rank << ": removing problem " << *p0 << " because " << *p1 << " is being added" );
-                        m_list->erase ( p0 );
-                        break;
+                        DOUTR ( g_subproblems_dbg,  "   removing problem " << *p0 << " because " << *p1 << " is being added" );
+                        p0 = m_list->erase ( p0 );
+                    }
+                    else
+                    {
+                        ++p0;
                     }
                 }
             }
             if ( !problems.empty() )
             {
-                DOUT ( g_subproblems_dbg, world_rank << ": added more problems" );
+                DOUTR ( g_subproblems_dbg, "added more problems" );
                 for ( const auto & p : problems )
-                    DOUT ( g_subproblems_dbg, world_rank << ":\tadded problem " << p );
+                    DOUTR ( g_subproblems_dbg, "   added problem " << p );
 
                 m_list->splice ( m_list->begin(), problems );
             }
@@ -601,11 +620,11 @@ private:
         else
         {
             m_list = scinew ProblemList ();
-            m_list->splice ( m_list->begin(), BCInterface<VAR, STN>::template partition_ghost_layer <Field...> ( std::get<I> ( *m_boundary_labels )..., m_subproblems_label, *m_material, m_patch, low, high, std::get<I> ( m_mpi_data->m_bcs )..., m_mpi_data->m_flags ) );
+            m_list->splice ( m_list->begin(), problems );
 
-            DOUT ( g_subproblems_dbg, world_rank << ": added problems" );
+            DOUTR ( g_subproblems_dbg, "added problems" );
             for ( const auto & p : *this )
-                DOUT ( g_subproblems_dbg, world_rank << ":\tadded problem " << p );
+                DOUTR ( g_subproblems_dbg, "   added problem " << p );
         }
     }
 
@@ -825,19 +844,17 @@ public: // SUBPROBLEMSVARIABLEBASE METHODS
         ASSERT ( m_material && m_patch );
         ASSERT ( m_mpi_data );
 
-        int world_rank;
-        MPI_Comm_rank ( MPI_COMM_WORLD, &world_rank );
         for ( auto & region : m_ghost_regions )
             if ( region.getLow() <= low && high <= region.getHigh() )
             {
                 // no need to add to list
-                DOUT ( g_subproblems_dbg, world_rank << ": not adding ghost region " << low << high << " because " << region << " already added" );
+                DOUTR ( g_subproblems_dbg, "not adding ghost region " << low << high << " because " << region << " already added" );
                 return;
             }
             else if ( low <= region.getLow() && region.getHigh() <= high )
             {
                 // replace this with other
-                DOUT ( g_subproblems_dbg, world_rank << ": modify ghost region " << region << " because ghost region " << low << high << " includes it" );
+                DOUTR ( g_subproblems_dbg, "modifying ghost region " << region << " because ghost region " << low << high << " includes it" );
 
                 region.low() = low;
                 region.high() = high;

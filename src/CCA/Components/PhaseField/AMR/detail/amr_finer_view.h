@@ -137,7 +137,7 @@ private: // METHODS
 
             // need to check which BC applies on finer level
             // get fine subproblems (all logic for handling correctly all possible fine geometries is already there)
-            SubProblems<Problem> subproblems_fine ( dw->getOtherDataWarehouse ( Task::NewDW ), m_subproblems_label, m_material, patch_fine );
+            SubProblems<Problem> subproblems_fine ( dw, m_subproblems_label, m_material, patch_fine );
 
             for ( const auto & p : subproblems_fine )
             {

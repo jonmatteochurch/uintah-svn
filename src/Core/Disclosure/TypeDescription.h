@@ -68,7 +68,8 @@ public:
   ,  SFCYVariable
   ,  SFCZVariable
   ,  ParticleVariable
-  ,  SubProblems
+  ,  CCSubProblems
+  ,  NCSubProblems
   ,  PerPatch
   ,  Point
   ,  Vector

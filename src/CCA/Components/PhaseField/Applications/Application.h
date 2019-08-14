@@ -149,7 +149,8 @@ public: // CONSTRUCTORS/DESTRUCTOR
         m_dbg_lvl3 ( verbosity > 2 ),
         m_dbg_lvl4 ( verbosity > 3 ),
         m_boundary_labels ( nullptr ),
-        m_subproblems_label ( nullptr )
+        m_subproblems_label ( nullptr ),
+        m_c2f ( nullptr )
     {
         if ( use_subprblems )
             m_subproblems_label = VarLabel::create ( "subproblems", SubProblems< Problem<VAR, STN, Field... > >::getTypeDescription() );
@@ -248,14 +249,14 @@ protected: // SCHEDULINGS
     {
         ApplicationCommon::scheduleInitializeSystemVars ( grid, perProcPatchSet, scheduler );
 
-        // set behaviour noCheckpoint
-        scheduler->overrideVariableBehavior ( m_subproblems_label->getName(), false, false, false, false, true );
-
-        ASSERTMSG ( m_boundary_labels, "Application uses subproblems. Missing call to setBoundaryVariables()" );
-
         if ( use_subprblems )
         {
+            ASSERTMSG ( m_boundary_labels, "Application uses subproblems. Missing call to setBoundaryVariables()" );
+
+            // set behaviour noCheckpoint
             cout_scheduling << "scheduleInitializeSystemVars" << std::endl;
+
+            scheduler->overrideVariableBehavior ( m_subproblems_label->getName(), false, false, false, false, true );
 
             for ( int idx = 0; idx < grid->numLevels(); ++idx )
             {
@@ -395,7 +396,7 @@ protected: // TASKS
         int myrank = myworld->myRank();
         const Level * level = getLevel ( patches );
         DOUT ( m_dbg_lvl1, myrank << "==== Application::task_time_advance_subproblems ====" );
-        DOUT ( m_dbg_lvl2, myrank << "== Trasfer From OldDW Patches: " << *patches << " Level: " << level->getIndex() << " Materials: " << *matls );
+        DOUT ( m_dbg_lvl2, myrank << "== Transfer From OldDW Patches: " << *patches << " Level: " << level->getIndex() << " Materials: " << *matls );
         dw_new->transferFrom ( dw_old, m_subproblems_label, patches, matls );
 
         DOUT ( m_dbg_lvl2, myrank );
@@ -426,7 +427,7 @@ protected: // TASKS
         int myrank = myworld->myRank();
         if ( myworld->nRanks() > 1 ) // look for foreign subproblems
         {
-            DOUT ( m_dbg_lvl2, myrank << "== Trasfer Foreign Vars From OldDW: " );
+            DOUT ( m_dbg_lvl2, myrank << "== Transfer Foreign Vars From OldDW: " );
             dw_new->transferForeignFrom ( dw_old, m_subproblems_label );
         }
 
