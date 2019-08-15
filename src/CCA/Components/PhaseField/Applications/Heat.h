@@ -1811,6 +1811,13 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives (
         task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->requires ( Task::OldDW, u_label, FGT, FGN );
         task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+#ifdef HAVE_HYPRE
+        if ( ( time_scheme & TS::Implicit ) && ( solver->getName() == "hypre" ) )
+        {
+            task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+            task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        }
+#endif // HAVE_HYPRE
         for ( size_t D = 0; D < DIM; ++D )
         {
             task->computes ( du_label[D] );
@@ -3299,4 +3306,3 @@ Heat<VAR, DIM, STN, AMR>::error_estimate_solution
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_PhaseField_Applications_Heat_h
-// 
