@@ -318,14 +318,8 @@ public: // VIEW METHODS
         const IntVector & id
     ) const override
     {
-        const IntVector low
-        {
-            m_support.front().getLow()
-        };
-        const IntVector high
-        {
-            m_support.front().getHigh()
-        };
+        const IntVector low { m_support.front().getLow() };
+        const IntVector high { m_support.front().getHigh() };
         return ( low[X] <= id[X] && id[X] < high[X] ) &&
                ( low[Y] <= id[Y] && id[Y] < high[Y] ) &&
                ( low[Z] <= id[Z] && id[Z] < high[Z] );
@@ -359,7 +353,8 @@ public: // VIEW METHODS
         const IntVector & id_fine
     ) const override
     {
-        IntVector id_coarse ( AMRInterface<VAR, DIM>::get_coarser ( m_level_fine, id_fine ) );
+        // always using CC since with NC nodes internal to the coarse cell are mapped to its upper vertexr
+        IntVector id_coarse ( AMRInterface<CC, DIM>::get_coarser ( m_level_fine, id_fine ) );
         return coarse_value ( id_coarse );
     }
 

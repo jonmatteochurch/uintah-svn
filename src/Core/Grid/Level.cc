@@ -1386,7 +1386,7 @@ Level::mapCellToFinestNoAdjustments( const IntVector & idx ) const
 //                     |                   |
 //  Fine Node Index    40   41   42   43   44
 //
-//  What is returned   10   10   10   10   11
+//  What is returned   10   11   11   11   11
 
 IntVector
 Level::mapNodeToCoarser( const IntVector & idx ) const

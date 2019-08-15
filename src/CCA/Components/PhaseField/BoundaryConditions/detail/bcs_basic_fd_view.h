@@ -35,6 +35,7 @@
 #include <CCA/Components/PhaseField/DataTypes/Support.h>
 #include <CCA/Components/PhaseField/Views/detail/piecewise_view.h>
 #include <CCA/Components/PhaseField/BoundaryConditions/detail/bc_basic_fd_view.h>
+#include <CCA/Components/PhaseField/BoundaryConditions/detail/bc_vertical_angle_view.h>
 #include <CCA/Components/PhaseField/AMR/detail/amr_interpolator.h>
 
 #include <memory>
@@ -50,7 +51,7 @@ namespace detail
  * @brief Detail implementation of variables wrapper for both basic differential
  * operations over both physical and amr boundaries
  *
- * Group together multiple views (one for eatch edge the boundary belongs to,
+ * Group together multiple views (one for each edge the boundary belongs to,
  * and one for accessing the DataWarehouse on internal indices) and
  * expose the correct implementation of basic differential operations for each
  * direction
@@ -68,7 +69,7 @@ template<typename Field, StnType STN, typename Problem, typename Index, BCF ... 
  * @brief Detail implementation of variables wrapper for both basic differential
  * operations over both physical and amr boundaries  (ScalarField implementation)
  *
- * Group together multiple views (one for eatch edge the boundary belongs to,
+ * Group together multiple views (one for each edge the boundary belongs to,
  * and one for accessing the DataWarehouse on internal indices) and
  * expose the correct implementation of basic differential operations for each
  * direction
@@ -139,6 +140,9 @@ private: // MEMBERS
     /// Inner view to boundary views
     std::tuple < std::unique_ptr < bc_basic_fd_view<Field, STN, VAR, P> > ... > m_bc_view;
 
+    /// Inner vertical angle extrapolator view
+    std::unique_ptr < view<Field> > m_va_view;
+
     /// Region where the view is defined
     Support m_support;
 
@@ -150,24 +154,30 @@ private: // INDEXED CONSTRUCTOR
      * Instantiate a copy of a given view
      *
      * @tparam J indices for boundary views
+     * @tparam FP filtered list of BC, FC, and Patch::Face packs
      * @param unused to allow template argument deduction
      * @param copy source view for copying
      * @param deep if true inner grid variable is copied as well otherwise the
      * same grid variable is referenced
      */
-    template < size_t ... J >
+    template < size_t ... J, BCF... FP >
     bcs_basic_fd_view (
         index_sequence<J...> _DOXYARG ( unused ),
+        integer_sequence<BCF,FP...> _DOXYARG ( unused ),
         const bcs_basic_fd_view * copy,
         bool deep
     ) : piecewise_view<Field> (), // copy is made in this constructor we don't want to duplicate clones
         m_label ( copy->m_label ),
         m_subproblems_label ( copy->m_subproblems_label ),
         m_material ( copy->m_material ),
-        m_dw_view ( dynamic_cast < dw_basic_fd_view < Field, STN, VAR > * > ( copy->m_dw_view->clone ( deep ) ) ), m_fd_view ( DIM, m_dw_view.get () ),
-        m_bc_view { std::unique_ptr < bc_basic_fd_view < Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = dynamic_cast < bc_basic_fd_view<Field, STN, VAR, P> * > ( std::get<J> ( copy->m_bc_view )->clone ( this, deep ) ) ) ) ... }
+        m_dw_view ( dynamic_cast < dw_basic_fd_view < Field, STN, VAR > * > ( copy->m_dw_view->clone ( deep ) ) ),
+        m_fd_view ( DIM, m_dw_view.get () ),
+        m_bc_view { std::unique_ptr < bc_basic_fd_view < Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = dynamic_cast < bc_basic_fd_view<Field, STN, VAR, P> * > ( std::get<J> ( copy->m_bc_view )->clone ( this, deep ) ) ) ) ... },
+        m_va_view ( sizeof...(FP)>1 ? scinew bc_vertical_angle_view < Field, STN, FP... > ( m_dw_view.get(), m_fd_view ) : nullptr )
     {
         std::array<bool, N> {{ push_back_bc<J> () ... }};
+
+        if ( m_va_view ) this->m_views.push_back ( m_va_view.get() );
 
         // dw view has to be last ( when dw has ghost they may overlap physical bc_views
         this->m_views.push_back ( m_dw_view.get() );
@@ -179,6 +189,7 @@ private: // INDEXED CONSTRUCTOR
      * Instantiate a view without gathering info from the DataWarehouse
      *
      * @tparam J indices for boundary views
+     * @tparam FP filtered list of BC, FC, and Patch::Face packs
      * @param unused to allow template argument deduction
      * @param label label of variable in the DataWarehouse
      * @param subproblems_label label of subproblems in the DataWarehouse
@@ -186,9 +197,10 @@ private: // INDEXED CONSTRUCTOR
      * @param level grid level on which data is retrieved
      * @param bcs vector with info on the boundary conditions
      */
-    template < size_t ... J >
+    template < size_t ... J, BCF... FP >
     bcs_basic_fd_view (
         index_sequence<J...> _DOXYARG ( unused ),
+        integer_sequence<BCF,FP...> _DOXYARG ( unused ),
         const typename Field::label_type & label,
         const VarLabel * subproblems_label,
         int material,
@@ -200,9 +212,12 @@ private: // INDEXED CONSTRUCTOR
         m_material ( material ),
         m_dw_view ( scinew dw_basic_fd_view < Field, STN, VAR>  { label, material, level } ),
         m_fd_view ( DIM, m_dw_view.get () ),
-        m_bc_view { std::unique_ptr< bc_basic_fd_view< Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = scinew bc_basic_fd_view<Field, STN, VAR, P> ( this, label, material, level, get_value<J> ( bcs ) ) ) ) ...  }
+        m_bc_view { std::unique_ptr< bc_basic_fd_view< Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = scinew bc_basic_fd_view<Field, STN, VAR, P> ( this, label, material, level, get_value<J> ( bcs ) ) ) ) ...  },
+        m_va_view ( sizeof...(FP)>1 ? scinew bc_vertical_angle_view < Field, STN, FP... > ( m_dw_view.get(), m_fd_view ) : nullptr )
     {
         std::array<bool, N> {{ push_back_bc<J> () ... }};
+
+        if ( m_va_view ) this->m_views.push_back ( m_va_view.get() );
 
         // dw view has to be last ( when dw has ghost they may overlap physical bc_views
         this->m_views.push_back ( m_dw_view.get() );
@@ -344,6 +359,29 @@ private: // SINGLE INDEX METHODS
         return true;
     }
 
+    /**
+     * @brief Set the support for a given region for inner va_view
+     *
+     * @param dw DataWarehouse from which data is retrieved
+     * @param level grid level from which retrieve data
+     * @param low lower bound of the region to retrieve
+     * @param high higher bound of the region to retrieve
+     * @param use_ghosts if ghosts value are to be retrieved
+     * @return to allow calls in initialization lists
+     */
+    void
+    set_va (
+        DataWarehouse * dw,
+        const Level * level,
+        const IntVector & low,
+        const IntVector & high,
+        bool use_ghosts
+    )
+    {
+        m_va_view->set ( dw, level, low, high, use_ghosts );
+        m_support.splice ( m_support.end(), m_va_view->get_support() );
+    }
+
 private: // INDEXED VIEW METHODS
 
     /**
@@ -373,6 +411,7 @@ private: // INDEXED VIEW METHODS
         m_support.clear();
         set_dw ( dw, level, low, high, use_ghosts );
         std::array<bool, N> {{ set_bc<J> ( dw, level, low, high, use_ghosts ) ... }};
+        if (m_va_view)  set_va ( dw, level, low, high, use_ghosts );
     }
 
 protected: // COPY CONSTRUCTOR
@@ -389,7 +428,7 @@ protected: // COPY CONSTRUCTOR
     bcs_basic_fd_view (
         const bcs_basic_fd_view * copy,
         bool deep
-    ) : bcs_basic_fd_view ( make_index_sequence<N> {}, copy, deep )
+    ) : bcs_basic_fd_view ( make_index_sequence<N> {}, filter_bcf<P...> {}, copy, deep )
     {
     }
 
@@ -412,7 +451,7 @@ public: // CONSTRUCTOR
         int material,
         const Level * level,
         const std::vector < BCInfo<Field> > & bcs
-    ) : bcs_basic_fd_view ( make_index_sequence<N> {}, label, subproblems_label, material, level, bcs )
+    ) : bcs_basic_fd_view ( make_index_sequence<N> {}, filter_bcf<P...> {}, label, subproblems_label, material, level, bcs )
     {
     }
 

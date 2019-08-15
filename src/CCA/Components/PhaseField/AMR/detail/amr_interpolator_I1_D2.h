@@ -355,14 +355,8 @@ public: // VIEW METHODS
         const IntVector & id
     ) const override
     {
-        const IntVector low
-        {
-            m_support.front().getLow()
-        };
-        const IntVector high
-        {
-            m_support.front().getHigh()
-        };
+        const IntVector low { m_support.front().getLow() };
+        const IntVector high { m_support.front().getHigh() };
         return ( low[X] <= id[X] && id[X] < high[X] ) &&
                ( low[Y] <= id[Y] && id[Y] < high[Y] ) &&
                ( low[Z] <= id[Z] && id[Z] < high[Z] );
