@@ -11,12 +11,12 @@
         <alpha>1.</alpha>
         <test>true</test>
         <scheme>backward_euler</scheme>
-        <verbosity>0</verbosity>
+        <verbosity>4</verbosity>
         <refine_threshold>0.0475</refine_threshold>
     </PhaseField>
 <!--__________________________________-->
     <Time>
-        <maxTime>100.</maxTime>
+        <maxTime>101.</maxTime>
         <initTime>0.0</initTime>
         <delt_min>0.01</delt_min>
         <delt_max>1.</delt_max>

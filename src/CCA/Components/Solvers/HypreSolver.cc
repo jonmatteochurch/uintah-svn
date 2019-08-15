@@ -352,18 +352,20 @@ namespace Uintah {
           }
 
           // Periodic boundaries
-          const Level* level = getLevel(patches);
-          IntVector periodic_vector = level->getPeriodicBoundaries();
+          if (!patches->empty()) {
+            const Level* level = getLevel(patches);
+            IntVector periodic_vector = level->getPeriodicBoundaries();
 
-          IntVector low, high;
-          level->findCellIndexRange(low, high);
-          IntVector range = high-low;
+            IntVector low, high;
+            level->findCellIndexRange(low, high);
+            IntVector range = high-low;
 
-          int periodic[3];
-          periodic[0] = periodic_vector.x() * range.x();
-          periodic[1] = periodic_vector.y() * range.y();
-          periodic[2] = periodic_vector.z() * range.z();
-          HYPRE_StructGridSetPeriodic(grid, periodic);
+            int periodic[3];
+            periodic[0] = periodic_vector.x() * range.x();
+            periodic[1] = periodic_vector.y() * range.y();
+            periodic[2] = periodic_vector.z() * range.z();
+            HYPRE_StructGridSetPeriodic(grid, periodic);
+          }
 
           // Assemble the grid
           HYPRE_StructGridAssemble(grid);
@@ -790,7 +792,7 @@ namespace Uintah {
         HYPRE_StructVectorPrint( fname[2].c_str(), HX, 0 );
 #endif
 
-        printTask( patches, patches->get(0), cout_doing, "HypreSolver:solve: testConvergence" );
+        printTask( patches, patches->empty() ? nullptr : patches->get(0), cout_doing, "HypreSolver:solve: testConvergence" );
 
         solve_timer.stop();
         hypre_EndTiming ( m_tSolveOnly );

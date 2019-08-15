@@ -14,7 +14,7 @@
     </PhaseField>
 <!--__________________________________-->
     <Time>
-        <maxTime>100.</maxTime>
+        <maxTime>101.</maxTime>
         <initTime>0.0</initTime>
         <delt_min>0.01</delt_min>
         <delt_max>1.</delt_max>
