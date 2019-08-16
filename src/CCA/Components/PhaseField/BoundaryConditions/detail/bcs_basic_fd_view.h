@@ -114,6 +114,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 private: // STATIC ASSERTIONS
@@ -737,7 +739,7 @@ public: // BASIC FD VIEW METHODS
     add_dxx_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         return m_fd_view[X]->add_dxx_sys_hypre ( id, stencil_entries, rhs );
@@ -746,7 +748,7 @@ public: // BASIC FD VIEW METHODS
     inline virtual void
     add_dxx_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         return m_fd_view[X]->add_dxx_rhs_hypre ( id, rhs );
@@ -756,7 +758,7 @@ public: // BASIC FD VIEW METHODS
     add_dyy_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         return m_fd_view[Y]->add_dyy_sys_hypre ( id, stencil_entries, rhs );
@@ -765,7 +767,7 @@ public: // BASIC FD VIEW METHODS
     inline virtual void
     add_dyy_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         return m_fd_view[Y]->add_dyy_rhs_hypre ( id, rhs );
@@ -775,7 +777,7 @@ public: // BASIC FD VIEW METHODS
     add_dzz_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         return m_fd_view[Z]->add_dzz_sys_hypre ( id, stencil_entries, rhs );
@@ -784,10 +786,70 @@ public: // BASIC FD VIEW METHODS
     inline virtual void
     add_dzz_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         return m_fd_view[Z]->add_dzz_rhs_hypre ( id, rhs );
+    }
+
+    inline virtual void
+    add_dxx_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & extra_entries,
+        V & rhs
+    ) const override
+    {
+        return m_fd_view[X]->add_dxx_sys_hyprefac ( id, stencil_entries, extra_entries, rhs );
+    }
+
+    inline virtual void
+    add_dxx_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        return m_fd_view[X]->add_dxx_rhs_hyprefac ( id, rhs );
+    }
+
+    inline virtual void
+    add_dyy_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & extra_entries,
+        V & rhs
+    ) const override
+    {
+        return m_fd_view[Y]->add_dyy_sys_hyprefac ( id, stencil_entries, extra_entries, rhs );
+    }
+
+    inline virtual void
+    add_dyy_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        return m_fd_view[Y]->add_dyy_rhs_hyprefac ( id, rhs );
+    }
+
+    inline virtual void
+    add_dzz_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & extra_entries,
+        V & rhs
+    ) const override
+    {
+        return m_fd_view[Z]->add_dzz_sys_hyprefac ( id, stencil_entries, extra_entries, rhs );
+    }
+
+    inline virtual void
+    add_dzz_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        return m_fd_view[Z]->add_dzz_rhs_hyprefac ( id, rhs );
     }
 #endif
 

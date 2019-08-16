@@ -53,11 +53,7 @@ namespace PhaseField
 template <typename Field, StnType STN, VarType VAR >
 class DWFDView
     : virtual public FDView<Field, STN>
-    , public Implementation <
-    DWFDView<Field, STN, VAR>, FDView<Field, STN>,
-    const typename Field::label_type &,
-    int, const Level *
-    >
+    , public Implementation < DWFDView<Field, STN, VAR>, FDView<Field, STN>, const typename Field::label_type &, int, const Level * >
     , public detail::dwfd_view<Field, STN, VAR>
 {
 public: // STATIC MEMBERS

@@ -91,6 +91,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 private: // STATIC ASSERTIONS
@@ -133,6 +135,14 @@ private: // METHODS
         return ( *m_fine_view ) [ id ];
     };
 
+    inline Entries<V>
+    fine_entries (
+        const IntVector & id
+    ) const
+    {
+        return m_fine_view->entries ( id );
+    };
+
     /**
      * @brief Get coarse value at position
      *
@@ -148,6 +158,14 @@ private: // METHODS
         return coarse_view[id];
     };
 
+    inline Entries<V>
+    coarse_entries (
+        const IntVector & id
+    ) const
+    {
+        return m_coarse_view->entries ( id );
+    };
+
     /**
      * @brief Get coarse interpolation at position
      *
@@ -160,6 +178,14 @@ private: // METHODS
     ) const
     {
         return operator[] ( id );
+    };
+
+    inline Entries<V>
+    coarse_interp_entries (
+        const IntVector & id
+    ) const
+    {
+        return entries ( id );
     };
 
 protected:
@@ -398,6 +424,66 @@ public: // VIEW METHODS
         }
     };
 
+
+    virtual Entries<V>
+    entries (
+        const IntVector & id_fine
+    ) const override
+    {
+        IntVector id0 = AMRInterface<VAR, DIM>::get_coarser ( m_level_fine, id_fine );
+        Point p_fine = DWInterface<VAR, DIM>::get_position ( m_level_fine, id_fine );
+        Point p0 = DWInterface<VAR, DIM>::get_position ( m_level_coarse, id0 );
+        double w0, w1, w2, w3;
+        IntVector id1 { id_fine }, id2 {id_fine}, id3 {id_fine};
+        id2[D] -= SGN;
+
+        Entries<V> res;
+        for ( size_t d = 0; d < DIM; ++d )
+            if ( p0.asVector() [d] < p_fine.asVector() [d] )
+            {
+                id1[d] += 1;
+                if ( d != D ) id3[d] += 1;
+            }
+            else
+            {
+                id1[d] -= 1;
+                if ( d != D ) id3[d] -= 1;
+            }
+
+        if ( m_fine_view->is_defined_at ( id3 ) )
+        {
+            if ( m_fine_view->is_defined_at ( id1 ) )
+            {
+                w0 = 4. / 9.;
+                w1 = -1. / 9.;
+                w2 = 1. / 3.;
+                w3 = 1. / 3.;
+                res.add ( fine_entries ( id1 ), w1 );
+            }
+            else
+            {
+                w0 = 9. / 20.;
+                w1 = -1. / 20.;
+                w2 = 3. / 10.;
+                w3 = 3. / 10.;
+                res.add ( coarse_entries ( id1 ), w1 );
+            }
+            res.add ( fine_entries ( id3 ), w3 );
+        }
+        else
+        {
+            w0 = 1. / 2.;
+            w2 = 1. / 3.;
+            w3 = 1. / 6.;
+            res.add ( coarse_entries ( id3 ), w3 );
+        }
+        res.add ( coarse_entries ( id_fine ), w0 );
+        res.add ( fine_entries ( id2 ), w2 );
+
+        res.simplify();
+        return res;
+    };
+
     /**
      * @brief get bc view range
      *
@@ -546,7 +632,7 @@ public: // BC FD MEMBERS
     add_d2_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const VIRT;
 
     template < DirType DIR >
@@ -554,22 +640,94 @@ public: // BC FD MEMBERS
     add_d2_sys_hypre (
         const IntVector &,
         S & stencil_entries,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const
+    {
+        if ( VAR == CC )
+        {
+            IntVector ip ( id );
+            ip[D] += SGN;
+            double h2 = m_h[D] * m_h[D];
+            stencil_entries[F - SGN] += 1. / h2;
+            stencil_entries.p += -2. / h2;
+
+            Entries<V> extra = coarse_interp_entries ( ip );
+            for ( auto & entry : extra.values )
+            {
+                if ( entry.level == m_level_fine->getIndex() ) // check if entry belongs to stencil
+                {
+                    IntVector tmp = entry.index - id;
+                    if ( entry.index == id )
+                    {
+                        stencil_entries.p += entry.weight / h2;
+                        goto next_entry;
+                    }
+                    for ( Patch::FaceType f = get_dim<DIM>::face_start; f <= get_dim<DIM>::face_end; f = Patch::nextFace ( f ) )
+                        if ( tmp == Patch::getFaceDirection ( f ) )
+                        {
+                            stencil_entries[f] += entry.weight / h2;
+                            goto next_entry;
+                        }
+                    next_entry: continue;
+                }
+
+                HypreFAC::MatrixIndex index { id, entry.level, entry.index };
+                auto it = additional_entries.find ( index );
+                if ( it != additional_entries.end() ) it->second += entry.weight / h2;
+                else additional_entries.emplace ( index, entry.weight / h2 );
+            }
+            rhs += extra.rhs;
+        }
+        else ASSERTFAIL ( "TODO" );
+    }
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const 
+    {
+    };
 #endif
 
 }; // class bc_fd

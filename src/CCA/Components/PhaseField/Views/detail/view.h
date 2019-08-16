@@ -32,9 +32,14 @@
 #define Packages_Uintah_CCA_Components_PhaseField_Views_detail_view_h
 
 #include <CCA/Components/PhaseField/Util/Definitions.h>
+
 #include <CCA/Components/PhaseField/DataTypes/Support.h>
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
+#ifdef HAVE_HYPRE
+#  include <CCA/Components/PhaseField/DataTypes/Entries.h>
+#endif
+
 #include <CCA/Components/PhaseField/Views/detail/view_array.h>
 
 namespace Uintah
@@ -162,6 +167,10 @@ public: // VIEW METHODS
      * @return field value at id
      */
     virtual V operator[] ( const IntVector & id ) const = 0;
+
+#ifdef HAVE_HYPRE
+    virtual Entries<V> entries ( const IntVector & id ) const = 0;
+#endif
 
 }; // class view
 

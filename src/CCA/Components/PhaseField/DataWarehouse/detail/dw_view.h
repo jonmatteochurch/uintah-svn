@@ -480,6 +480,14 @@ public: // VIEW METHODS
         return ( *m_view ) [id];
     };
 
+    virtual Entries<V>
+    entries (
+        const IntVector & id
+    ) const override
+    {
+        return { Entry<V> ( m_level->getIndex(), id ) };
+    };
+
 public: // DW METHODS
 
     /**

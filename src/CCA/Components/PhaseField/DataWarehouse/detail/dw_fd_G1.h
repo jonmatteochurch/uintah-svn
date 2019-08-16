@@ -79,6 +79,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 private:  // MEMBERS
@@ -278,6 +280,14 @@ public: // VIEW METHODS
         return value ( id );
     };
 
+    inline virtual Entries<V>
+    entries (
+        const IntVector & id
+    ) const override
+    {
+        return { Entry<V> ( m_level->getIndex(), id ) };
+    };
+
 public: // BASIC FD VIEW METHODS
 
     /**
@@ -354,7 +364,7 @@ public: // DW FD MEMBERS
     add_d2_sys_hypre (
         const IntVector & _DOXYARG ( id ),
         S & stencil_entries,
-        T & /*rhs*/
+        V & _DOXYARG ( rhs )
     ) const
     {
         double h2 = m_h[DIR] * m_h[DIR];
@@ -367,7 +377,30 @@ public: // DW FD MEMBERS
     inline void
     add_d2_rhs_hypre (
         const IntVector & _DOXYARG ( id ),
-        T & /*rhs*/
+        V & _DOXYARG ( rhs )
+    ) const
+    {}
+
+    template <DirType DIR>
+    inline void
+    add_d2_sys_hyprefac (
+        const IntVector & _DOXYARG ( id ),
+        S & stencil_entries,
+        A & _DOXYARG ( extra_entries ),
+        V & _DOXYARG ( rhs )
+    ) const
+    {
+        double h2 = m_h[DIR] * m_h[DIR];
+        stencil_entries[2 * DIR] += 1. / h2;
+        stencil_entries[2 * DIR + 1] += 1. / h2;
+        stencil_entries.p += -2. / h2;
+    }
+
+    template <DirType DIR>
+    inline void
+    add_d2_rhs_hyprefac (
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const
     {}
 #endif

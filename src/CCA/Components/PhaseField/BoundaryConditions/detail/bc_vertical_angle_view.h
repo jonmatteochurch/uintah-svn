@@ -84,6 +84,8 @@ private: // TYPES
     /// Non const type of the field value
     using V = typename std::remove_const<T>::type;
 
+    static constexpr size_t ORD = sizeof... ( P );
+
 private: // MEMBERS
 
     /// Inner view to grid variable (owned by parent bcs_basic_fd_view)
@@ -206,6 +208,29 @@ private: // SINGLE FACE METHODS
         return true;
     }
 
+    template<BCF Q>
+    bool
+    add_adj_entries (
+        const IntVector & opp,
+        Entries<V> & res,
+        const V & w
+    ) const
+    {
+        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface );
+
+        constexpr Patch::FaceType F = get_bcf<Q>::face;
+        constexpr DirType D = get_face<F>::dir;
+        constexpr int SGN = get_face<F>::sgn;
+
+        const basic_fd_view<Field, STN> & bc_view ( *m_bc_views[D] );
+
+        IntVector adj = opp;
+        adj[D] += SGN;
+        res.add ( bc_view.entries ( adj ), w );
+        return true;
+    }
+    
+    
 private: // METHODS
 
     /**
@@ -221,7 +246,7 @@ private: // METHODS
     ) const
     {
         IntVector result ( id );
-        std::array<bool, sizeof... ( P ) > {{ opposite<P> ( result ) ... }};
+        std::array<bool, ORD> {{ opposite<P> ( result ) ... }};
         return result;
     }
 
@@ -267,7 +292,7 @@ public: // VIEW METHODS
     {
         m_support.low() = low;
         m_support.high() = high;
-        std::array<bool, sizeof... ( P ) > {{ set<P> () ... }};
+        std::array<bool, ORD> {{ set<P> () ... }};
     }
 
     /**
@@ -359,13 +384,30 @@ public: // VIEW METHODS
         const IntVector & id
     ) const override
     {
-        ASSERT ( sizeof... ( P ) > 1 );
+        ASSERT ( ORD > 1 );
         IntVector opp = opposite ( id );
         V result = - ( *m_dw_view ) [opp];
-        std::array<bool, sizeof... ( P ) > {{ add_adj<P> ( opp, result ) ... }};
-        result /= ( sizeof... ( P ) - 1 );
+        std::array<bool, ORD> {{ add_adj<P> ( opp, result ) ... }};
+        result /= ( ORD - 1 );
         return result;
     };
+
+    virtual Entries<V>
+    entries (
+        const IntVector & id
+    ) const override
+    {
+        ASSERT ( ORD > 1 );
+        
+        IntVector opp = opposite ( id );
+        V w = 1./(ORD - 1);
+
+        Entries<V> res;
+        res.add ( m_dw_view->entries(opp), -w );
+        std::array<bool, ORD> {{ add_adj_entries<P> ( opp, res, w ) ... }};
+        return res;
+    };
+
 };
 
 } // namespace detail

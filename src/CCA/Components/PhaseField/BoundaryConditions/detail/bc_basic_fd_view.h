@@ -99,6 +99,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
     /// Type of rhs for the given BC
@@ -390,7 +392,7 @@ public: // BASIC FD VIEW METHODS
     add_dxx_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const override
     {
         this->template add_d2_sys_hypre < X > ( id, stencil_entries, rhs );
@@ -399,7 +401,7 @@ public: // BASIC FD VIEW METHODS
     virtual void
     add_dxx_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const override
     {
         this->template add_d2_rhs_hypre < X > ( id, rhs );
@@ -409,7 +411,7 @@ public: // BASIC FD VIEW METHODS
     add_dyy_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const override
     {
         this->template add_d2_sys_hypre < Y > ( id, stencil_entries, rhs );
@@ -418,7 +420,7 @@ public: // BASIC FD VIEW METHODS
     virtual void
     add_dyy_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         this->template add_d2_rhs_hypre < Y > ( id, rhs );
@@ -426,8 +428,9 @@ public: // BASIC FD VIEW METHODS
 
     virtual void
     add_dzz_sys_hypre (
-        const IntVector & id, S & stencil_entries,
-        typename std::remove_const <T >::type & rhs
+        const IntVector & id, 
+        S & stencil_entries,
+        V & rhs
     ) const override
     {
         this->template add_d2_sys_hypre < Z > ( id, stencil_entries, rhs );
@@ -436,10 +439,70 @@ public: // BASIC FD VIEW METHODS
     virtual void
     add_dzz_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const < T >::type & rhs
+        V & rhs
     ) const override
     {
         this->template add_d2_rhs_hypre < Z > ( id, rhs );
+    }
+
+    virtual void
+    add_dxx_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_sys_hyprefac < X > ( id, stencil_entries, additional_entries, rhs );
+    }
+
+    virtual void
+    add_dxx_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_rhs_hyprefac < X > ( id, rhs );
+    }
+
+    virtual void
+    add_dyy_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_sys_hyprefac < Y > ( id, stencil_entries, additional_entries, rhs );
+    }
+
+    virtual void
+    add_dyy_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_rhs_hyprefac < Y > ( id, rhs );
+    }
+
+    virtual void
+    add_dzz_sys_hyprefac (
+        const IntVector & id, 
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_sys_hyprefac < Z > ( id, stencil_entries, additional_entries, rhs );
+    }
+
+    virtual void
+    add_dzz_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_rhs_hyprefac < Z > ( id, rhs );
     }
 #endif
 

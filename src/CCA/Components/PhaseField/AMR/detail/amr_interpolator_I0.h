@@ -107,13 +107,22 @@ private: // METHODS
      * @param id coarse index
      * @return coarse value at id
      */
-    inline T
+    inline V
     coarse_value (
         const IntVector & id
     ) const
     {
         const auto & view_coarse = *m_view_coarse;
         return view_coarse[id];
+    }
+
+    Entries<V>
+    coarse_entries (
+        const IntVector & id
+    ) const
+    {
+        const auto & view_coarse = *m_view_coarse;
+        return view_coarse.entries(id);
     }
 
 protected: // COPY CONSTRUCTOR
@@ -357,6 +366,17 @@ public: // VIEW METHODS
         IntVector id_coarse ( AMRInterface<CC, DIM>::get_coarser ( m_level_fine, id_fine ) );
         return coarse_value ( id_coarse );
     }
+
+#ifdef HAVE_HYPRE
+    virtual Entries<V>
+    entries (
+        const IntVector & id_fine
+    ) const override
+    {
+        IntVector id_coarse ( AMRInterface<VAR, DIM>::get_coarser ( m_level_fine, id_fine ) );
+        return coarse_entries ( id_coarse );
+    }
+#endif
 
 }; // class amr_interpolator<I0>
 

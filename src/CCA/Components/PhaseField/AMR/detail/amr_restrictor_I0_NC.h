@@ -116,13 +116,22 @@ private: // METHODS
      * @param id fine index
      * @return fine value at id
      */
-    inline T
+    inline V
     fine_value (
         const IntVector & id
     ) const
     {
         const auto & view_fine = *m_view_fine;
         return view_fine[id];
+    }
+
+    Entries<V>
+    fine_entries (
+        const IntVector & id
+    ) const
+    {
+        const auto & view_fine = *m_view_fine;
+        return view_fine.entries(id);
     }
 
 protected: // COPY CONSTRUCTOR
@@ -385,6 +394,16 @@ public: // VIEW METHODS
         ASSERT ( ( m_level_coarse->getNodePosition ( id_coarse ).asVector() - m_level_coarse->getFinerLevel()->getNodePosition ( id_fine ).asVector() ).length() == 0 );
 
         return fine_value ( id_fine );
+    }
+
+    virtual Entries<V>
+    entries ( 
+        const IntVector & id_coarse
+    ) const override 
+    {
+        IntVector id_fine ( AMRInterface<VAR, DIM>::get_finer ( m_level_coarse, id_coarse ) );
+        ASSERT ( ( m_level_coarse->getNodePosition ( id_coarse ).asVector() - m_level_coarse->getFinerLevel()->getNodePosition ( id_fine ).asVector() ).length() == 0 );
+        return fine_entries ( id_fine );
     }
 
 }; // class amr_restrictor

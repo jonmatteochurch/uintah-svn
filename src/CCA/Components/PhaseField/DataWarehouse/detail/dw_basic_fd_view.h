@@ -94,6 +94,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 protected: // COPY CONSTRUCTOR
@@ -377,6 +379,66 @@ public: // BASIC FD VIEW METHODS
     ) const override
     {
         this->template add_d2_rhs_hypre<Z> ( id, rhs );
+    }
+
+    inline virtual void
+    add_dxx_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & extra_entries,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_sys_hyprefac<X> ( id, stencil_entries, extra_entries, rhs );
+    }
+
+    inline virtual void
+    add_dxx_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_rhs_hyprefac<X> ( id, rhs );
+    }
+
+    inline virtual void
+    add_dyy_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & extra_entries,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_sys_hyprefac<Y> ( id, stencil_entries, extra_entries, rhs );
+    }
+
+    inline virtual void
+    add_dyy_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_rhs_hyprefac<Y> ( id, rhs );
+    }
+
+    inline virtual void
+    add_dzz_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & extra_entries,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_sys_hyprefac<Z> ( id, stencil_entries, extra_entries, rhs );
+    }
+
+    inline virtual void
+    add_dzz_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_rhs_hyprefac<Z> ( id, rhs );
     }
 #endif
 }; // class dw_basic_fd_view

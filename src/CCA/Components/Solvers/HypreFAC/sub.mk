@@ -1,7 +1,7 @@
 #
 #  The MIT License
 #
-#  Copyright (c) 1997-2019 The University of Utah
+#  Copyright (c) 1997-2018 The University of Utah
 # 
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to
@@ -27,42 +27,12 @@
 # 
 # Makefile fragment for this subdirectory 
 
-
-include $(SCIRUN_SCRIPTS)/smallso_prologue.mk
-
-SRCDIR := CCA/Components/Solvers
-
-SRCS += \
-	$(SRCDIR)/SolverCommon.cc  \
-	$(SRCDIR)/CGSolver.cc      \
-	$(SRCDIR)/SolverFactory.cc
-
-PSELIBS := \
-	CCA/Ports         \
-	Core/Containers   \
-	Core/Disclosure   \
-	Core/Exceptions   \
-	Core/Geometry     \
-	Core/Grid         \
-	Core/Math         \
-	Core/Parallel     \
-	Core/ProblemSpec  \
-	Core/Util         
-
-LIBS := $(XML2_LIBRARY) $(MPI_LIBRARY)  $(LAPACK_LIBRARY) $(BLAS_LIBRARY)
+SRCDIR   := CCA/Components/Solvers/HypreFAC
 
 ifeq ($(HAVE_HYPRE),yes)
 
-  INCLUDES += $(HYPRE_INCLUDE)
-  LIBS := $(LIBS) $(HYPRE_LIBRARY) 
+  SRCS += $(SRCDIR)/Solver.cc         \
 
-  SRCS += $(SRCDIR)/HypreSolver.cc
-
-  SUBDIRS := $(SRCDIR)/AMR \
-             $(SRCDIR)/HypreFAC \
-
-  include $(SCIRUN_SCRIPTS)/recurse.mk
-
-endif # HAVE_HYPRE
-
-include $(SCIRUN_SCRIPTS)/smallso_epilogue.mk
+  LIBS := $(HYPRE_LIBRARY) 
+  
+endif # if $(HAVE_HYPRE)

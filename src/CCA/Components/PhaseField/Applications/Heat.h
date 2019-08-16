@@ -33,6 +33,7 @@
 
 #include <CCA/Components/PhaseField/Util/Definitions.h>
 #include <CCA/Components/PhaseField/Util/Expressions.h>
+#include <CCA/Components/Solvers/HypreFAC/AdditionalEntriesP.h>
 #include <CCA/Components/PhaseField/DataTypes/HeatProblem.h>
 #include <CCA/Components/PhaseField/DataTypes/SubProblems.h>
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
@@ -44,6 +45,8 @@
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
 #include <CCA/Components/PhaseField/AMR/AMRInterpolator.h>
 #include <CCA/Components/PhaseField/AMR/AMRRestrictor.h>
+
+#include <CCA/Components/Solvers/HypreFAC/Solver.h>
 
 #include <Core/Util/DebugStream.h>
 #include <Core/Grid/SimpleMaterial.h>
@@ -151,6 +154,8 @@ private: // STATIC MEMBERS
     /// Restriction type for coarsening
     using Application< HeatProblem<VAR, STN> >::F2C;
 
+    using _AdditionalEntries = PerPatch<HypreFAC::AdditionalEntriesP>;
+
 public: // STATIC MEMBERS
 
     /// Class name as used by ApplicationFactory
@@ -209,6 +214,8 @@ protected: // MEMBERS
 
     /// Label for the implicit vector in the DataWarehouse
     const VarLabel * rhs_label;
+
+    const VarLabel * additional_entries_label;
 
 #   ifdef PhaseField_Heat_DBG_MATRIX
     /// Label for the diagonal entry of the matrix stencil in the DataWarehouse
@@ -582,6 +589,20 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
     /**
      * @brief Schedule task_time_advance_solution_crank_nicolson_assemble
      * (non AMR implementation)
@@ -649,6 +670,20 @@ protected: // SCHEDULINGS
         const LevelP & level,
         SchedulerP & sched
     );
+
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac (
+        const LevelP & level,
+        SchedulerP & sched
+    ) TODO;
+
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac (
+        const LevelP & level,
+        SchedulerP & sched
+    ) TODO;
 
     /**
      * @brief Schedule implicit solve task
@@ -1021,6 +1056,33 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    void
+    task_time_advance_solution_backward_euler_assemble_hyprefac (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    void
+    task_time_advance_solution_backward_euler_assemble_hyprefac_all (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    void
+    task_time_advance_solution_backward_euler_assemble_hyprefac_rhs (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
     /**
      * @brief Assemble hypre system task (Crank Nicolson implementation)
      *
@@ -1083,6 +1145,33 @@ protected: // TASKS
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
     );
+
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hypredfac (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    ) TODO;
+
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hyprefac_all (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    ) TODO;
+
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hyprefac_rhs (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    ) TODO;
 
     /**
      * @brief Update stencil entries debugging views task
@@ -1324,6 +1413,22 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+    void
+    time_advance_solution_backward_euler_assemble_hyprefac_all (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        View < ScalarField<Stencil7> > & A,
+        HypreFAC::AdditionalEntries * A_additional,
+        View < ScalarField<double> > & b
+    );
+
+    void
+    time_advance_solution_backward_euler_assemble_hyprefac_rhs (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        View < ScalarField<double> > & b
+    );
+
     /**
      * @brief Assemble hypre system implementation (Crank Nicolson, all implementation)
      *
@@ -1359,6 +1464,22 @@ protected: // IMPLEMENTATIONS
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<double> > & b
     );
+
+    void
+    time_advance_solution_crank_nicolson_assemble_hyprefac_all (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        View < ScalarField<Stencil7> > & A,
+        HypreFAC::AdditionalEntries * A_additional,
+        View < ScalarField<double> > & b
+    ) TODO;
+
+    void
+    time_advance_solution_crank_nicolson_assemble_hyprefac_rhs (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        View < ScalarField<double> > & b
+    ) TODO;
 
     /**
      * @brief Update stencil entries debugging views implementation
@@ -1525,6 +1646,7 @@ Heat<VAR, DIM, STN, AMR>::Heat (
 
 #ifdef HAVE_HYPRE
     matrix_label = VarLabel::create ( "A", Variable<VAR, Stencil7>::getTypeDescription() );
+    additional_entries_label = VarLabel::create ( "A" + HypreFAC::Solver<DIM>::AdditionalEntriesSuffix, _AdditionalEntries::getTypeDescription() );
     rhs_label = VarLabel::create ( "b", Variable<VAR, double>::getTypeDescription() );
 #   ifdef PhaseField_Heat_DBG_MATRIX
     Ap_label = VarLabel::create ( "Ap", Variable<VAR, double>::getTypeDescription() );
@@ -1576,6 +1698,7 @@ Heat<VAR, DIM, STN, AMR>::~Heat()
     VarLabel::destroy ( error_normL2_label );
 #ifdef HAVE_HYPRE
     VarLabel::destroy ( matrix_label );
+    VarLabel::destroy ( additional_entries_label );
     VarLabel::destroy ( rhs_label );
 #   ifdef PhaseField_Heat_DBG_MATRIX
     VarLabel::destroy ( Ap_label );
@@ -1972,11 +2095,9 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble
     SchedulerP & sched
 )
 {
+    cout_heat_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble" << std::endl;
     if ( solver->getName() == "hypre" )
-    {
-        cout_heat_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble" << std::endl;
         scheduleTimeAdvance_solution_backward_euler_assemble_hypre<AMR> ( level, sched );
-    }
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
 }
@@ -1998,6 +2119,17 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble
             scheduleTimeAdvance_solution_backward_euler_assemble_hypre < !MG > ( level, sched );
         else
             scheduleTimeAdvance_solution_backward_euler_assemble_hypre < MG > ( level, sched );
+    }
+    else if ( this->solver->getName() == "hyprefac" )
+    {
+        if ( level->hasCoarserLevel() ) return;
+
+        GridP grid = level->getGrid();
+
+        // all assemble task must be sent to the scheduler before the solve task
+        scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac < !MG >  ( level, sched );
+        for ( int l = 1; l < grid->numLevels(); ++l )
+            scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac < MG > ( grid->getLevel ( l ), sched );
     }
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
@@ -2036,11 +2168,56 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_h
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hypre", this, &Heat::task_time_advance_solution_backward_euler_assemble_hypre );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
-    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
     task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
     task->computes ( matrix_label );
+    task->computes ( rhs_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    cout_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac" << std::endl;
+
+    Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hyprefac", this, &Heat::task_time_advance_solution_backward_euler_assemble_hyprefac );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label, Ghost::None, 0 );
+    task->computes ( matrix_label );
+    task->computes ( additional_entries_label );
+    task->computes ( rhs_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    cout_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac" << std::endl;
+
+    Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hyprefac", this, &Heat::task_time_advance_solution_backward_euler_assemble_hyprefac );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), 0, Task::CoarseLevel, 0, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label, Ghost::None, 0 );
+    task->computes ( matrix_label );
+    task->computes ( additional_entries_label );
     task->computes ( rhs_label );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
@@ -2080,6 +2257,16 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble
             scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < !MG > ( level, sched );
         else
             scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < MG > ( level, sched );
+    }
+    else if ( this->solver->getName() == "hyprefac" )
+    {
+        if ( level->hasCoarserLevel() ) return;
+
+        GridP grid = level->getGrid();
+        // all assemble task must be sent to the scheduler before the solve task
+        scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac < !MG >  ( level, sched );
+        for ( int l = 1; l < grid->numLevels(); ++l )
+            scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac < MG > ( grid->getLevel ( l ), sched );
     }
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
@@ -2135,6 +2322,15 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solve
     SchedulerP & sched
 )
 {
+    if ( solver->getName() == "hyprefac" )
+    {
+        if ( level->hasCoarserLevel() ) return;
+
+        GridP grid = level->getGrid();
+        solver->scheduleInitialize ( level, sched, this->m_materialManager->allMaterials() );
+        for ( int l = 1; l < grid->numLevels(); ++l )
+            solver->scheduleInitialize ( grid->getLevel ( l ), sched, this->m_materialManager->allMaterials() );
+    }
     solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
                             matrix_label, Task::NewDW, // A
                             u_label, false,            // x
@@ -2563,7 +2759,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
         DWView < ScalarField<Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
 
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2601,7 +2797,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
 
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2609,6 +2805,108 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
             parallel_for ( p.get_range(), [&u_old, &b, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypre_rhs ( {i, j, k}, u_old, b ); } );
+        }
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void 
+Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyprefac
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    timeStep_vartype timeStepVar;
+    dw_old->get ( timeStepVar, VarLabel::find ( timeStep_name ) );
+    double timeStep = timeStepVar;
+
+    if ( timeStep == 1 || this->isRegridTimeStep() )
+        task_time_advance_solution_backward_euler_assemble_hyprefac_all ( myworld, patches, matls, dw_old, dw_new );
+    else
+        task_time_advance_solution_backward_euler_assemble_hyprefac_rhs ( myworld, patches, matls, dw_old, dw_new );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void 
+Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyprefac_all
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_backward_euler_assemble_hyprefac_all ====" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+
+        DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
+        HypreFAC::AdditionalEntries * A_additional = scinew HypreFAC::AdditionalEntries;
+        DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
+
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hyprefac_all ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
+        }
+
+        _AdditionalEntries additional_entries;
+        additional_entries.setData ( A_additional );
+        dw_new->put ( additional_entries, additional_entries_label, material, patch );
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void 
+Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyprefac_rhs
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_backward_euler_assemble_hyprefac_rhs ====" );
+
+    dw_new->transferFrom ( dw_old, this->matrix_label, patches, matls );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+
+        DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
+
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            parallel_for ( p.get_range(), [&u_old, &b, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hyprefac_rhs ( {i, j, k}, u_old, b ); } );
         }
     }
 
@@ -2658,7 +2956,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2695,7 +2993,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -3098,6 +3396,51 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hypre_rh
 )
 {
     double rhs = u_old.laplacian_rhs_hypre ( id );
+    const double a = alpha * delt;
+
+    b[id] = u_old[id] + a * rhs;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+Heat<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hyprefac_all
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    View < ScalarField<Stencil7> > & A_stencil,
+    HypreFAC::AdditionalEntries * A_additional,
+    View < ScalarField<double> > & b
+)
+{
+    std::tuple<Stencil7, HypreFAC::AdditionalEntries, double> sys = u_old.laplacian_sys_hyprefac ( id );
+
+    const Stencil7 & lap_stn = std::get<0> ( sys );
+    HypreFAC::AdditionalEntries & lap_extra = std::get<1> ( sys );
+    const double & rhs = std::get<2> ( sys );
+    const double a = alpha * delt;
+
+    for ( int i = 0; i < 7; ++i )
+        A_stencil[id][i] = -a * lap_stn[i];
+    A_stencil[id].p += 1;
+    for ( auto & entry : lap_extra )
+    {
+        auto it = A_additional->find ( entry.first );
+        if ( it != A_additional->end() ) it->second -= a * entry.second;
+        else A_additional->emplace ( entry.first, -a * entry.second );
+    }
+    b[id] = u_old[id] + a * rhs;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+Heat<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hyprefac_rhs
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    View < ScalarField<double> > & b
+)
+{
+    double rhs = u_old.laplacian_rhs_hyprefac ( id );
     const double a = alpha * delt;
 
     b[id] = u_old[id] + a * rhs;

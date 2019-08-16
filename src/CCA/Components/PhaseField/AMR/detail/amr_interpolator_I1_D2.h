@@ -114,13 +114,22 @@ private: // METHODS
      * @param id coarse index
      * @return fine value at id
      */
-    inline T
+    inline V
     coarse_value (
         const IntVector & id
     ) const
     {
         const auto & view_coarse = *m_view_coarse;
         return view_coarse[id];
+    }
+
+    Entries<V>
+    coarse_entries (
+        const IntVector & id
+    ) const
+    {
+        const auto & view_coarse = *m_view_coarse;
+        return view_coarse.entries(id);
     }
 
     /**
@@ -448,6 +457,72 @@ public: // VIEW METHODS
                w[1][1] * coarse_value ( n[1][1] );
     }
 
+    virtual Entries<V>
+    entries (
+        const IntVector & id_fine
+    ) const override
+    {
+        IntVector id_coarse ( m_level_fine->mapCellToCoarser ( id_fine ) );
+        Point p_fine ( DWInterface<VAR, DIM>::get_position ( m_level_fine, id_fine ) );
+        Point p_coarse ( DWInterface<VAR, DIM>::get_position ( m_level_coarse, id_coarse ) );
+        Vector dist = ( p_fine.asVector() - p_coarse.asVector() ) / m_level_coarse->dCell();
+        double w[2][2] = {{ 1., 1. }, { 1., 1. }};
+        IntVector n[2][2] = {{ id_coarse, id_coarse }, { id_coarse, id_coarse }};
+        const double & dx = dist[X];
+        const double & dy = dist[Y];
+        if ( dx < 0. )
+        {
+            n[0][0][X] = n[0][1][X] -= 1;
+            w[0][0] *= -dx;
+            w[0][1] *= -dx;
+            w[1][0] *= 1 + dx;
+            w[1][1] *= 1 + dx;
+        }
+        else if ( dx > 0. )
+        {
+            n[1][0][X] = n[1][1][X] += 1;
+            w[0][0] *= 1 - dx;
+            w[0][1] *= 1 - dx;
+            w[1][0] *= dx;
+            w[1][1] *= dx;
+        }
+        else
+        {
+            w[1][0] = 0.;
+            w[1][1] = 0.;
+        }
+
+        if ( dy < 0. )
+        {
+            n[0][0][Y] = n[1][0][Y] -= 1;
+            w[0][0] *= -dy;
+            w[1][0] *= -dy;
+            w[0][1] *= 1 + dy;
+            w[1][1] *= 1 + dy;
+        }
+        else if ( dy > 0. )
+        {
+            n[0][1][Y] = n[1][1][Y] += 1;
+            w[0][0] *= 1 - dy;
+            w[1][0] *= 1 - dy;
+            w[0][1] *= dy;
+            w[1][1] *= dy;
+        }
+        else
+        {
+            w[0][1] = 0.;
+            w[1][1] = 0.;
+        }
+
+        Entries<V> res;
+        for ( size_t i = 0; i < 2; ++i )
+            for ( size_t j = 0; j < 2; ++j )
+                if ( w[i][j] )
+                    res.add ( coarse_entries ( n[i][j] ),  w[i][j] );
+
+        res.simplify();
+        return res;
+    };
 }; // class amr_interpolator
 
 } // namespace detail

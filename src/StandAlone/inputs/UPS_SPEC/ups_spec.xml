@@ -1153,7 +1153,8 @@
   <SimulationComponent          spec="REQUIRED" />
 
   <Solver                     spec="OPTIONAL NO_DATA" 
-                              attribute1="type REQUIRED STRING 'CGSolver, hypre, hypreamr'" >
+                              attribute1="type REQUIRED STRING 'CGSolver, hypre, hypreamr, hyprefac'"
+                              attribute2="ndim OPTIONAL INTEGER '2,3'" >
     <include href="solver_spec.xml" section="Parameters" />
   </Solver>
 

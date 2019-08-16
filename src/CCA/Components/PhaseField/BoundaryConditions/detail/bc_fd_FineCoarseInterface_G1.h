@@ -89,6 +89,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 private: // MEMBERS
@@ -134,6 +136,14 @@ private: // METHODS
     {
         const auto & coarse_interp = *m_coarse_interp;
         return coarse_interp[id];
+    };
+
+    inline Entries<V>
+    coarse_interp_entries (
+        const IntVector & id
+    ) const
+    {
+        return m_coarse_interp->entries ( id );
     };
 
 protected: // COPY CONSTRUCTOR
@@ -316,6 +326,14 @@ public: // VIEW METHODS
         return coarse_interp ( id );
     };
 
+    virtual Entries<V>
+    entries (
+        const IntVector & id
+    ) const override
+    {
+        return coarse_interp_entries ( id );
+    };
+
     /**
      * @brief Get the region on which the view is defined
      *
@@ -464,8 +482,8 @@ public: // BC FD MEMBERS
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_sys_hypre (
         const IntVector & _DOXYARG ( id ),
-        S & /*stencil_entries*/,
-        typename std::remove_const<T>::type & /*rhs*/
+        S & _DOXYARG ( stencil_entries ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template<DirType DIR>
@@ -473,7 +491,7 @@ public: // BC FD MEMBERS
     add_d2_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const
     {
         if ( VAR == CC )
@@ -492,14 +510,14 @@ public: // BC FD MEMBERS
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_rhs_hypre (
         const IntVector & _DOXYARG ( id ),
-        typename std::remove_const<T>::type & /*rhs*/
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template<DirType DIR>
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const
     {
         if ( VAR == CC )
@@ -511,6 +529,61 @@ public: // BC FD MEMBERS
         }
         else ASSERTFAIL ( "TODO" );
     }
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector & _DOXYARG ( id ),
+        S & _DOXYARG ( stencil_entries ),
+        A & _DOXYARG ( additional_entries ),
+        V & _DOXYARG ( rhs )
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const
+    {
+        if ( VAR == CC )
+        {
+            IntVector ip ( id );
+            ip[D] += SGN;
+            double h2 = m_h[D] * m_h[D];
+            stencil_entries[F - SGN] += 1. / h2;
+            stencil_entries.p += -2. / h2;
+
+            Entries<V> extra = coarse_interp_entries ( ip );
+            for ( auto & entry : extra.values )
+            {                
+                HypreFAC::MatrixIndex index { id, entry.level, entry.index };
+                auto it = additional_entries.find ( index );
+                if ( it != additional_entries.end() ) it->second += entry.weight / h2;
+                else additional_entries.emplace ( index, entry.weight / h2 );
+            }
+            rhs += extra.rhs;
+        }
+        else ASSERTFAIL ( "TODO" );
+    };
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
+    ) const
+    {
+    };
 #endif
 
 }; // class bc_fd

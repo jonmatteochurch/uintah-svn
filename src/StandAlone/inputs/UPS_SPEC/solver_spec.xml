@@ -14,6 +14,7 @@
   <jump                spec="OPTIONAL INTEGER" />
   <logging             spec="OPTIONAL INTEGER 'positive'" />
   <maxiterations       spec="OPTIONAL INTEGER 'positive'" />
+  <max_levels          spec="OPTIONAL INTEGER 'positive'" />
   <norm                spec="OPTIONAL STRING 'LInfinity linfinity L1 l1 L2 l2'" />
   <npost               spec="OPTIONAL INTEGER" />
   <npre                spec="OPTIONAL INTEGER" />
@@ -29,6 +30,9 @@
   <tolerance           spec="OPTIONAL DOUBLE 'positive'" />
   <updateCoefFrequency spec="OPTIONAL INTEGER" />
 
-</Parameters>
+      <rel_change             spec="OPTIONAL INTEGER" />                             
+      <csolver_type           spec="OPTIONAL INTEGER '1,2'"/> 
+      <outputEquations        spec="OPTIONAL BOOLEAN" />     
+  </Parameters>
 
 </Uintah_Include>

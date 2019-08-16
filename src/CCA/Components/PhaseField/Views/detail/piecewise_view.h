@@ -205,6 +205,16 @@ public: // VIEW METHODS
         return get_view ( id ) [id];
     };
 
+#ifdef HAVE_HYPRE
+    virtual Entries<V>
+    entries (
+        const IntVector & id
+    ) const override
+    {
+        return get_view ( id ).entries ( id );
+    };
+#endif
+
 }; // class view
 
 } // namespace detail

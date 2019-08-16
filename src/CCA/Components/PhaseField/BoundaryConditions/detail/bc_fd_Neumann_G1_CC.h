@@ -79,6 +79,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 private: // MEMBERS
@@ -321,6 +323,16 @@ public: // VIEW METHODS
         return value ( i ) + DSGN * m_value * m_h[D];
     };
 
+    virtual Entries<V>
+    entries (
+        const IntVector & id
+    ) const override
+    {
+        IntVector i (id);
+        i[D] -= SGN;
+        return { DSGN * m_value * m_h[D], Entry<V> ( m_level->getIndex(), i, 1. ) };
+    };
+
 public: // BASIC FD VIEW METHODS
 
     /**
@@ -433,7 +445,7 @@ public: // BC FD MEMBERS
     add_d2_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const VIRT;
 
     template < DirType DIR >
@@ -441,7 +453,7 @@ public: // BC FD MEMBERS
     add_d2_sys_hypre (
         const IntVector & id,
         S & stencil_entries,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const
     {
         double h2 = m_h[D] * m_h[D];
@@ -454,14 +466,55 @@ public: // BC FD MEMBERS
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypre (
         const IntVector & id,
-        typename std::remove_const<T>::type & rhs
+        V & rhs
+    ) const
+    {
+        rhs += DSGN * m_value;
+    }
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const
+    {
+        double h2 = m_h[D] * m_h[D];
+        stencil_entries[F - SGN] += 1. / h2;
+        stencil_entries.p += -1. / h2;
+        rhs += DSGN * m_h[D] * m_value;
+    }
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
     ) const
     {
         rhs += DSGN * m_value;

@@ -24,13 +24,15 @@
 
 #include <sci_defs/hypre_defs.h>
 
-#include <CCA/Components/Solvers/AMR/AMRSolver.h>
 #include <CCA/Components/Solvers/SolverFactory.h>
-#include <CCA/Components/Solvers/CGSolver.h>
 
 #ifdef HAVE_HYPRE
+#  include <CCA/Components/Solvers/HypreFAC/Solver.h> // must be included before others since they include Core/Grid/Variables/VarTypes.h which uses swapbytes
 #  include <CCA/Components/Solvers/HypreSolver.h>
 #endif
+
+#include <CCA/Components/Solvers/CGSolver.h>
+#include <CCA/Components/Solvers/AMR/AMRSolver.h>
 
 #include <Core/Parallel/ProcessorGroup.h>
 #include <Core/Exceptions/ProblemSetupException.h>
@@ -74,6 +76,28 @@ SolverInterface* SolverFactory::create(       ProblemSpecP   & ps,
 #else
     std::ostringstream msg;
     msg << "\nERROR<Solver>: Hypre 1.9.0b solver not available, Hypre not configured.\n";
+    throw ProblemSetupException( msg.str(), __FILE__, __LINE__ );
+#endif
+  }
+  else if (solverName == "HypreFACSolver" || solverName == "hyprefac") {
+#if HAVE_HYPRE
+    std::string sdim = "3";
+    ProblemSpecP sol_ps = ps->findBlock( "Solver" );
+    sol_ps->getAttribute( "ndim", sdim );
+    int ndim = std::stoi(sdim);
+
+    if (ndim==2)
+      solver = scinew HypreFAC::Solver<2>(world);
+    else if (ndim==3)
+      solver = scinew HypreFAC::Solver<3>(world);
+    else {
+      std::ostringstream msg;
+      msg << "\nERROR<Solver>: wrong ndim.\n";
+      throw ProblemSetupException( msg.str(), __FILE__, __LINE__ );
+    }
+#else
+    std::ostringstream msg;
+    msg << "\nERROR<Solver>: Hypre FAC solver not available, Hypre was not configured.\n";
     throw ProblemSetupException( msg.str(), __FILE__, __LINE__ );
 #endif
   }

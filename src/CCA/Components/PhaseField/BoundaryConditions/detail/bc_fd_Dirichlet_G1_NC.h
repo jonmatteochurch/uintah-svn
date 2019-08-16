@@ -77,6 +77,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 private: // MEMBERS
@@ -318,6 +320,16 @@ public: // VIEW METHODS
         return  m_value - value ( i );
     };
 
+    virtual Entries<V>
+    entries (
+        const IntVector & id
+    ) const override
+    {
+        IntVector i (id);
+        i[D] -= 2 * SGN;
+        return { m_value, Entry<V> ( m_level->getIndex(), i, -1. ) };
+    };
+
 public: // BASIC FD VIEW METHODS
 
     /**
@@ -451,6 +463,38 @@ public: // BC FD MEMBERS
     add_d2_rhs_hypre (
         const IntVector &,
         T &
+    ) const TODO;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_sys_hyprefac (
+        const IntVector &,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const TODO;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D != DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
+    ) const VIRT;
+
+    template < DirType DIR >
+    inline typename std::enable_if < D == DIR, void >::type
+    add_d2_rhs_hyprefac (
+        const IntVector & id,
+        V & rhs
     ) const TODO;
 #endif
 

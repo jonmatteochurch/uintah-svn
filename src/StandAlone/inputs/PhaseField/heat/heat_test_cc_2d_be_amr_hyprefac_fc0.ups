@@ -12,11 +12,11 @@
         <test>true</test>
         <scheme>backward_euler</scheme>
         <verbosity>0</verbosity>
-        <refine_threshold>0.0475</refine_threshold>
+        <refine_threshold>0.03</refine_threshold>
     </PhaseField>
 <!--__________________________________-->
     <Time>
-        <maxTime>101.</maxTime>
+        <maxTime>100.</maxTime>
         <initTime>0.0</initTime>
         <delt_min>0.01</delt_min>
         <delt_max>1.</delt_max>
@@ -25,13 +25,30 @@
 <!--__________________________________-->
     <Grid>
         <Level>
-            <Box label="1">
-                <lower>[  0.,  0.,  0.]</lower>
-                <upper>[ 32., 32.,  1.]</upper>
-                <patches>[2,2,1]</patches>
+            <Box label="0">
+                <lower>[  0.,  0., 0.]</lower>
+                <upper>[ 16., 16., 1.]</upper>
+                <patches>[1,1,1]</patches>
             </Box>
-
             <spacing>[2.,2.,1.]</spacing>
+        </Level>
+        <Level>
+            <Box label="1">
+                <lower>[  8.,  0., 0.]</lower>
+                <upper>[ 16.,  8., 1.]</upper>
+                <patches>[1,1,1]</patches>
+            </Box>
+            <Box label="2">
+                <lower>[  8.,  8., 0.]</lower>
+                <upper>[ 16., 16., 1.]</upper>
+                <patches>[1,1,1]</patches>
+            </Box>
+            <Box label="3">
+                <lower>[  0.,  8., 0.]</lower>
+                <upper>[  8., 16., 1.]</upper>
+                <patches>[1,1,1]</patches>
+            </Box>
+            <spacing>[1.,1.,1.]</spacing>
         </Level>
         <BoundaryConditions>
             <Face side="x-">
@@ -59,35 +76,32 @@
 <!--__________________________________-->
     <AMR>
         <Regridder type="Tiled">
-            <adaptive>true</adaptive>
+            <adaptive>false</adaptive>
             <max_levels>2</max_levels>
             <cell_refinement_ratio>[[2,2,1]]</cell_refinement_ratio>
             <cell_stability_dilation>[0,0,0]</cell_stability_dilation>
             <min_boundary_cells>[1,1,0]</min_boundary_cells>
-            <min_patch_size>[[16,16,1]]</min_patch_size>
+            <min_patch_size>[[4,4,1]]</min_patch_size>
         </Regridder>
         <FineCoarseInterfaces>
-            <FCIType id="0" label="u" var="FC0" />
+            <FCIType id="0" label="u" var="FCLinear" />
         </FineCoarseInterfaces>
     </AMR>
 <!--__________________________________-->
-    <Solver type="hyprefac">
+    <Solver type="hyprefac" ndim="2">
        <Parameters variable="u">
-          <solver>smg</solver>
-          <preconditioner>diagonal</preconditioner>
-          <tolerance>1.e-6</tolerance>
+          <max_levels>2</max_levels>
           <maxiterations>20</maxiterations>
-          <precond_maxiters>1</precond_maxiters>
-          <precond_tolerance>0</precond_tolerance>
+          <tolerance>1.e-6</tolerance>
+          <rel_change>0</rel_change>
+          <relax_type>2</relax_type><!-- 0=jacobi,1=weighted jacobi,2=rb symmetric,3=rb non-symmetric --> 
           <npre>1</npre>
           <npost>1</npost>
-          <skip>0</skip>
-          <jump>0</jump>
+          <csolver_type>2</csolver_type>
           <logging>1</logging>
           <setupFrequency>0</setupFrequency> <!-- leave to 0 to skip HYPRE_StructMatrixDestroy+Create -->
           <updateCoefFrequency>0</updateCoefFrequency> <!-- leave to 0 to avoid update matrix coefficients -->
           <solveFrequency>1</solveFrequency>
-          <relax_type>2</relax_type><!-- 0=jacobi,1=weighted jacobi,2=rb symmetric,3=rb non-symmetric --> 
        </Parameters>
     </Solver>
 <!--__________________________________-->
@@ -112,5 +126,15 @@
         <save label="error_uyy" />
         <save label="error_normL2" />
         <save label="error_normH10" />
+        <save label="error_normH20" />
+        <!-- id defined PhaseField_Heat_DBG_MATRIX -->
+        <save label="Ap" />
+        <save label="Ae" />
+        <save label="Aw" />
+        <save label="As" />
+        <save label="An" />
+        <save label="Ab" />
+        <save label="At" />
+        <save label="b" />
     </DataArchiver>
 </Uintah_specification>

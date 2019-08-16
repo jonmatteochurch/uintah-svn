@@ -124,6 +124,15 @@ private: // METHODS
         return view_fine[id];
     }
 
+    Entries<V>
+    fine_entries (
+        const IntVector & id
+    ) const
+    {
+        const auto & view_fine = *m_view_fine;
+        return view_fine.entries(id);
+    }
+
 protected: // COPY CONSTRUCTOR
 
     /**
@@ -386,6 +395,21 @@ public: // VIEW METHODS
             cnt += 1.;
         }
         return sum_u / cnt;
+    }
+
+    virtual Entries<typename std::remove_const<T>::type>
+    entries (
+        const IntVector & id_coarse
+    ) const override
+    {
+        const IntVector l_fine ( AMRInterface<VAR, DIM>::get_finer ( m_level_coarse, id_coarse ) );
+        const IntVector h_fine = l_fine + m_level_coarse->getFinerLevel()->getRefinementRatio(); // TODO check this
+
+        Entries<typename std::remove_const<T>::type> res;
+        double cnt = ( h_fine[X] - l_fine[X] ) * ( h_fine[Y] - l_fine[Y] ) * ( h_fine[Z] - l_fine[Z] );
+        for ( CellIterator it ( l_fine, h_fine ); !it.done(); ++it )
+            res.add ( fine_entries ( *it ), 1. / cnt );
+        return res;
     }
 
 }; // class amr_restrictor

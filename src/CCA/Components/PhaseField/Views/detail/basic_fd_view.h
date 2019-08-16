@@ -34,6 +34,10 @@
 #include <CCA/Components/PhaseField/Util/Definitions.h>
 #include <CCA/Components/PhaseField/Views/detail/view.h>
 
+#ifdef HAVE_HYPRE
+#  include <CCA/Components/Solvers/HypreFAC/AdditionalEntries.h>
+#endif
+
 namespace Uintah
 {
 namespace PhaseField
@@ -84,6 +88,8 @@ private: // TYPES
 #ifdef HAVE_HYPRE
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
+
+    using A = HypreFAC::AdditionalEntries;
 #endif
 
 public: // DESTRUCTOR
@@ -196,6 +202,12 @@ public: // BASIC FD VIEW METHODS
     virtual void add_dyy_rhs_hypre ( const IntVector & id, V & rhs ) const = 0;
     virtual void add_dzz_sys_hypre ( const IntVector & id, S & stencil_entries, V & rhs ) const = 0;
     virtual void add_dzz_rhs_hypre ( const IntVector & id, V & rhs ) const = 0;
+    virtual void add_dxx_sys_hyprefac ( const IntVector & id, S & stencil_entries, A & extra_entries, V & rhs ) const = 0;
+    virtual void add_dxx_rhs_hyprefac ( const IntVector & id, V & rhs ) const = 0;
+    virtual void add_dyy_sys_hyprefac ( const IntVector & id, S & stencil_entries, A & extra_entries, V & rhs ) const = 0;
+    virtual void add_dyy_rhs_hyprefac ( const IntVector & id, V & rhs ) const = 0;
+    virtual void add_dzz_sys_hyprefac ( const IntVector & id, S & stencil_entries, A & extra_entries, V & rhs ) const = 0;
+    virtual void add_dzz_rhs_hyprefac ( const IntVector & id, V & rhs ) const = 0;
 #endif
 
 }; // class basic_fd_view
