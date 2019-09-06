@@ -46,7 +46,7 @@
 #include <HYPRE_sstruct_ls.h>
 #include <HYPRE_krylov.h>
 
-#if 0
+#if 1
 #define HYPRE(fn) HYPRE_##fn
 #else
 #define NDIM 2

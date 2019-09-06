@@ -673,14 +673,14 @@ protected: // SCHEDULINGS
     scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac (
         const LevelP & level,
         SchedulerP & sched
-    ) TODO;
+    );
 
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac (
         const LevelP & level,
         SchedulerP & sched
-    ) TODO;
+    );
 
     /**
      * @brief Schedule implicit solve task
@@ -1144,13 +1144,13 @@ protected: // TASKS
     );
 
     void
-    task_time_advance_solution_crank_nicolson_assemble_hypredfac (
+    task_time_advance_solution_crank_nicolson_assemble_hyprefac (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
-    ) TODO;
+    );
 
     void
     task_time_advance_solution_crank_nicolson_assemble_hyprefac_all (
@@ -1159,7 +1159,7 @@ protected: // TASKS
         const MaterialSubset * matls,
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
-    ) TODO;
+    );
 
     void
     task_time_advance_solution_crank_nicolson_assemble_hyprefac_rhs (
@@ -1168,7 +1168,7 @@ protected: // TASKS
         const MaterialSubset * matls,
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
-    ) TODO;
+    );
 
     /**
      * @brief Update stencil entries debugging views task
@@ -1469,14 +1469,14 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<Stencil7> > & A,
         HypreFAC::AdditionalEntries * A_additional,
         View < ScalarField<double> > & b
-    ) TODO;
+    );
 
     void
     time_advance_solution_crank_nicolson_assemble_hyprefac_rhs (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<double> > & b
-    ) TODO;
+    );
 
     /**
      * @brief Update stencil entries debugging views implementation
@@ -2312,6 +2312,51 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_h
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac " );
+
+    Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hyprefac", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hyprefac );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label, Ghost::None, 0 );
+    task->computes ( matrix_label );
+    task->computes ( additional_entries_label );
+    task->computes ( rhs_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac " );
+
+    Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hyprefac", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hyprefac );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), 0, Task::CoarseLevel, 0, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label, Ghost::None, 0 );
+    task->computes ( matrix_label );
+    task->computes ( additional_entries_label );
+    task->computes ( rhs_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
 Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solve
 (
@@ -2747,7 +2792,6 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-
         SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
@@ -2785,7 +2829,6 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-
         SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
@@ -2799,7 +2842,6 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 
     DOUT ( this->m_dbg_lvl2, myrank );
 }
-
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
@@ -2845,7 +2887,6 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
         DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
         HypreFAC::AdditionalEntries * A_additional = scinew HypreFAC::AdditionalEntries;
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-
         SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
@@ -2888,7 +2929,6 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-
         SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
@@ -2991,6 +3031,106 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
             parallel_for ( p.get_range(), [&u_old, &b, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypre_rhs ( {i, j, k}, u_old, b ); } );
+        }
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyprefac
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    timeStep_vartype timeStepVar;
+    dw_old->get ( timeStepVar, VarLabel::find ( timeStep_name ) );
+    double timeStep = timeStepVar;
+
+    if ( timeStep == 1 || this->isRegridTimeStep() )
+        task_time_advance_solution_crank_nicolson_assemble_hyprefac_all ( myworld, patches, matls, dw_old, dw_new );
+    else
+        task_time_advance_solution_crank_nicolson_assemble_hyprefac_rhs ( myworld, patches, matls, dw_old, dw_new );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyprefac_all
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_crank_nicolson_assemble_hyprefac_all ====" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+
+        DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
+        HypreFAC::AdditionalEntries * A_additional = scinew HypreFAC::AdditionalEntries;
+        DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hyprefac_all ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
+        }
+
+        _AdditionalEntries additional_entries;
+        additional_entries.setData ( A_additional );
+        dw_new->put ( additional_entries, additional_entries_label, material, patch );
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyprefac_rhs
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_crank_nicolson_assemble_hyprefac_rhs ====" );
+
+    dw_new->transferFrom ( dw_old, matrix_label, patches, matls );
+    dw_new->transferFrom ( dw_old, additional_entries_label, patches, matls );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+
+        DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
+        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            parallel_for ( p.get_range(), [&u_old, &b, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hyprefac_rhs ( {i, j, k}, u_old, b ); } );
         }
     }
 
@@ -3473,6 +3613,51 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hypre_rh
     b[id] = u_old[id] + a * ( rhs + u_old.laplacian ( id ) );
 }
 
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+Heat<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hyprefac_all
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    View < ScalarField<Stencil7> > & A_stencil,
+    HypreFAC::AdditionalEntries * A_additional,
+    View < ScalarField<double> > & b
+)
+{
+    std::tuple<Stencil7, HypreFAC::AdditionalEntries, double> sys = u_old.laplacian_sys_hyprefac ( id );
+
+    const Stencil7 & lap_stn = std::get<0> ( sys );
+    HypreFAC::AdditionalEntries & lap_extra = std::get<1> ( sys );
+    const double & rhs = std::get<2> ( sys );
+    const double a = 0.5 * alpha * delt;
+
+    for ( int i = 0; i < 7; ++i )
+        A_stencil[id][i] = -a * lap_stn[i];
+    A_stencil[id].p += 1;
+    for ( auto & entry : lap_extra )
+    {
+        auto it = A_additional->find ( entry.first );
+        if ( it != A_additional->end() ) it->second -= a * entry.second;
+        else A_additional->emplace ( entry.first, -a * entry.second );
+    }
+    b[id] = u_old[id] + a * ( rhs + u_old.laplacian ( id ) );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+Heat<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hyprefac_rhs
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    View < ScalarField<double> > & b
+)
+{
+    double rhs = u_old.laplacian_rhs_hyprefac ( id );
+    const double a = 0.5 * alpha * delt;
+
+    b[id] = u_old[id] + a * ( rhs + u_old.laplacian ( id ) );
+}
+
 #   ifdef PhaseField_Heat_DBG_MATRIX
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void Heat<VAR, DIM, STN, AMR>::time_advance_update_dbg_matrix
@@ -3531,7 +3716,6 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
         std::stringstream ss;
         ss << v << std::endl;
 #endif
-
 
         double a = M_PI_2 / L;
         double da2 = a * a * static_cast<double> ( DIM );
