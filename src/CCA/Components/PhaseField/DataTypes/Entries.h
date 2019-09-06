@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -55,7 +55,7 @@ public:
           rhs ( 0. )
     {
     }
-    
+
     void add ( Entries<T> && entries, T weight = 1. )
     {
         for ( Entry<T> & entry : entries.values )

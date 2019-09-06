@@ -81,23 +81,22 @@
         </FineCoarseInterfaces>
     </AMR>
 <!--__________________________________-->
-    <Solver type="hyprefac">
+    <Solver type="hyprefac" ndim="3" >
        <Parameters variable="u">
-          <solver>smg</solver>
-          <preconditioner>diagonal</preconditioner>
-          <tolerance>1.e-6</tolerance>
-          <maxiterations>20</maxiterations>
-          <precond_maxiters>1</precond_maxiters>
-          <precond_tolerance>0</precond_tolerance>
-          <npre>1</npre>
-          <npost>1</npost>
-          <skip>0</skip>
-          <jump>0</jump>
-          <logging>1</logging>
+          <solveFrequency>1</solveFrequency>
           <setupFrequency>0</setupFrequency> <!-- leave to 0 to skip HYPRE_StructMatrixDestroy+Create -->
           <updateCoefFrequency>0</updateCoefFrequency> <!-- leave to 0 to avoid update matrix coefficients -->
-          <solveFrequency>1</solveFrequency>
-          <relax_type>2</relax_type><!-- 0=jacobi,1=weighted jacobi,2=rb symmetric,3=rb non-symmetric --> 
+          <max_levels>2</max_levels>
+          <maxiterations>20</maxiterations>
+          <tolerance>1.e-6</tolerance>
+          <rel_change>0</rel_change>
+          <relax_type>2</relax_type><!-- 0=jacobi,1=weighted jacobi,2=rb symmetric,3=rb non-symmetric -->
+          <!--weight>1.</weight-->
+          <npre>1</npre>
+          <npost>1</npost>
+          <csolver_type>2</csolver_type>
+          <logging>1</logging>
+          <!--C2F>1</C2F-->
        </Parameters>
     </Solver>
 <!--__________________________________-->

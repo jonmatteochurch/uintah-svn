@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -25,29 +25,30 @@
 #ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_PartData_h
 #define Packages_Uintah_CCA_Components_Solvers_HypreFAC_PartData_h
 
-#include <Core/Util/DebugStream.h>
 #include <Core/Util/RefCounted.h>
 
 namespace Uintah
 {
 namespace HypreFAC
 {
-    
+
 struct PartData : public RefCounted
 {
     /* for GridSetExtents */
-    int                             nboxes;     // tot # of boxes/patches on this part/level
-    std::vector<IntVector>          ilowers;    // lower cell index per my_rank owned box on this part/level
-    std::vector<IntVector>          iuppers;    // upper cell index per my_rank owned box on this part/level
-    std::vector<int>                boxsizes;   // tot # of cells per my_rank owned box on this part/level
+    int                              nboxes;     // tot # of boxes/patches on this part/level
+    std::vector<IntVector>           ilowers;    // lower cell index per my_rank owned box on this part/level
+    std::vector<IntVector>           iuppers;    // upper cell index per my_rank owned box on this part/level
+    std::vector<int>                 boxsizes;   // tot # of cells per my_rank owned box on this part/level
     std::vector<std::array<bool, 6>> interfaces; //
 
-    std::vector<int>                box2patch;
+    std::vector<int>                 box2patch;
     std::map<int, int>               patch2box;
 
     /* for amr structure */
     int plevel;         // depth of this part/level
+    int low[3], high[3];
     int prefinement[3]; // refinement factors of this part/level with respect to the immidiately coarser level
+    int periodic[3];
 
     PartData()
         : RefCounted()
@@ -59,14 +60,15 @@ struct PartData : public RefCounted
         , box2patch ( 0 )
         , patch2box()
         , plevel ( -1 )
-        , prefinement { -1, -1, 1}
+        , low { 0, 0, 0 }
+        , high { -1, -1, -1 }
+        , prefinement { -1, -1, 1 }
+        , periodic { 0, 0, 0 }
     {
-        cout_doing << " ### CREATED HypreFAC::PartData " << std::endl;
     };
 
     virtual ~PartData()
     {
-        cout_doing << " ### DELETED HypreFAC::PartData " << std::endl;
     };
 };
 

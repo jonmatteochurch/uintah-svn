@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -96,7 +96,7 @@ namespace PhaseField
 {
 
 /// Debugging stream for component schedulings
-static DebugStream cout_heat_scheduling { "HEAT SCHEDULING", true };
+static constexpr bool dbg_heat_scheduling = true;
 
 /**
  * @brief Heat PhaseField applications
@@ -257,9 +257,6 @@ protected: // MEMBERS
 #ifdef HAVE_HYPRE
     /// Time advance scheme
     TS time_scheme;
-
-    /// Implicit solver
-    SolverInterface * solver;
 #endif
 
 public: // CONSTRUCTORS/DESTRUCTOR
@@ -1633,9 +1630,6 @@ Heat<VAR, DIM, STN, AMR>::Heat (
     const MaterialManagerP materialManager,
     int verbosity
 ) : Application< HeatProblem<VAR, STN>, AMR > ( myworld, materialManager, verbosity )
-#ifdef HAVE_HYPRE
-  , solver ( nullptr )
-#endif
 {
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
     epsilon_u_label = VarLabel::create ( "epsilon_u", Variable<VAR, double>::getTypeDescription() );
@@ -1757,13 +1751,13 @@ Heat<VAR, DIM, STN, AMR>::problemSetup (
     if ( time_scheme & TS::Implicit )
     {
         ProblemSpecP solv = params->findBlock ( "Solver" );
-        solver = dynamic_cast<SolverInterface *> ( this->getPort ( "solver" ) );
-        if ( !solver )
+        this->m_solver = dynamic_cast<SolverInterface *> ( this->getPort ( "solver" ) );
+        if ( !this->m_solver )
         {
             SCI_THROW ( InternalError ( "Heat:couldn't get solver port", __FILE__, __LINE__ ) );
         }
-        solver->readParameters ( solv, "u" );
-        solver->getParameters()->setSolveOnExtraCells ( false );
+        this->m_solver->readParameters ( solv, "u" );
+        this->m_solver->getParameters()->setSolveOnExtraCells ( false );
     }
 #else
     if ( scheme != "forward_euler" )
@@ -1811,7 +1805,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleInitialize (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleInitialize" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleInitialize " );
 
     scheduleInitialize_solution<AMR> ( level, sched );
 }
@@ -1824,7 +1818,8 @@ Heat<VAR, DIM, STN, AMR>::scheduleInitialize_solution (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleInitialize_solution" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleInitialize_solution " );
+
     Task * task = scinew Task ( "Heat::task_initialize_solution", this, &Heat::task_initialize_solution );
     task->computes ( u_label );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
@@ -1845,7 +1840,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleInitialize_solution (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleInitialize_solution" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleInitialize_solution " );
 
     // since the SimulationController is calling this scheduler starting from
     // the finest level we schedule only on the finest level
@@ -1862,7 +1857,8 @@ Heat<VAR, DIM, STN, AMR>::scheduleRestartInitialize (
     const LevelP & level,
     SchedulerP & sched
 )
-{}
+{
+}
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
@@ -1883,7 +1879,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance " );
 
 #ifdef PhaseField_Heat_DBG_DERIVATIVES
     scheduleTimeAdvance_dbg_derivatives<AMR> ( level, sched );
@@ -1903,7 +1899,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_dbg_derivatives" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives", this, &Heat::task_time_advance_dbg_derivatives );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -1924,7 +1920,6 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_dbg_derivatives" << std::endl;
 
     if ( !level->hasCoarserLevel() ) scheduleTimeAdvance_dbg_derivatives < !MG > ( level, sched );
     else
@@ -1935,7 +1930,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives (
         task->requires ( Task::OldDW, u_label, FGT, FGN );
         task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
 #ifdef HAVE_HYPRE
-        if ( ( time_scheme & TS::Implicit ) && ( solver->getName() == "hypre" ) )
+        if ( ( time_scheme & TS::Implicit ) && ( this->m_solver->getName() == "hypre" ) )
         {
             task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
             task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
@@ -1958,7 +1953,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives_error (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_dbg_derivatives_error" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -1984,7 +1979,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives_error (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_dbg_derivatives_error" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error " );
 
     if ( !level->hasCoarserLevel() ) scheduleTimeAdvance_dbg_derivatives_error < !MG > ( level, sched );
     else
@@ -2015,7 +2010,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution " );
 
 #ifdef HAVE_HYPRE
     switch ( time_scheme )
@@ -2053,7 +2048,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_forward_euler (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_forward_euler " << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_forward_euler " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_forward_euler", this, &Heat::task_time_advance_solution_forward_euler );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2070,7 +2065,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_forward_euler (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_forward_euler" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_forward_euler " );
 
     if ( !level->hasCoarserLevel() ) scheduleTimeAdvance_solution_forward_euler < !MG > ( level, sched );
     else
@@ -2095,8 +2090,9 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble" << std::endl;
-    if ( solver->getName() == "hypre" )
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble " );
+
+    if ( this->m_solver->getName() == "hypre" )
         scheduleTimeAdvance_solution_backward_euler_assemble_hypre<AMR> ( level, sched );
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
@@ -2111,16 +2107,16 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble " );
 
-    if ( solver->getName() == "hypre" )
+    if ( this->m_solver->getName() == "hypre" )
     {
         if ( !level->hasCoarserLevel() )
             scheduleTimeAdvance_solution_backward_euler_assemble_hypre < !MG > ( level, sched );
         else
             scheduleTimeAdvance_solution_backward_euler_assemble_hypre < MG > ( level, sched );
     }
-    else if ( this->solver->getName() == "hyprefac" )
+    else if ( this->m_solver->getName() == "hyprefac" )
     {
         if ( level->hasCoarserLevel() ) return;
 
@@ -2144,7 +2140,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_h
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble_hypre" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypre " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hypre", this, &Heat::task_time_advance_solution_backward_euler_assemble_hypre );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2164,7 +2160,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_h
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble_hypre" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypre " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hypre", this, &Heat::task_time_advance_solution_backward_euler_assemble_hypre );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2186,7 +2182,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_h
     SchedulerP & sched
 )
 {
-    cout_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac" << std::endl;
+    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hyprefac", this, &Heat::task_time_advance_solution_backward_euler_assemble_hyprefac );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2208,7 +2204,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_h
     SchedulerP & sched
 )
 {
-    cout_scheduling << "scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac" << std::endl;
+    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hyprefac", this, &Heat::task_time_advance_solution_backward_euler_assemble_hyprefac );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2231,9 +2227,10 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble
     SchedulerP & sched
 )
 {
-    if ( solver->getName() == "hypre" )
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble " );
+
+    if ( this->m_solver->getName() == "hypre" )
     {
-        cout_heat_scheduling << "scheduleTimeAdvance_solution_crank_nicolson_assemble" << std::endl;
         scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre<AMR> ( level, sched );
     }
     else
@@ -2249,16 +2246,16 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_crank_nicolson_assemble" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble " );
 
-    if ( solver->getName() == "hypre" )
+    if ( this->m_solver->getName() == "hypre" )
     {
         if ( !level->hasCoarserLevel() )
             scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < !MG > ( level, sched );
         else
             scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < MG > ( level, sched );
     }
-    else if ( this->solver->getName() == "hyprefac" )
+    else if ( this->m_solver->getName() == "hyprefac" )
     {
         if ( level->hasCoarserLevel() ) return;
 
@@ -2281,7 +2278,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_h
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hypre", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hypre );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2301,7 +2298,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_h
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hypre", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hypre );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2322,20 +2319,12 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solve
     SchedulerP & sched
 )
 {
-    if ( solver->getName() == "hyprefac" )
-    {
-        if ( level->hasCoarserLevel() ) return;
-
-        GridP grid = level->getGrid();
-        solver->scheduleInitialize ( level, sched, this->m_materialManager->allMaterials() );
-        for ( int l = 1; l < grid->numLevels(); ++l )
-            solver->scheduleInitialize ( grid->getLevel ( l ), sched, this->m_materialManager->allMaterials() );
-    }
-    solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
-                            matrix_label, Task::NewDW, // A
-                            u_label, false,            // x
-                            rhs_label, Task::NewDW,    // b
-                            u_label, Task::OldDW );    // guess
+    this->m_solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
+                                    matrix_label, Task::NewDW, // A
+                                    u_label, false,            // x
+                                    rhs_label, Task::NewDW,    // b
+                                    u_label, Task::OldDW       // guess
+                                  );
 }
 
 #   ifdef PhaseField_Heat_DBG_MATRIX
@@ -2370,7 +2359,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_error (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleTimeAdvance_solution_error" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_error", this, &Heat::task_time_advance_solution_error );
     task->requires ( Task::NewDW, u_label, Ghost::None, 0 );
@@ -2390,7 +2379,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleRefine
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleRefine" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleRefine " );
 
     const Level * level = getLevel ( new_patches );
 
@@ -2406,7 +2395,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleRefine_solution (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleRefine_solution" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleRefine_solution " );
 
     Task * task = scinew Task ( "Heat::task_refine_solution", this, &Heat::task_refine_solution );
     task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
@@ -2442,7 +2431,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleCoarsen
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleCoarsen" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleCoarsen " );
 
     scheduleCoarsen_solution ( level_coarse, sched );
 }
@@ -2454,7 +2443,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleCoarsen_solution (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleCoarsen" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleCoarsen_solution " );
 
     Task * task = scinew Task ( "Heat::task_coarsen_solution", this, &Heat::task_coarsen_solution );
     task->requires ( Task::NewDW, u_label, nullptr, Task::FineLevel, nullptr, Task::NormalDomain, Ghost::None, 0 );
@@ -2472,7 +2461,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleErrorEstimate
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleErrorEstimate" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleErrorEstimate " );
 
     scheduleErrorEstimate_solution<AMR> ( level, sched );
 }
@@ -2485,7 +2474,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleErrorEstimate_solution (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleErrorEstimate_solution" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleErrorEstimate_solution " );
 
     Task * task = scinew Task ( "Heat::task_error_estimate_solution", this, &Heat::task_error_estimate_solution );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
@@ -2503,7 +2492,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleErrorEstimate_solution (
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleErrorEstimate_solution" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleErrorEstimate_solution " );
 
     if ( !level->hasCoarserLevel() ) scheduleErrorEstimate_solution < !MG > ( level, sched );
     else
@@ -2526,7 +2515,7 @@ void Heat<VAR, DIM, STN, AMR>::scheduleInitialErrorEstimate
     SchedulerP & sched
 )
 {
-    cout_heat_scheduling << "scheduleInitialErrorEstimate" << std::endl;
+    DOUTR ( dbg_heat_scheduling, "scheduleInitialErrorEstimate " );
 
     scheduleErrorEstimate ( level, sched );
 }
@@ -2813,7 +2802,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void 
+void
 Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyprefac
 (
     const ProcessorGroup * myworld,
@@ -2834,7 +2823,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void 
+void
 Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyprefac_all
 (
     const ProcessorGroup * myworld,
@@ -2876,7 +2865,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void 
+void
 Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyprefac_rhs
 (
     const ProcessorGroup * myworld,
@@ -2890,7 +2879,8 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 
     DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_backward_euler_assemble_hyprefac_rhs ====" );
 
-    dw_new->transferFrom ( dw_old, this->matrix_label, patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label, patches, matls );
+    dw_new->transferFrom ( dw_old, additional_entries_label, patches, matls );
 
     for ( int p = 0; p < patches->size(); ++p )
     {

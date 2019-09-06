@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -397,9 +397,9 @@ public: // VIEW METHODS
     }
 
     virtual Entries<V>
-    entries ( 
+    entries (
         const IntVector & id_coarse
-    ) const override 
+    ) const override
     {
         IntVector id_fine ( AMRInterface<VAR, DIM>::get_finer ( m_level_coarse, id_coarse ) );
         ASSERT ( ( m_level_coarse->getNodePosition ( id_coarse ).asVector() - m_level_coarse->getFinerLevel()->getNodePosition ( id_fine ).asVector() ).length() == 0 );

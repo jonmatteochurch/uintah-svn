@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -213,7 +213,7 @@ private: // STATIC METHODS
      *
      * Define a new struct datatype for communicating BCInfo with MPI and commit it
 
-     * @remark the reference to this private method is passed to the TypeDescription 
+     * @remark the reference to this private method is passed to the TypeDescription
      * constructor to enure a single instance of MPI_Datatype is created
      *
      * @return MPI_Datatype for the BCInfo struct instance

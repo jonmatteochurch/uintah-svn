@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -558,7 +558,7 @@ public: // BC FD MEMBERS
 
             Entries<V> extra = coarse_interp_entries ( ip );
             for ( auto & entry : extra.values )
-            {                
+            {
                 HypreFAC::MatrixIndex index { id, entry.level, entry.index };
                 auto it = additional_entries.find ( index );
                 if ( it != additional_entries.end() ) it->second += entry.weight / h2;

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -46,7 +46,7 @@ namespace PhaseField
 template < typename Problem > class SubProblems;
 
 /// Debugging stream for component schedulings
-static DebugStream cout_scheduling { "PHASEFIELD APPLICATION SCHEDULING", true };
+static constexpr bool dbg_scheduling = false;
 
 /**
  * @brief Virtual base for PhaseField applications
@@ -123,6 +123,14 @@ protected: // MEMBERS
     /// Store which fine/coarse interface conditions to use on each variable
     std::map<std::string, FC> * m_c2f;
 
+#ifdef HAVE_HYPRE
+    /// Time advance scheme
+    TS m_time_scheme;
+
+    /// Implicit solver
+    SolverInterface * m_solver;
+#endif
+
 public: // CONSTRUCTORS/DESTRUCTOR
 
     /**
@@ -151,6 +159,9 @@ public: // CONSTRUCTORS/DESTRUCTOR
         m_boundary_labels ( nullptr ),
         m_subproblems_label ( nullptr ),
         m_c2f ( nullptr )
+#ifdef HAVE_HYPRE
+        , m_solver ( nullptr )
+#endif
     {
         if ( use_subprblems )
             m_subproblems_label = VarLabel::create ( "subproblems", SubProblems< Problem<VAR, STN, Field... > >::getTypeDescription() );
@@ -254,7 +265,7 @@ protected: // SCHEDULINGS
             ASSERTMSG ( m_boundary_labels, "Application uses subproblems. Missing call to setBoundaryVariables()" );
 
             // set behaviour noCheckpoint
-            cout_scheduling << "scheduleInitializeSystemVars" << std::endl;
+            DOUTR ( dbg_scheduling, "scheduleInitializeSystemVars" );
 
             scheduler->overrideVariableBehavior ( m_subproblems_label->getName(), false, false, false, false, true );
 
@@ -264,6 +275,16 @@ protected: // SCHEDULINGS
                 task->computes ( m_subproblems_label );
                 scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
             }
+
+#ifdef HAVE_HYPRE
+            if ( m_solver )
+            {
+                for ( int idx = 0; idx < grid->numLevels(); ++idx )
+                {
+                    m_solver->scheduleInitialize ( grid->getLevel ( idx ), scheduler, this->m_materialManager->allMaterials() );
+                }
+            }
+#endif
         }
     }
 
@@ -288,11 +309,10 @@ protected: // SCHEDULINGS
 
         if ( use_subprblems )
         {
-            cout_scheduling << "scheduleAdvanceSystemVars" << std::endl;
+            DOUTR ( dbg_scheduling, "scheduleAdvanceSystemVars" );
 
             for ( int idx = 0; idx < grid->numLevels(); ++idx )
             {
-                const LevelP level = grid->getLevel ( idx );
                 Task * task = scinew Task ( "Application::task_time_advance_subproblems", this, &Application::task_time_advance_subproblems );
                 task->requires ( Task::OldDW, m_subproblems_label, Ghost::None, 0 );
                 task->computes ( m_subproblems_label );
@@ -495,7 +515,7 @@ protected: // SCHEDULINGS
 
         if ( use_subprblems )
         {
-            cout_scheduling << "scheduleRefineSystemVars" << std::endl;
+            DOUTR ( dbg_scheduling, "scheduleRefineSystemVars" );
 
             for ( int idx = 0; idx < grid->numLevels(); ++idx )
             {
@@ -511,6 +531,16 @@ protected: // SCHEDULINGS
                 scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
             }
         }
+
+#ifdef HAVE_HYPRE
+        if ( this->m_solver )
+        {
+            for ( int idx = 0; idx < grid->numLevels(); ++idx )
+            {
+                 this->m_solver->scheduleInitialize ( grid->getLevel ( idx ), scheduler, this->m_materialManager->allMaterials() );
+            }
+        }
+#endif
     }
 
 protected: // TASKS
@@ -528,11 +558,11 @@ protected: // TASKS
      */
     void
     task_communicate_subproblems (
-        const ProcessorGroup * _DOXYARG (myworld),
-        const PatchSubset * _DOXYARG (patches),
-        const MaterialSubset * _DOXYARG (matls),
-        DataWarehouse * _DOXYARG (dw_old),
-        DataWarehouse * _DOXYARG (dw_new)
+        const ProcessorGroup * _DOXYARG ( myworld ),
+        const PatchSubset * _DOXYARG ( patches ),
+        const MaterialSubset * _DOXYARG ( matls ),
+        DataWarehouse * _DOXYARG ( dw_old ),
+        DataWarehouse * _DOXYARG ( dw_new )
     )
     {}
 

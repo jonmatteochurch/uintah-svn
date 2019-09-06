@@ -1,0 +1,10 @@
+Scripts in this folder can be used to inspect hypre assembled matrices and
+vectors from HYPRE's output files. These are generated only when the macro
+PRINTSYSTEM is defined in src/CCA/Components/Solvers/HypreFAC/Solver.h
+
+An example of use script follows
+
+nlevels=2;
+rfactor = [1 1;2 2];
+s = loadSStructSystem(nlevels,'.','A.0.1','b.0.1','x.0.1','.00000');
+plotSStructSystem(s,rfactor,'Demo')

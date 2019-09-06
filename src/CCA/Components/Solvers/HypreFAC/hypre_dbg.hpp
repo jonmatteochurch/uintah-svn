@@ -35,9 +35,9 @@ HYPREDBG_SStructGridSetExtents ( HYPRE_SStructGrid  grid,
 }
 
 inline HYPRE_Int
-HYPREDBG_SStructGridSetVariables ( HYPRE_SStructGrid      grid,
-                                   HYPRE_Int              part,
-                                   HYPRE_Int              nvars,
+HYPREDBG_SStructGridSetVariables ( HYPRE_SStructGrid       grid,
+                                   HYPRE_Int               part,
+                                   HYPRE_Int               nvars,
                                    HYPRE_SStructVariable * vartypes )
 {
     std::cout << "HYPRE_SStructGridSetVariables ( grid, " << part << ", " << nvars << ", [";
@@ -52,6 +52,22 @@ HYPREDBG_SStructGridAssemble ( HYPRE_SStructGrid grid )
 {
     std::cout << "HYPRE_SStructGridAssemble ( grid )" << std::endl;
     return HYPRE_SStructGridAssemble ( grid );
+}
+
+
+inline HYPRE_Int
+HYPREDBG_SStructGridSetPeriodic ( HYPRE_SStructGrid grid,
+                                  HYPRE_Int         part,
+                                  HYPRE_Int       * periodic )
+{
+#if NDIM == 1
+    std::cout << "HYPRE_SStructGridSetPeriodic ( grid, " << part << ", [" << periodic[0] << "] )" << std::endl;
+#elif NDIM == 2
+    std::cout << "HYPRE_SStructGridSetPeriodic ( grid, " << part << ", [" << periodic[0] << "," << periodic[1] << "] )" << std::endl;
+#elif NDIM == 3
+    std::cout << "HYPRE_SStructGridSetPeriodic ( grid, " << part << ", [" << periodic[0] << "," << periodic[1] << "," << periodic[3] << "] )" << std::endl;
+#endif
+    return HYPRE_SStructGridSetPeriodic ( grid, part, periodic );
 }
 
 /*--------------------------------------------------------------------------

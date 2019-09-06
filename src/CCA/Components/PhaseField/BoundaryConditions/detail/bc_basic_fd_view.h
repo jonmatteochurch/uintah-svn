@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -428,7 +428,7 @@ public: // BASIC FD VIEW METHODS
 
     virtual void
     add_dzz_sys_hypre (
-        const IntVector & id, 
+        const IntVector & id,
         S & stencil_entries,
         V & rhs
     ) const override
@@ -487,7 +487,7 @@ public: // BASIC FD VIEW METHODS
 
     virtual void
     add_dzz_sys_hyprefac (
-        const IntVector & id, 
+        const IntVector & id,
         S & stencil_entries,
         A & additional_entries,
         V & rhs

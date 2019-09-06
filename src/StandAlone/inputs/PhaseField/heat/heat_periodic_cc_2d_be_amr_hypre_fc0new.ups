@@ -61,7 +61,7 @@
           <skip>0</skip>
           <jump>0</jump>
           <logging>1</logging>
-          <setupFrequency>0</setupFrequency> <!-- leave to 0 to skip HYPRE_StructMatrixDestroy+Create -->
+   .       <setupFrequency>0</setupFrequency> <!-- leave to 0 to skip HYPRE_StructMatrixDestroy+Create -->
           <updateCoefFrequency>0</updateCoefFrequency> <!-- leave to 0 to avoid update matrix coefficients -->
           <solveFrequency>1</solveFrequency>
           <relax_type>2</relax_type><!-- 0=jacobi,1=weighted jacobi,2=rb symmetric,3=rb non-symmetric --> 

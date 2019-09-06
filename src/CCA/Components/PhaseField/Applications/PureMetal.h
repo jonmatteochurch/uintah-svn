@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -57,7 +57,7 @@ namespace PhaseField
 {
 
 /// Debugging stream for component schedulings
-static DebugStream cout_pure_metal_scheduling { "PURE METAL SCHEDULING", false };
+static constexpr bool dbg_pure_metal_scheduling = false;
 
 /**
  * @brief PureMetal PhaseField applications
@@ -1333,7 +1333,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine
     SchedulerP & sched
 )
 {
-    cout_pure_metal_scheduling << "scheduleRefine on: " << *new_patches << std::endl;
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleRefine on: " << *new_patches );
 
     const Level * level = getLevel ( new_patches );
 
@@ -1352,7 +1352,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine_solution (
     SchedulerP & sched
 )
 {
-    cout_pure_metal_scheduling << "scheduleRefine_solution on: " << *patches << std::endl;
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleRefine_solution on: " << *patches );
 
     Task * task = scinew Task ( "PureMetal::task_refine_solution", this, &PureMetal::task_refine_solution );
     task->requires ( Task::NewDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
@@ -1371,7 +1371,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine_grad_psi (
     SchedulerP & sched
 )
 {
-    cout_pure_metal_scheduling << "scheduleRefine_grad_psi on: " << *patches << std::endl;
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleRefine_grad_psi on: " << *patches );
 
     Task * task = scinew Task ( "PureMetal::task_refine_grad_psi", this, &PureMetal::task_refine_grad_psi );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );

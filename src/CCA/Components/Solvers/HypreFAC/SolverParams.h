@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -25,46 +25,12 @@
 #ifndef Packages_Uintah_CCA_Components_Solvers_HypreSolverFACParams_h
 #define Packages_Uintah_CCA_Components_Solvers_HypreSolverFACParams_h
 
-//#define HYPRE_TIMING
-
 #include <CCA/Ports/SolverInterface.h>
-#include <Core/Util/DebugStream.h>
-
-// #include <CCA/Components/Solvers/SolverCommon.h>
-//
-// #include <Core/Exceptions/InternalError.h>
-// #include <Core/Grid/SimulationState.h>
-// #include <Core/Util/Handle.h>
-// #include <Core/Util/RefCounted.h>
-// #include <Core/Util/Timers/Timers.hpp>
-// #include <Core/Grid/Variables/PerPatch.h> // must be included after ProblemsP/AdditionalEntriesP where swapbytes override is defined
-
-// #include <HYPRE_sstruct_ls.h>
-//
-// #include <iostream>
-
-// /**
-//  *  @class  HypreFACSolver
-//  *  @author Jon Matteo Church
-//  *  @brief  Uintah hypre solver interface.
-//  *  Allows the solution of a linear system of the form \[ \mathbf{A} \mathbf{x} = \mathbf{b}\] where \[\mathbf{A}\] is
-//  *  stencil7 matrix.
-//  */
 
 namespace Uintah
 {
 namespace HypreFAC
 {
-
-//__________________________________
-//  To turn on normal output
-//  setenv SCI_DEBUG "SOLVER_DOING_COUT:+"
-
-// static DebugStream cout_doing ( "SOLVER_DOING_COUT", true );
-// static DebugStream cout_assembling ( "SOLVER ASSEMBLING", true );
-// static DebugStream cout_hypre ( "HYPRE", true );
-// //
-// #include "hypre_dbg.hpp"
 
 enum CoarseSolverType : int
 {

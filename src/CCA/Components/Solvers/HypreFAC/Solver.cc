@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -29,8 +29,7 @@ namespace Uintah
 namespace HypreFAC
 {
 
-DebugStream cout_doing ( "SOLVER ASSEMBLING", false );
-DebugStream cout_assembling ( "SOLVER_DOING_COUT", false );
+DebugStream cout_doing ( "SOLVER_DOING_COUT", dbg_doing );
 
 template<> std::string Solver<2>::AdditionalEntriesSuffix = "_extra";
 
@@ -44,7 +43,7 @@ template<> int Solver<2>::offsets[5][2] = {
 
 template<> int Solver<2>::stn0 = 0;
 template<> int Solver<2>::stnW = 1;
-template<> int Solver<2>::stnE = 2; 
+template<> int Solver<2>::stnE = 2;
 template<> int Solver<2>::stnS = 3;
 template<> int Solver<2>::stnN = 4;
 template<> int Solver<2>::stnB = -1;
@@ -62,9 +61,9 @@ template<> int Solver<3>::offsets[7][3] = {
     {0,0,1}
 };
 
-template<> int Solver<3>::stn0 = 0; 
+template<> int Solver<3>::stn0 = 0;
 template<> int Solver<3>::stnW = 1;
-template<> int Solver<3>::stnE = 2; 
+template<> int Solver<3>::stnE = 2;
 template<> int Solver<3>::stnS = 3;
 template<> int Solver<3>::stnN = 4;
 template<> int Solver<3>::stnB = 5;

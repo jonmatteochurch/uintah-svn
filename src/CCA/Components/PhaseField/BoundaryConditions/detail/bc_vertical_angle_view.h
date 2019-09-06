@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -51,7 +51,7 @@ namespace detail
  * opposite to boundary edges and vertices
  *
  * Group together multiple views (one for each edge the boundary belongs to,
- * and one for accessing the DataWarehouse on internal indices) to allow 
+ * and one for accessing the DataWarehouse on internal indices) to allow
  * extrapolation in regions corresponding to vertical angle
  *
  * @tparam Field type of Field
@@ -65,7 +65,7 @@ template<typename Field, StnType STN, BCF ... P > class bc_vertical_angle_view;
  * opposite to boundary edges and vertices (ScalarField implementation)
  *
  * Group together multiple views (one for each edge the boundary belongs to,
- * and one for accessing the DataWarehouse on internal indices) to allow 
+ * and one for accessing the DataWarehouse on internal indices) to allow
  * extrapolation in regions corresponding to vertical angle
  *
  * @tparam Field type of Field
@@ -229,8 +229,8 @@ private: // SINGLE FACE METHODS
         res.add ( bc_view.entries ( adj ), w );
         return true;
     }
-    
-    
+
+
 private: // METHODS
 
     /**
@@ -398,7 +398,7 @@ public: // VIEW METHODS
     ) const override
     {
         ASSERT ( ORD > 1 );
-        
+
         IntVector opp = opposite ( id );
         V w = 1./(ORD - 1);
 

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -25,30 +25,15 @@
 #ifndef Packages_Uintah_CCA_Components_Solvers_HypreFACSolverStruct_h
 #define Packages_Uintah_CCA_Components_Solvers_HypreFACSolverStruct_h
 
-//#define HYPRE_TIMING
-
-// #include <CCA/Components/Solvers/SolverCommon.h>
 #include <CCA/Components/Solvers/HypreFAC/PartDataP.h>
 #include <CCA/Components/Solvers/HypreFAC/GlobalDataP.h>
-//
-// #include <Core/Exceptions/InternalError.h>
-// #include <Core/Grid/SimulationState.h>
-// #include <Core/Util/Handle.h>
 #include <Core/Util/RefCounted.h>
-#include <Core/Util/DebugStream.h>
-// #include <Core/Util/Timers/Timers.hpp>
-// #include <Core/Grid/Variables/PerPatch.h> // must be included after ProblemsP/AdditionalEntriesP where swapbytes override is defined
-//
 #include <HYPRE_sstruct_ls.h>
-//
-// #include <iostream>
 
 namespace Uintah
 {
 namespace HypreFAC
 {
-
-extern DebugStream cout_doing;
 
 struct SolverStruct : public RefCounted
 {
@@ -77,7 +62,6 @@ struct SolverStruct : public RefCounted
         , b ( nullptr )
         , x ( nullptr )
     {
-        cout_doing << " ### CREATED HypreFAC::SolverStruct " << std::endl;
     };
 
     virtual ~SolverStruct()
@@ -92,15 +76,10 @@ struct SolverStruct : public RefCounted
             HYPRE_SStructGridDestroy ( *grid );
         }
 
-//         if ( data )
-//         {
-//             delete data;
-//             data = nullptr;
-//         }
         if ( pdatas )
         {
             delete[] pdatas;
-            data = nullptr;
+            pdatas = nullptr;
         }
         if ( grid )
         {
@@ -132,8 +111,6 @@ struct SolverStruct : public RefCounted
             delete x;
             x = nullptr;
         }
-
-        cout_doing << " ### DELETED hypre_fac_solver_struct " << std::endl;
     };
 };
 

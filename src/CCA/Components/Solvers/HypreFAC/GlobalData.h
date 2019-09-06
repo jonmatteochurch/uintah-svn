@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -26,30 +26,12 @@
 #define Packages_Uintah_CCA_Components_Solvers_HypreFAC_GlobalData_h
 
 #include <Core/Util/RefCounted.h>
-#include <Core/Util/DebugStream.h>
 #include <vector>
-
-//#define HYPRE_TIMING
-
-// #include <CCA/Components/Solvers/SolverCommon.h>
-// #include <CCA/Components/Solvers/HypreFACSolverParams.h>
-//
-// #include <Core/Exceptions/InternalError.h>
-// #include <Core/Grid/SimulationState.h>
-// #include <Core/Util/Handle.h>
-// #include <Core/Util/DebugStream.h>
-// #include <Core/Util/Timers/Timers.hpp>
-// #include <Core/Grid/Variables/PerPatch.h> // must be included after ProblemsP/AdditionalEntriesP where swapbytes override is defined
-//
-// #include <HYPRE_sstruct_ls.h>
-//
 
 namespace Uintah
 {
 namespace HypreFAC
 {
-
-extern DebugStream cout_doing;
 
 struct GlobalData : public RefCounted
 {
@@ -66,12 +48,10 @@ struct GlobalData : public RefCounted
         , nvars ( 0 )
         , vartypes ( 0 )
     {
-        cout_doing << " ### CREATED HypreFAC::GlobalData " << std::endl;
     };
 
     virtual ~GlobalData()
     {
-        cout_doing << " ### DELETED HypreFAC::GlobalData " << std::endl;
     };
 };
 

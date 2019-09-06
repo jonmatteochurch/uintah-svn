@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2018 The University of Utah
+ * Copyright (c) 1997-2019 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -142,9 +142,9 @@ protected: // COPY CONSTRUCTOR
      *
      * Instantiate a copy of a given view using the specified view to access the
      * DataWarehouse.
-     * 
+     *
      * @remark When a bc_fd is instantiated from a finer level to enforce fine/coarse
-     * interface conditions this view (of the coarser level) will not have access 
+     * interface conditions this view (of the coarser level) will not have access
      * to the DataWarehouse after set (bc_fd::set method is not retrieving data)
      * @param view view to be used for accessing the DataWarehouse
      * @param copy source view for copying
