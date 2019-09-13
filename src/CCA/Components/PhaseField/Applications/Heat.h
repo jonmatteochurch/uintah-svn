@@ -96,7 +96,7 @@ namespace PhaseField
 {
 
 /// Debugging stream for component schedulings
-static constexpr bool dbg_heat_scheduling = true;
+static constexpr bool dbg_heat_scheduling = false;
 
 /**
  * @brief Heat PhaseField applications
@@ -1677,8 +1677,6 @@ Heat<VAR, DIM, STN, AMR>::Heat (
     error_normH10_label = VarLabel::create ( "error_normH10", sum_vartype::getTypeDescription() );
     error_normH20_label = VarLabel::create ( "error_normH20", sum_vartype::getTypeDescription() );
 #endif
-
-//     DOUT ( this->m_dbg_lvl1, myworld->myRank()  << "Heat: boundary_labels " << &boundary_labels );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1729,7 +1727,6 @@ Heat<VAR, DIM, STN, AMR>::problemSetup (
     GridP &
 )
 {
-//     this->m_scheduler->overrideVariableBehavior ( matrix_label->getName(), false, false, false, true, true );
     this->m_materialManager->registerSimpleMaterial ( scinew SimpleMaterial() );
 
     ProblemSpecP heat = params->findBlock ( "PhaseField" );

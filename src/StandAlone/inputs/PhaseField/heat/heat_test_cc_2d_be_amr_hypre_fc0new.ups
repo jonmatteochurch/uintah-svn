@@ -11,7 +11,7 @@
         <alpha>1.</alpha>
         <test>true</test>
         <scheme>backward_euler</scheme>
-        <verbosity>4</verbosity>
+        <verbosity>0</verbosity>
         <refine_threshold>0.0475</refine_threshold>
     </PhaseField>
 <!--__________________________________-->
