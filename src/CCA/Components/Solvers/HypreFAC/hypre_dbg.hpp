@@ -24,11 +24,11 @@ HYPREDBG_SStructGridSetExtents ( HYPRE_SStructGrid  grid,
                                  HYPRE_Int     *    ilower,
                                  HYPRE_Int     *    iupper )
 {
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     std::cout << "HYPRE_SStructGridSetExtents ( grid, " << part << ", [" << ilower[0] << "], [" << iupper[0] << "] )" << std::endl;
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     std::cout << "HYPRE_SStructGridSetExtents ( grid, " << part << ", [" << ilower[0] << "," << ilower[1] << "], [" << iupper[0] << "," << iupper[1] << "] )" << std::endl;
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     std::cout << "HYPRE_SStructGridSetExtents ( grid, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "], [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "] )" << std::endl;
 #endif
     return HYPRE_SStructGridSetExtents ( grid, part, ilower, iupper );
@@ -60,12 +60,12 @@ HYPREDBG_SStructGridSetPeriodic ( HYPRE_SStructGrid grid,
                                   HYPRE_Int         part,
                                   HYPRE_Int       * periodic )
 {
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     std::cout << "HYPRE_SStructGridSetPeriodic ( grid, " << part << ", [" << periodic[0] << "] )" << std::endl;
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     std::cout << "HYPRE_SStructGridSetPeriodic ( grid, " << part << ", [" << periodic[0] << "," << periodic[1] << "] )" << std::endl;
-#elif NDIM == 3
-    std::cout << "HYPRE_SStructGridSetPeriodic ( grid, " << part << ", [" << periodic[0] << "," << periodic[1] << "," << periodic[3] << "] )" << std::endl;
+#elif HYPREDBG_NDIM == 3
+    std::cout << "HYPRE_SStructGridSetPeriodic ( grid, " << part << ", [" << periodic[0] << "," << periodic[1] << "," << periodic[2] << "] )" << std::endl;
 #endif
     return HYPRE_SStructGridSetPeriodic ( grid, part, periodic );
 }
@@ -95,11 +95,11 @@ HYPREDBG_SStructStencilSetEntry ( HYPRE_SStructStencil  stencil,
                                   HYPRE_Int      *      offset,
                                   HYPRE_Int             var )
 {
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     std::cout << "HYPRE_SStructStencilSetEntry ( stencil, " << entry << ", [" << offset[0] << "], " << var << " )" << std::endl;
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     std::cout << "HYPRE_SStructStencilSetEntry ( stencil, " << entry << ", [" << offset[0] << "," << offset[1] << "], " << var << " )" << std::endl;
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     std::cout << "HYPRE_SStructStencilSetEntry ( stencil, " << entry << ", [" << offset[0] << "," << offset[1] << "," << offset[2] << "], " << var << " )" << std::endl;
 #endif
     return HYPRE_SStructStencilSetEntry ( stencil, entry, offset, var );
@@ -143,11 +143,11 @@ HYPREDBG_SStructGraphAddEntries ( HYPRE_SStructGraph   graph,
                                   HYPRE_Int      *     to_index,
                                   HYPRE_Int            to_var )
 {
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     std::cout << "HYPRE_SStructGraphAddEntries ( graph, " << part << ", [" << index[0] << "], " << var << ", " << to_part << ", [" << to_index[0] << "], " << to_var << " )" << std::endl;
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     std::cout << "HYPRE_SStructGraphAddEntries ( graph, " << part << ", [" << index[0] << "," << index[1] << "], " << var << ", " << to_part << ", [" << to_index[0] << "," << to_index[1] << "], " << to_var << " )" << std::endl;
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     std::cout << "HYPRE_SStructGraphAddEntries ( graph, " << part << ", [" << index[0] << "," << index[1] << "," << index[2] << "], " << var << ", " << to_part << ", [" << to_index[0] << "," << to_index[1] << "," << to_index[2] << "], " << to_var << " )" << std::endl;
 #endif
     return HYPRE_SStructGraphAddEntries ( graph, part, index, var, to_part, to_index, to_var );
@@ -203,11 +203,11 @@ HYPREDBG_SStructMatrixSetValues ( HYPRE_SStructMatrix  matrix,
                                   HYPRE_Int      *     entries,
                                   HYPRE_Complex    *   values )
 {
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     std::cout << "HYPRE_SStructMatrixSetValues ( matrix, " << part << ", [" << index[0] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     std::cout << "HYPRE_SStructMatrixSetValues ( matrix, " << part << ", [" << index[0] << ","  << index[1] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     std::cout << "HYPRE_SStructMatrixSetValues ( matrix, " << part << ", [" << index[0] << ","  << index[1] << ","  << index[2] << "], " << var << ", " << nentries << ", [";
 #endif
     for ( int e = 0; e < nentries - 1; ++e )
@@ -229,11 +229,11 @@ HYPREDBG_SStructMatrixGetValues ( HYPRE_SStructMatrix  matrix,
                                   HYPRE_Complex    *   values )
 {
     HYPRE_Int res = HYPRE_SStructMatrixGetValues ( matrix, part, index, var, nentries, entries, values );
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     std::cout << "HYPRE_SStructMatrixGetValues ( matrix, " << part << ", [" << index[0] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     std::cout << "HYPRE_SStructMatrixGetValues ( matrix, " << part << ", [" << index[0] << ","  << index[1] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     std::cout << "HYPRE_SStructMatrixGetValues ( matrix, " << part << ", [" << index[0] << ","  << index[1] << ","  << index[2] << "], " << var << ", " << nentries << ", [";
 #endif
     for ( int e = 0; e < nentries - 1; ++e )
@@ -255,13 +255,13 @@ HYPREDBG_SStructMatrixSetBoxValues ( HYPRE_SStructMatrix  matrix,
                                      HYPRE_Int      *     entries,
                                      HYPRE_Complex    *   values )
 {
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     int size = ( iupper[0] - ilower[0] + 1 ) * nentries;
     std::cout << "HYPRE_SStructMatrixSetBoxValues ( matrix, " << part << ", [" << ilower[0] << "], [" << iupper[0] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 ) * nentries;
     std::cout << "HYPRE_SStructMatrixSetBoxValues ( matrix, " << part << ", [" << ilower[0] << "," << ilower[1] << "], [" << iupper[0] << "," << iupper[1] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 ) * ( iupper[2] - ilower[2] + 1 ) * nentries;
     std::cout << "HYPRE_SStructMatrixSetBoxValues ( matrix, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "], [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "], " << var << ", " << nentries << ", [";
 #endif
@@ -285,13 +285,13 @@ HYPREDBG_SStructMatrixGetBoxValues ( HYPRE_SStructMatrix  matrix,
                                      HYPRE_Complex    *   values )
 {
     HYPRE_Int res = HYPRE_SStructMatrixGetBoxValues ( matrix, part, ilower, iupper, var, nentries, entries, values );
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     int size = ( iupper[0] - ilower[0] + 1 ) * nentries;
     std::cout << "HYPRE_SStructMatrixGetBoxValues ( matrix, " << part << ", [" << ilower[0] << "] , [" << iupper[0] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 ) * nentries;
     std::cout << "HYPRE_SStructMatrixGetBoxValues ( matrix, " << part << ", [" << ilower[0] << "," << ilower[1] << "] , [" << iupper[0] << "," << iupper[1] << "], " << var << ", " << nentries << ", [";
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 ) * ( iupper[2] - ilower[2] + 1 ) * nentries;
     std::cout << "HYPRE_SStructMatrixGetBoxValues ( matrix, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "] , [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "], " << var << ", " << nentries << ", [";
 #endif
@@ -357,11 +357,11 @@ HYPREDBG_SStructVectorGetValues ( HYPRE_SStructVector  vector,
                                   HYPRE_Complex    *   value )
 {
     HYPRE_Int res = HYPRE_SStructVectorGetValues ( vector, part, index, var, value );
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     std::cout << "HYPREDBG_SStructVectorGetValues ( vector, " << part << ", [" << index[0] << "], " << var << ", " << *value << " )" << std::endl;
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     std::cout << "HYPREDBG_SStructVectorGetValues ( vector, " << part << ", [" << index[0] << ","  << index[1] << "], " << var << ", "  << *value << " )" << std::endl;
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     std::cout << "HYPREDBG_SStructVectorGetValues ( vector, " << part << ", [" << index[0] << ","  << index[1] << ","  << index[2] << "], " << var << ", " << *value << " )" << std::endl;
 #endif
     return res;
@@ -375,13 +375,13 @@ HYPREDBG_SStructVectorSetBoxValues ( HYPRE_SStructVector  vector,
                                      HYPRE_Int            var,
                                      HYPRE_Complex    *   values )
 {
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     int size = ( iupper[0] - ilower[0] + 1 );
     std::cout << "HYPRE_SStructVectorSetBoxValues ( vector, " << part << ", [" << ilower[0] << "], [" << iupper[0] << "], " << var << ", [" ;
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 );
     std::cout << "HYPRE_SStructVectorSetBoxValues ( vector, " << part << ", [" << ilower[0] << "," << ilower[1] << "], [" << iupper[0] << "," << iupper[1] << "], " << var << ", [" ;
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 ) * ( iupper[2] - ilower[2] + 1 );
     std::cout << "HYPRE_SStructVectorSetBoxValues ( vector, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "], [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "], " << var << ", [" ;
 #endif
@@ -400,13 +400,13 @@ HYPREDBG_SStructVectorGetBoxValues ( HYPRE_SStructVector  vector,
                                      HYPRE_Complex    *   values )
 {
     HYPRE_Int res = HYPRE_SStructVectorGetBoxValues ( vector, part, ilower, iupper, var, values );
-#if NDIM == 1
+#if HYPREDBG_NDIM == 1
     int size = ( iupper[0] - ilower[0] + 1 );
     std::cout << "HYPRE_SStructVectorGetBoxValues ( vector, " << part << ", [" << ilower[0] << "] , [" << iupper[0] << "] , " << 0 << ", [";
-#elif NDIM == 2
+#elif HYPREDBG_NDIM == 2
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 );
     std::cout << "HYPRE_SStructVectorGetBoxValues ( vector, " << part << ", [" << ilower[0] << "," << ilower[1] << "] , [" << iupper[0] << "," << iupper[1] << "] , " << 0 << ", [";
-#elif NDIM == 3
+#elif HYPREDBG_NDIM == 3
     int size = ( iupper[0] - ilower[0] + 1 ) * ( iupper[1] - ilower[1] + 1 ) * ( iupper[2] - ilower[2] + 1 );
     std::cout << "HYPRE_SStructVectorGetBoxValues ( vector, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "] , [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "] , " << 0 << ", [";
 #endif

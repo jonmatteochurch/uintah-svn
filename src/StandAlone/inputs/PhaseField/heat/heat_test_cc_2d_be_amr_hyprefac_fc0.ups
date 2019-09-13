@@ -12,11 +12,11 @@
         <test>true</test>
         <scheme>backward_euler</scheme>
         <verbosity>0</verbosity>
-        <refine_threshold>0.03</refine_threshold>
+        <refine_threshold>0.0475</refine_threshold>
     </PhaseField>
 <!--__________________________________-->
     <Time>
-        <maxTime>100.</maxTime>
+        <maxTime>101.</maxTime>
         <initTime>0.0</initTime>
         <delt_min>0.01</delt_min>
         <delt_max>1.</delt_max>
@@ -25,30 +25,13 @@
 <!--__________________________________-->
     <Grid>
         <Level>
-            <Box label="0">
-                <lower>[  0.,  0., 0.]</lower>
-                <upper>[ 16., 16., 1.]</upper>
-                <patches>[1,1,1]</patches>
-            </Box>
-            <spacing>[2.,2.,1.]</spacing>
-        </Level>
-        <Level>
             <Box label="1">
-                <lower>[  8.,  0., 0.]</lower>
-                <upper>[ 16.,  8., 1.]</upper>
-                <patches>[1,1,1]</patches>
+                <lower>[  0.,  0.,  0.]</lower>
+                <upper>[ 32., 32.,  1.]</upper>
+                <patches>[2,2,1]</patches>
             </Box>
-            <Box label="2">
-                <lower>[  8.,  8., 0.]</lower>
-                <upper>[ 16., 16., 1.]</upper>
-                <patches>[1,1,1]</patches>
-            </Box>
-            <Box label="3">
-                <lower>[  0.,  8., 0.]</lower>
-                <upper>[  8., 16., 1.]</upper>
-                <patches>[1,1,1]</patches>
-            </Box>
-            <spacing>[1.,1.,1.]</spacing>
+
+            <spacing>[2.,2.,1.]</spacing>
         </Level>
         <BoundaryConditions>
             <Face side="x-">
@@ -76,12 +59,12 @@
 <!--__________________________________-->
     <AMR>
         <Regridder type="Tiled">
-            <adaptive>false</adaptive>
+            <adaptive>true</adaptive>
             <max_levels>2</max_levels>
             <cell_refinement_ratio>[[2,2,1]]</cell_refinement_ratio>
             <cell_stability_dilation>[0,0,0]</cell_stability_dilation>
             <min_boundary_cells>[1,1,0]</min_boundary_cells>
-            <min_patch_size>[[4,4,1]]</min_patch_size>
+            <min_patch_size>[[16,16,1]]</min_patch_size>
         </Regridder>
         <FineCoarseInterfaces>
             <FCIType id="0" label="u" var="FCLinear" />

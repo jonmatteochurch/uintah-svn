@@ -535,9 +535,16 @@ protected: // SCHEDULINGS
 #ifdef HAVE_HYPRE
         if ( this->m_solver )
         {
-            for ( int idx = 0; idx < grid->numLevels(); ++idx )
+            if ( this->m_solver->getName() == "hypre" )
             {
-                 this->m_solver->scheduleInitialize ( grid->getLevel ( idx ), scheduler, this->m_materialManager->allMaterials() );
+                scheduler->setRestartInitTimestep(true);
+            }
+            else if ( this->m_solver->getName() == "hyprefac" )
+            {
+                for ( int idx = 0; idx < grid->numLevels(); ++idx )
+                {
+                    this->m_solver->scheduleInitialize ( grid->getLevel ( idx ), scheduler, this->m_materialManager->allMaterials() );
+                }
             }
         }
 #endif

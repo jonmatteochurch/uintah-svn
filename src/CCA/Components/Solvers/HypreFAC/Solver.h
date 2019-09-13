@@ -49,7 +49,7 @@
 #if 1
 #define HYPRE(fn) HYPRE_##fn
 #else
-#define NDIM 2
+#define HYPREDBG_NDIM 3
 #include "hypre_dbg.hpp"
 #define HYPRE(fn) HYPREDBG_##fn
 #endif
@@ -82,7 +82,11 @@ public:
     static std::string AdditionalEntriesSuffix;
 
 private:
-    static int offsets[2 * DIM + 1][DIM];
+    static constexpr size_t stencil_size = 2 * DIM + 1;
+    static constexpr Patch::FaceType face_start = ( Patch::FaceType ) ( 0 );
+    static constexpr Patch::FaceType face_end = ( Patch::FaceType ) ( 2 * DIM - 1 );
+
+    static int offsets[stencil_size][DIM];
     static int stn0, stnE, stnW, stnN, stnS, stnT, stnB;
 
     const VarLabel * m_timeStepLabel;
@@ -130,7 +134,7 @@ private:
         }
 
         // check if stencil entry
-        for ( size_t entry = 1; entry < 2 * DIM + 1; ++entry )
+        for ( size_t entry = 1; entry < stencil_size; ++entry )
         {
             bool is_stencil = true;
             for ( size_t d = 0; d < DIM; ++d )
@@ -142,7 +146,7 @@ private:
 
             if ( is_stencil )
             {
-                stencil_entries[index][entry-1] += value;
+                stencil_entries[index][entry - 1] += value;
                 return;
             }
         }
@@ -154,6 +158,60 @@ private:
             entry->second += value;
         else
             additional_entries.emplace ( key, value );
+    }
+
+    template <size_t NDIM>
+    typename std::enable_if< NDIM == 2ul, std::vector<double> >::type
+    get_stencil_values (
+        const PartDataP & pdata,
+        const int & box,
+        const CCVariable<Stencil7> & stencil_entries
+    )
+    {
+        std::vector<double> values ( pdata->boxsizes[box] * stencil_size );
+
+        std::vector<double>::iterator it = values.begin();
+        int k = pdata->ilowers[box][2];
+        for ( int j = pdata->ilowers[box][1]; j <= pdata->iuppers[box][1]; ++j )
+            for ( int i = pdata->ilowers[box][0]; i <= pdata->iuppers[box][0]; ++i )
+            {
+                const auto & vals = stencil_entries[IntVector ( i, j, k )];
+                ( *it++ ) = vals.p;
+                ( *it++ ) = vals.w;
+                ( *it++ ) = vals.e;
+                ( *it++ ) = vals.s;
+                ( *it++ ) = vals.n;
+            }
+
+        return values;
+    }
+
+    template <size_t NDIM>
+    typename std::enable_if< NDIM == 3ul, std::vector<double> >::type
+    get_stencil_values (
+        const PartDataP & pdata,
+        const int & box,
+        const CCVariable<Stencil7> & stencil_entries
+    )
+    {
+        std::vector<double> values ( pdata->boxsizes[box] * stencil_size );
+
+        std::vector<double>::iterator it = values.begin();
+        for ( int k = pdata->ilowers[box][2]; k <= pdata->iuppers[box][2]; ++k )
+            for ( int j = pdata->ilowers[box][1]; j <= pdata->iuppers[box][1]; ++j )
+                for ( int i = pdata->ilowers[box][0]; i <= pdata->iuppers[box][0]; ++i )
+                {
+                    const auto & vals = stencil_entries[IntVector ( i, j, k )];
+                    ( *it++ ) = vals.p;
+                    ( *it++ ) = vals.w;
+                    ( *it++ ) = vals.e;
+                    ( *it++ ) = vals.s;
+                    ( *it++ ) = vals.n;
+                    ( *it++ ) = vals.b;
+                    ( *it++ ) = vals.t;
+                }
+
+        return values;
     }
 
 public:
@@ -524,7 +582,7 @@ private:
                 for ( int i = 0; i < 3; i++ )
                     boxsize *= ( iupper[i] - ilower[i] + 1 );
 
-                for ( Patch::FaceType f = Patch::xminus; f != Patch::zminus; f = Patch::nextFace ( f ) )
+                for ( Patch::FaceType f = face_start; f <= face_end; f = Patch::nextFace ( f ) )
                     if ( patch->getBCType ( f ) == Patch::Coarse )
                         interface[f] = true;
 
@@ -641,7 +699,6 @@ private:
             const auto & nvars = solver_struct->data->nvars;
             auto & vartypes = solver_struct->data->vartypes;
             auto & nboxes = solver_struct->data->nboxes;
-            int stencil_size = 5; // FIXME FOR 3D
 
             HYPRE_SStructGrid * grid = solver_struct->grid;
             HYPRE_SStructStencil * stencil = solver_struct->stencil;
@@ -710,7 +767,7 @@ private:
 
                 HYPRE(SStructStencilCreate) ( DIM, stencil_size, stencil );
                 for ( int var = 0; var < nvars; ++var )
-                    for ( int entry = 0; entry < stencil_size; ++entry )
+                    for ( size_t entry = 0; entry < stencil_size; ++entry )
                         HYPRE(SStructStencilSetEntry) ( *stencil, entry, offsets[entry], var );
 
                 /*-----------------------------------------------------------
@@ -729,7 +786,7 @@ private:
                     for ( int var = 0; var < nvars; ++var )
                         HYPRE(SStructGraphSetStencil) ( *graph, part, var, *stencil );
 
-                AdditionalEntries *** additional_var = scinew AdditionalEntries ** [nparts];
+                AdditionalEntries ** * additional_var = scinew AdditionalEntries ** [nparts];
                 additional_var[0] = nullptr;
                 for ( int fine_part = 1; fine_part < nparts; ++fine_part )
                 {
@@ -758,13 +815,13 @@ private:
                     case 0:  // interpolate coarse node with fine node
                     {
                         refine_interface = [graph, coarse_part, fine_part, &extra_values] (
-                            IntVector & coarse_index,
-                            IntVector & fine_index,
-                            const int & var,
-                            const int & d,
-                            const int & s,
-                            double & stencil_entry
-                        )
+                                               IntVector & coarse_index,
+                                               IntVector & fine_index,
+                                               const int & var,
+                                               const int & d,
+                                               const int & s,
+                                               double & stencil_entry
+                                           )
                         {
                             if ( stencil_entry )
                             {
@@ -780,13 +837,13 @@ private:
                     {
                         double n_fine = pdata->prefinement[0] * pdata->prefinement[1] * pdata->prefinement[2];
                         refine_interface = [graph, coarse_part, fine_part, pdata, n_fine, &extra_values] (
-                            IntVector & coarse_index,
-                            IntVector & fine_index,
-                            const int & var,
-                            const int & d,
-                            const int & s,
-                            double & stencil_entry
-                        )
+                                               IntVector & coarse_index,
+                                               IntVector & fine_index,
+                                               const int & var,
+                                               const int & d,
+                                               const int & s,
+                                               double & stencil_entry
+                                           )
                         {
                             if ( stencil_entry )
                             {
@@ -818,37 +875,42 @@ private:
 
                         IntVector fine_index, coarse_index, ilower, iupper;
 
-                        for ( size_t f = 0; f < 2 * DIM; ++f )
-                        {
-                            size_t d = f / 2;
-                            int s = 2 * ( f % 2 ) - 1;
-                            if ( pdata->interfaces[fine_box][f] )
+                        for ( size_t d = 0; d < DIM; ++d )
+                            for ( int s : {-1, 1} )
                             {
-                                ilower = pdata->ilowers[fine_box];
-                                iupper = pdata->iuppers[fine_box];
-                                if ( s < 0 )
-                                    iupper[d] = ilower[d];
-                                else
-                                    ilower[d] = iupper[d];
-                                for ( fine_index[0] = ilower[0]; fine_index[0] <= iupper[0]; fine_index[0] += pdata->prefinement[0] )
-                                    for ( fine_index[1] = ilower[1]; fine_index[1] <= iupper[1]; fine_index[1] += pdata->prefinement[1] )
-                                        for ( fine_index[2] = ilower[2]; fine_index[2] <= iupper[2]; fine_index[2] += pdata->prefinement[2] )
-                                        {
-                                            for ( size_t i = 0; i < 3; ++i ) // till last dimension otherwise getPatchFromIndex fails!
-                                                coarse_index[i] = fine_index[i] / pdata->prefinement[i];
-                                            coarse_index[d] += s;
-
-                                            const Patch * tmp = coarse_level->getPatchFromIndex ( coarse_index, false );
-                                            if ( tmp != coarse_patch )
+                                size_t f = 2 * d + ( s + 1 ) / 2;
+                                if ( pdata->interfaces[fine_box][f] )
+                                {
+                                    ilower = pdata->ilowers[fine_box];
+                                    iupper = pdata->iuppers[fine_box];
+                                    if ( s < 0 )
+                                        iupper[d] = ilower[d];
+                                    else
+                                        ilower[d] = iupper[d];
+                                    for ( fine_index[0] = ilower[0]; fine_index[0] <= iupper[0]; fine_index[0] += pdata->prefinement[0] )
+                                        for ( fine_index[1] = ilower[1]; fine_index[1] <= iupper[1]; fine_index[1] += pdata->prefinement[1] )
+                                            for ( fine_index[2] = ilower[2]; fine_index[2] <= iupper[2]; fine_index[2] += pdata->prefinement[2] )
                                             {
-                                                coarse_patch = tmp;
-                                                matrix_dw->getModifiable ( stencil_var, m_stencil_entries_label, material, coarse_patch );
+                                                for ( size_t i = 0; i < 3; ++i ) // till last dimension otherwise getPatchFromIndex fails!
+                                                    coarse_index[i] = fine_index[i] / pdata->prefinement[i];
+                                                coarse_index[d] += s;
+
+                                                const Patch * tmp = coarse_level->getPatchFromIndex ( coarse_index, false );
+                                                if ( tmp->isVirtual() )
+                                                {
+                                                    coarse_index -= tmp->getVirtualOffset();
+                                                    tmp = tmp->getRealPatch();
+                                                }
+                                                if ( tmp != coarse_patch )
+                                                {
+                                                    coarse_patch = tmp;
+                                                    matrix_dw->getModifiable ( stencil_var, m_stencil_entries_label, material, coarse_patch );
+                                                }
+                                                for ( int var = 0; var < nvars; ++var )
+                                                    refine_interface ( coarse_index, fine_index, var, d, s, stencil_var[coarse_index][f - s] );
                                             }
-                                            for ( int var = 0; var < nvars; ++var )
-                                                refine_interface ( coarse_index, fine_index, var, d, s, stencil_var[coarse_index][f - s] );
-                                        }
+                                }
                             }
-                        }
 
                     }
                 }
@@ -867,12 +929,12 @@ private:
                     case 0:  // interpolate coarse node with fine node
                     {
                         refine_interface = [this, fine_part] (
-                            const IntVector & index,
-                            const IntVector & to_index,
-                            const double & value,
-                            CCVariable<Stencil7> & stencil_entries,
-                            AdditionalEntries & additional_entries
-                        )
+                                               const IntVector & index,
+                                               const IntVector & to_index,
+                                               const double & value,
+                                               CCVariable<Stencil7> & stencil_entries,
+                                               AdditionalEntries & additional_entries
+                                           )
                         {
                             if ( value )
                             {
@@ -885,12 +947,12 @@ private:
                     {
                         double n_fine = pdata->prefinement[0] * pdata->prefinement[1] * pdata->prefinement[2];
                         refine_interface = [this, fine_part, pdata, n_fine, &extra_values] (
-                            const IntVector & index,
-                            const IntVector & to_index,
-                            const double & value,
-                            CCVariable<Stencil7> & stencil_entries,
-                            AdditionalEntries & additional_entries
-                        )
+                                               const IntVector & index,
+                                               const IntVector & to_index,
+                                               const double & value,
+                                               CCVariable<Stencil7> & stencil_entries,
+                                               AdditionalEntries & additional_entries
+                                           )
                         {
                             if ( value )
                             {
@@ -950,7 +1012,7 @@ private:
 
                         auto hint = additional_var[fine_part][fine_box]->end();
                         for ( const auto & entry : f2f_entries )
-                            hint = additional_var[fine_part][fine_box]->emplace_hint(hint, entry);
+                            hint = additional_var[fine_part][fine_box]->emplace_hint ( hint, entry );
 
                         for ( const auto & entry : *additional_var[fine_part][fine_box] )
                         {
@@ -996,7 +1058,6 @@ private:
                     for ( int var = 0; var < nvars; ++var )
                     {
                         const Patch * patch = patches->get ( p );
-//                      printTask ( patches, patch, cout_doing, "HypreSolver:solve: Create Matrix" );
 
                         int part = patch->getLevel()->getIndex();
                         auto & pdata = solver_struct->pdatas[part];
@@ -1005,22 +1066,7 @@ private:
                         constCCVariable<Stencil7> stencil_var;
                         matrix_dw->get ( stencil_var, m_stencil_entries_label, material, patch, Ghost::None, 0 );
 
-                        std::vector<double> values ( pdata->boxsizes[box] * stencil_size );
-
-                        std::vector<double>::iterator it = values.begin();
-                        for ( int k = pdata->ilowers[box][2]; k <= pdata->iuppers[box][2]; ++k )
-                            for ( int j = pdata->ilowers[box][1]; j <= pdata->iuppers[box][1]; ++j )
-                                for ( int i = pdata->ilowers[box][0]; i <= pdata->iuppers[box][0]; ++i )
-                                {
-                                    const auto & vals = stencil_var[IntVector ( i, j, k )];
-                                    ( *it++ ) = vals.p;
-                                    ( *it++ ) = vals.w;
-                                    ( *it++ ) = vals.e;
-                                    ( *it++ ) = vals.s;
-                                    ( *it++ ) = vals.n;
-                                    // ( *it++ ) = vals.t; FIXME 3D
-                                    // ( *it++ ) = vals.b; FIXME 3D
-                                }
+                        std::vector<double> values = get_stencil_values<DIM> ( pdata, box, stencil_var );
 
                         std::vector<int> stencil_indices ( stencil_size );
                         std::iota ( std::begin ( stencil_indices ), std::end ( stencil_indices ), 0 );
@@ -1072,7 +1118,6 @@ private:
                 {
                     const Patch * patch = patches->get ( p );
                     int part = patch->getLevel()->getIndex();
-//                  printTask ( patches, patch, cout_doing, "HypreSolver:solve: Create RHS" );
 
                     auto & pdata = solver_struct->pdatas[part];
                     int box = pdata->patch2box[patch->getID()];
@@ -1111,7 +1156,6 @@ private:
                     for ( int var = 0; var < nvars; ++var )
                     {
                         const Patch * patch = patches->get ( p );
-                        //  printTask ( patches, patch, cout_doing, "HypreSolver:solve:Create X" );
 
                         int part = patch->getLevel()->getIndex();
                         auto & pdata = solver_struct->pdatas[part];
@@ -1339,7 +1383,6 @@ private:
                 for ( int var = 0; var < nvars; ++var )
                 {
                     const Patch * patch = patches->get ( p );
-                    //                  printTask ( patches, patch, cout_doing, "HypreSolver:solve:copy solution" );
 
                     int part = patch->getLevel()->getIndex();
                     auto & pdata = solver_struct->pdatas[part];
@@ -1368,7 +1411,6 @@ private:
                 for ( int var = 0; var < nvars; ++var )
                 {
                     const Patch * patch = patches->get ( p );
-                    //                  printTask ( patches, patch, cout_doing, "HypreSolver:solve:copy solution" );
 
                     int part = patch->getLevel()->getIndex();
                     auto & pdata = solver_struct->pdatas[part];

@@ -9,10 +9,12 @@ zero_rows=find(all(s.A.Full==0,2));
 zero_cols=find(all(s.A.Full==0,1));
 
 nghosts=0;
+g=[0,0,0];
+g(1:s.A.StructMatrix(1).Dim) = 2;
 for m=1:nlevels
     for p=1:s.A.StructMatrix(m).NParts
-        dim = s.A.StructMatrix(m).Parts(p).High-s.A.StructMatrix(m).Parts(p).Low+2;
-        nghosts = nghosts + 2*sum(dim);
+        dim = s.A.StructMatrix(m).Parts(p).High-s.A.StructMatrix(m).Parts(p).Low+1;
+        nghosts = nghosts + prod(dim+g) - prod(dim);
     end
 end
 

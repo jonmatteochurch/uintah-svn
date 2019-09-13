@@ -25,7 +25,7 @@ while ~feof(fileID)
         for p = 1:m.NParts
             m.Parts(p).ID = parts(1,p);
             m.Parts(p).Low = parts(2:(1+m.Dim),p);
-            m.Parts(p).High = parts(4:(3+m.Dim),p);
+            m.Parts(p).High = parts((2+m.Dim):(1+2*m.Dim),p);
         end
     elseif strncmp(l,'Periodic:',9)
         m.Periodic = sscanf(l,['Periodic:' repmat(' %d',1,m.Dim)]);

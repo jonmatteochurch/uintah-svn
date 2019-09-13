@@ -35,7 +35,7 @@ while ~feof(fileID)
         for p = 1:m.NParts
             m.Parts(p).ID = parts(1,p);
             m.Parts(p).Low = parts(2:(1+m.Dim),p);
-            m.Parts(p).High = parts(4:(3+m.Dim),p);
+            m.Parts(p).High = parts((2+m.Dim):(1+2*m.Dim),p);
         end
     elseif strncmp(l,'Periodic:',9)
         m.Periodic = sscanf(l,['Periodic:' repmat(' %d',1,m.Dim)]);
@@ -91,14 +91,16 @@ for d = 1:length(m.Data)
             s = [m.Stencils.ID] == m.Data(d).Stencil;
             I = m.Data(d).Index;
             J = m.Data(d).Index+m.Stencils(s).Offset;
+            ng = 1;
             if ~isempty(m.Periodic)
                 I = mod(I,m.Periodic);
                 J = mod(J,m.Periodic);
+                ng = 0;
             end
-            I = I -low;
+            I = I - low;
             J = J - low;
 
-            if any(J<-1) || any(J>dim+1)
+            if any(J<-ng) || any(J>dim+ng)
                 if m.Data(d).Value
                     msg = sprintf('ignoring data entry (%d) falling out of part\n',d);
                     msg = [msg sprintf('Part: %d\n',m.Data(d).Part')];
@@ -123,6 +125,9 @@ for d = 1:length(m.Data)
             rankJ = rankI;
         end
     end
+    %rankI
+    %rankJ
+    %d
     m.Full(rankI+1,rankJ+1) = m.Data(d).Value;
     m.I(rankI+1,rankJ+1) = I(1);
     m.J(rankI+1,rankJ+1) = I(2);

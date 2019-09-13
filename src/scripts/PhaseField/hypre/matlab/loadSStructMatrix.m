@@ -52,7 +52,7 @@ for l=1:nlevels
                 for x=0:dim(1)-1
                     for y=0:dim(2)-1
                         for z=[0 dim(3)-1]
-                            process_ghost([x;y;z],rank0,rankl,l,p,dim);
+                            process_ghost([x;y;z],rank0,rankl,l,p,low,high,dim);
                         end
                     end
                 end
@@ -64,8 +64,8 @@ end
 
 end
 
-function process_ghost(I, rank0, rankl, l,p,low, high, dim)
-global A ghosts
+function process_ghost(I, rank0, rankl, l, p, low, high, dim)
+global A
 stride = 1;
 rank = rankl;
 for d=1:A.StructMatrix(l).Dim
