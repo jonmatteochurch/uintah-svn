@@ -153,11 +153,8 @@ private:
 
         // otherwise is additional entry
         MatrixEntry::first_type key = {index, part, to_index};
-        auto entry = additional_entries.find ( key );
-        if ( entry != additional_entries.end() )
-            entry->second += value;
-        else
-            additional_entries.emplace ( key, value );
+        auto res = additional_entries.emplace ( key, value );
+        if ( !res.second ) res.first->second += value;
     }
 
     template <size_t NDIM>
@@ -406,12 +403,16 @@ public:
 
         printSchedule ( level, cout_doing, "HypreFAC::Solver:scheduleInitialize" );
 
-        Task * task = scinew Task ( "initialize_hypre", this, &Solver::initialize );
+        Task * task = scinew Task ( "initialize_hypre", this, &Solver::initialize, level );
 
         task->computes ( global_data_label );
         task->computes ( solver_struct_label );
 
-        auto * patches = level->allPatches();
+        task->setType ( Task::OncePerProc );
+
+        ASSERT ( scheduler );
+        ASSERT ( scheduler->getLoadBalancer() );
+        auto * patches = scheduler->getLoadBalancer()->getPerProcessorPatchSet ( level );
         scheduler->addTask ( task, patches, matls );
 
         scheduler->overrideVariableBehavior ( global_data_label->getName(), false, false, false, true, true );
@@ -454,10 +455,10 @@ private:
         const PatchSubset * patches,
         const MaterialSubset * /*matls*/,
         DataWarehouse * old_dw,
-        DataWarehouse * new_dw
+        DataWarehouse * new_dw,
+        LevelP level
     )
     {
-        const Level * level = getLevel ( patches );
         const int nranks = pg->nRanks();
         const int rank = pg->myRank();
         const int nparts = level->getGrid()->numLevels();
@@ -786,7 +787,7 @@ private:
                     for ( int var = 0; var < nvars; ++var )
                         HYPRE(SStructGraphSetStencil) ( *graph, part, var, *stencil );
 
-                AdditionalEntries ** * additional_var = scinew AdditionalEntries ** [nparts];
+                AdditionalEntries *** additional_var = scinew AdditionalEntries ** [nparts];
                 additional_var[0] = nullptr;
                 for ( int fine_part = 1; fine_part < nparts; ++fine_part )
                 {
@@ -865,53 +866,119 @@ private:
                         ASSERTFAIL ( "C2F value not handeld" );
                     }
 
-                    for ( int fine_box = 0; fine_box < nboxes[rank][fine_part]; ++fine_box )
+                    // add zero connection between fine patch and refined coarse patch
+                    // fac setup will otherwise fail when forming the coarse operators
+                    // since it reassign the coarse box to the processors owning ts refined boxes
+                    for ( int coarse_box = 0; coarse_box < nboxes[rank][coarse_part]; ++coarse_box )
                     {
-                        const Patch * fine_patch = grd->getPatchByID ( pdata->box2patch[fine_box], fine_part );
-                        const Patch * coarse_patch = nullptr;
-                        const Level * coarse_level = fine_patch->getLevel()->getCoarserLevel().get_rep();
+                        auto & pdata = solver_struct->pdatas[coarse_part];
+                        const Patch * coarse_patch = grd->getPatchByID ( pdata->box2patch[coarse_box], coarse_part );
+                        const Level * coarse_level = coarse_patch->getLevel();
+                        const Level * fine_level = coarse_level->getFinerLevel().get_rep();
+                        int * prefinement = solver_struct->pdatas[fine_part]->prefinement;
+
+                        IntVector coarse_lower = pdata->ilowers[coarse_box];
+                        IntVector coarse_upper = pdata->iuppers[coarse_box] + IntVector ( 1, 1, 1 );
+                        IntVector fine_lower, fine_upper;
+                        std::vector<const Patch *> fine_patches;
+
+                        for ( size_t d = 0; d < 3; ++d )
+                        {
+                            fine_lower[d] = coarse_lower[d] * prefinement[d];
+                            fine_upper[d] = coarse_upper[d] * prefinement[d];
+                        }
+
+                        fine_level->selectPatches ( fine_lower, fine_upper, fine_patches );
+
+                        for ( const Patch * fine_patch : fine_patches )
+                        {
+                            IntVector fine_index = fine_patch->getCellLowIndex();
+                            IntVector coarse_index;
+                            for ( size_t d = 0; d < 3; ++d )
+                                coarse_index[d] = fine_index[d] / prefinement[d] - ( fine_index[d] < 0 );
+
+                            for ( int var = 0; var < nvars; ++var )
+                            {
+                                HYPRE(SStructGraphAddEntries) ( *graph, coarse_part, coarse_index.get_pointer(), var, fine_part, fine_index.get_pointer(), var );
+                                extra_values[var][coarse_part][coarse_index].emplace_back ( 0 );
+                            }
+                        }
+
+                        for ( size_t d = 0; d < 3; ++d )
+                        {
+                            if ( d < DIM )
+                            {
+                                coarse_lower[d] -= 1;
+                                coarse_upper[d] += 1;
+                            }
+                            fine_lower[d] = coarse_lower[d] * prefinement[d];
+                            fine_upper[d] = coarse_upper[d] * prefinement[d];
+                        }
+
+                        fine_level->selectPatches ( fine_lower, fine_upper, fine_patches );
+
+                        if ( fine_patches.empty() )
+                            continue;
 
                         CCVariable<Stencil7> stencil_var;
+                        matrix_dw->getModifiable ( stencil_var, m_stencil_entries_label, material, coarse_patch );
 
-                        IntVector fine_index, coarse_index, ilower, iupper;
+                        for ( const Patch * fine_patch : fine_patches )
+                        {
+                            IntVector fine_lower = fine_patch->getCellLowIndex();
+                            IntVector fine_upper = fine_patch->getCellHighIndex();
 
-                        for ( size_t d = 0; d < DIM; ++d )
-                            for ( int s : {-1, 1} )
+                            for ( size_t d = 0; d < 3; ++d )
                             {
-                                size_t f = 2 * d + ( s + 1 ) / 2;
-                                if ( pdata->interfaces[fine_box][f] )
-                                {
-                                    ilower = pdata->ilowers[fine_box];
-                                    iupper = pdata->iuppers[fine_box];
-                                    if ( s < 0 )
-                                        iupper[d] = ilower[d];
-                                    else
-                                        ilower[d] = iupper[d];
-                                    for ( fine_index[0] = ilower[0]; fine_index[0] <= iupper[0]; fine_index[0] += pdata->prefinement[0] )
-                                        for ( fine_index[1] = ilower[1]; fine_index[1] <= iupper[1]; fine_index[1] += pdata->prefinement[1] )
-                                            for ( fine_index[2] = ilower[2]; fine_index[2] <= iupper[2]; fine_index[2] += pdata->prefinement[2] )
-                                            {
-                                                for ( size_t i = 0; i < 3; ++i ) // till last dimension otherwise getPatchFromIndex fails!
-                                                    coarse_index[i] = fine_index[i] / pdata->prefinement[i];
-                                                coarse_index[d] += s;
-
-                                                const Patch * tmp = coarse_level->getPatchFromIndex ( coarse_index, false );
-                                                if ( tmp->isVirtual() )
-                                                {
-                                                    coarse_index -= tmp->getVirtualOffset();
-                                                    tmp = tmp->getRealPatch();
-                                                }
-                                                if ( tmp != coarse_patch )
-                                                {
-                                                    coarse_patch = tmp;
-                                                    matrix_dw->getModifiable ( stencil_var, m_stencil_entries_label, material, coarse_patch );
-                                                }
-                                                for ( int var = 0; var < nvars; ++var )
-                                                    refine_interface ( coarse_index, fine_index, var, d, s, stencil_var[coarse_index][f - s] );
-                                            }
-                                }
+                                fine_upper[d] -= 1;
+                                coarse_lower[d] = fine_lower[d] / prefinement[d] - ( fine_lower[d] < 0 );
+                                coarse_upper[d] = fine_upper[d] / prefinement[d] - ( fine_upper[d] < 0 );
                             }
 
+                            IntVector fine_index, coarse_index, ilower, iupper;
+                            for ( size_t d = 0; d < DIM; ++d )
+                                for ( int s : { -1, 1 } )
+                                {
+                                    size_t f = 2 * d + ( s + 1 ) / 2;
+                                    if ( fine_patch->getBCType ( ( Patch::FaceType ) f ) == Patch::Coarse )
+                                    {
+                                        ilower = coarse_lower;
+                                        iupper = coarse_upper;
+
+                                        if ( fine_patch->isVirtual() )
+                                        {
+                                            fine_lower = fine_patch->getRealPatch()->getCellLowIndex();
+                                            fine_upper = fine_patch->getRealPatch()->getCellHighIndex();
+                                        }
+                                        else
+                                        {
+                                            fine_lower = fine_patch->getCellLowIndex();
+                                            fine_upper = fine_patch->getCellHighIndex();
+                                        }
+                                        if ( s < 0 )
+                                        {
+                                            iupper[d] = ilower[d] += s;
+                                        }
+                                        else
+                                        {
+                                            ilower[d] = iupper[d] += s;
+                                            fine_lower[d] = fine_upper[d] - prefinement[d] + 1;
+                                        }
+
+                                        ilower = Max ( ilower, pdata->ilowers[coarse_box] );
+                                        iupper = Min ( iupper, pdata->iuppers[coarse_box] );
+
+                                        for ( coarse_index[0] = ilower[0], fine_index[0] = fine_lower[0]; coarse_index[0] <= iupper[0]; ++coarse_index[0], fine_index[0] += prefinement[0] )
+                                            for ( coarse_index[1] = ilower[1], fine_index[1] = fine_lower[1]; coarse_index[1] <= iupper[1]; ++coarse_index[1], fine_index[1] += prefinement[1] )
+                                                for ( coarse_index[2] = ilower[2], fine_index[2] = fine_lower[2]; coarse_index[2] <= iupper[2]; ++coarse_index[2], fine_index[2] += prefinement[2] )
+                                                    for ( int var = 0; var < nvars; ++var )
+                                                        refine_interface ( coarse_index, fine_index, var, d, s, stencil_var[coarse_index][f - s] );
+
+
+                                    }
+                                }
+
+                        }
                     }
                 }
 #endif
@@ -1016,7 +1083,6 @@ private:
 
                         for ( const auto & entry : *additional_var[fine_part][fine_box] )
                         {
-                            // look if entries the coarse_index is refined
                             IntVector fine_index = std::get<0> ( entry.first );
                             const int & coarse_part = std::get<1> ( entry.first );
                             IntVector coarse_index = std::get<2> ( entry.first );
@@ -1048,6 +1114,7 @@ private:
                 HYPRE(SStructMatrixSetObjectType) ( *A, HYPRE_SSTRUCT );
                 HYPRE(SStructMatrixInitialize) ( *A );
             }
+
             if ( do_update || restart )
             {
                 GridP grd = patches->get ( 0 )->getLevel()->getGrid();
@@ -1098,6 +1165,7 @@ private:
                     }
                 }
             }
+
             if ( do_setup || restart )
             {
                 DOUT ( dbg_assembling, rank << "   hypre matrix assemble" );

@@ -1236,8 +1236,8 @@ namespace Uintah {
                           , const bool  isRestart
                           )
   {
-    if ( !patches->empty() )
-      allocateHypreMatrices( new_dw, getLevel(patches), isRestart );
+    if ( patches->empty() ) return;
+    allocateHypreMatrices( new_dw, getLevel(patches), isRestart );
   }
 
   //---------------------------------------------------------------------------------------------

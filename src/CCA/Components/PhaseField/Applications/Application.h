@@ -482,6 +482,12 @@ protected: // STATIC MEMBERS
     /// Type of ghost elements required by VAR and STN (on the same level)
     using Application< Problem<VAR, STN, Field...> >::FGT;
 
+    /// Number of ghost elements required by STN (on the coarser level)
+    using Application< Problem<VAR, STN, Field...> >::CGN;
+
+    /// Type of ghost elements required by VAR and STN (on the coarser level)
+    using Application< Problem<VAR, STN, Field...> >::CGT;
+
 public: // CONSTRUCTORS/DESTRUCTOR
 
     /// Constructor
@@ -527,6 +533,7 @@ protected: // SCHEDULINGS
             {
                 Task * task = scinew Task ( "Application::task_communicate_subproblems", this, &Application::task_communicate_subproblems );
                 task->requires ( Task::NewDW, this->m_subproblems_label, FGT, FGN );
+                if (idx) task->requires ( Task::NewDW, this->m_subproblems_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
                 task->modifies ( this->m_subproblems_label );
                 scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
             }

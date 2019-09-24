@@ -67,7 +67,7 @@
             <min_patch_size>[[16,16,1]]</min_patch_size>
         </Regridder>
         <FineCoarseInterfaces>
-            <FCIType id="0" label="u" var="FCLinear" />
+            <FCIType id="0" label="u" var="FC0" />
         </FineCoarseInterfaces>
     </AMR>
 <!--__________________________________-->

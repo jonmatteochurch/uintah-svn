@@ -191,7 +191,23 @@ for dim in DIM:
           HEATHYPREAMRBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
 
 HEATHYPREFACTEST    = []
-HEATHYPREFACMPITEST = [] # TODO Error: Invalid string value for Attribute: Uintah_specification->Solver->type. 'hyprefac' not found in this list: CGSolver, hypre, hypreamr
+HEATHYPREFACMPITEST = []
+
+freq = {"2d": 5, "3d": 5}
+for dim in DIM:
+  # for var in VAR:
+    for var in CC:
+      for im in IM:
+        for f2c in F2C[dim]:
+          ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_%s_amr_hyprefac_%s.ups" % (var,dim,im,f2c), [ \
+            ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+            ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
+          ])
+          HEATHYPREFACTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hyprefac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
+          HEATHYPREFACMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hyprefac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+
+HEATHYPREFACBCTEST    = []
+HEATHYPREFACBCMPITEST = []
 
 freq = {"2d": 5, "3d": 5}
 for dim in DIM:
@@ -203,18 +219,6 @@ for dim in DIM:
             ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
-          HEATHYPREFACTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hyprefac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREFACMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hyprefac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
-
-HEATHYPREFACBCTEST    = []
-HEATHYPREFACBCMPITEST = [] # TODO Error: Invalid string value for Attribute: Uintah_specification->Solver->type. 'hyprefac' not found in this list: CGSolver, hypre, hypreamr
-
-for dim in DIM:
-  # for var in VAR:
-    for var in CC:
-      for im in IM:
-        for f2c in F2C[dim]:
-          ups = "heat/heat_test_%s_%s_%s_amr_hyprefac_%s.ups" % (var,dim,im,f2c)
           HEATHYPREFACBCTEST   .append( ( "heat_test_%s_%s_%s_amr_hyprefac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
           HEATHYPREFACBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hyprefac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
 
@@ -232,8 +236,7 @@ for dim in DIM:
     PUREMETALMPITEST.append( ( "pure_metal_%s_%s_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
 
 PUREMETALAMRTEST      = []
-PUREMETALAMR2DMPITEST = [] # FIXME Caught exception: An IntVectorOutOfBounds exception was thrown
-PUREMETALAMR3DMPITEST = []
+PUREMETALAMRMPITEST   = []
 
 freq = {"2d": 25, "3d": 1}
 for dim in DIM:
@@ -243,11 +246,8 @@ for dim in DIM:
       ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
-      PUREMETALAMRTEST       .append( ( "pure_metal_%s_%s_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
-      if dim=="2d":
-        PUREMETALAMR2DMPITEST.append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
-      else:
-        PUREMETALAMR3DMPITEST.append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      PUREMETALAMRTEST   .append( ( "pure_metal_%s_%s_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
+      PUREMETALAMRMPITEST.append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
 #__________________________________
 # The following list is parsed by the local RT script
 # and allows the user to select the tests to run
@@ -311,23 +311,21 @@ def getTestList(me) :
 
   elif me == "PUREMETALAMRTEST":
     TESTS = PUREMETALAMRTEST
-  elif me == "PUREMETALAMR2DMPITEST":
-    TESTS = PUREMETALAMR2DMPITEST
-  elif me == "PUREMETALAMR3DMPITEST":
-    TESTS = PUREMETALAMR3DMPITEST
+  elif me == "PUREMETALAMRMPITEST":
+    TESTS = PUREMETALAMRMPITEST
 
   elif me == "AMRTESTS":
-    TESTS = HEATAMRTEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCTEST + HEATHYPREAMRBCMPITEST + PUREMETALAMRTEST + PUREMETALAMR2DMPITEST + PUREMETALAMR3DMPITEST
+    TESTS = HEATAMRTEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCTEST + HEATHYPREAMRBCMPITEST + PUREMETALAMRTEST + PUREMETALAMRMPITEST
 
   elif me == "DEBUGTESTS":
-    TESTS = HEATHYPREFACMPITEST + HEATHYPREFACBCTEST + HEATHYPREFACBCMPITEST + PUREMETALAMR2DMPITEST
+    TESTS = PUREMETALAMRMPITEST
 
   elif me == "LOCALTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPRETEST + HEATHYPREMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCTEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRTEST + PUREMETALAMR3DMPITEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRMPITEST
   elif me == "NIGHTLYTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPRETEST + HEATHYPREMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCTEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRTEST + PUREMETALAMR3DMPITEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRMPITEST
   elif me == "BUILDBOTTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPRETEST + HEATHYPREMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCTEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACTEST + PUREMETALTEST + PUREMETALMPITEST + PUREMETALAMRTEST + PUREMETALAMR3DMPITEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRMPITEST
 
   else:
     print("\nERROR:PhaseField.py  getTestList:  The test list (%s) does not exist!\n\n" % me)
