@@ -154,7 +154,9 @@ private: // STATIC MEMBERS
     /// Restriction type for coarsening
     using Application< HeatProblem<VAR, STN> >::F2C;
 
+#ifdef HAVE_HYPRE
     using _AdditionalEntries = PerPatch<HypreFAC::AdditionalEntriesP>;
+#endif
 
 public: // STATIC MEMBERS
 
