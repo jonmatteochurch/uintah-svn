@@ -35,82 +35,54 @@ namespace Uintah
 namespace HypreFAC
 {
 
+class SolverBase
+{
+public:
+    virtual ~SolverBase() = default;
+    virtual void solve ( SolverStruct * solver_struct, int & num_iterations, double & final_res_norm ) = 0;
+    virtual void destroy () = 0;
+};
+
 struct SolverStruct : public RefCounted
 {
     GlobalDataP  data;   // global data
     PartDataP  * pdatas; // local data per part/level
+    SolverBase * solver;
 
-    bool                    created;
-    bool                    restart;
-    HYPRE_SStructGrid   *   grid;
-    HYPRE_SStructStencil  * stencil;
-    HYPRE_SStructGraph   *  graph;
-    HYPRE_SStructMatrix  *  A;
-    HYPRE_SStructVector  *  b;
-    HYPRE_SStructVector  *  x;
+    bool                   created;
+    bool                   restart;
+    HYPRE_SStructGrid      grid;
+    HYPRE_SStructStencil   stencil;
+    HYPRE_SStructGraph     graph;
+    HYPRE_SStructMatrix    A;
+    HYPRE_SStructVector    b;
+    HYPRE_SStructVector    x;
 
     SolverStruct()
         : RefCounted()
         , data ( nullptr )
         , pdatas ( nullptr )
+        , solver ( nullptr )
         , created ( false )
         , restart ( true )
-        , grid ( nullptr )
-        , stencil ( nullptr )
-        , graph ( nullptr )
-        , A ( nullptr )
-        , b ( nullptr )
-        , x ( nullptr )
     {
     };
 
     virtual ~SolverStruct()
     {
+        delete solver;
+
         if ( created )
         {
-            HYPRE_SStructVectorDestroy ( *x );
-            HYPRE_SStructVectorDestroy ( *b );
-            HYPRE_SStructMatrixDestroy ( *A );
-            HYPRE_SStructGraphDestroy ( *graph );
-            HYPRE_SStructStencilDestroy ( *stencil );
-            HYPRE_SStructGridDestroy ( *grid );
+            HYPRE_SStructVectorDestroy ( x );
+            HYPRE_SStructVectorDestroy ( b );
+            HYPRE_SStructMatrixDestroy ( A );
+            HYPRE_SStructGraphDestroy ( graph );
+            HYPRE_SStructStencilDestroy ( stencil );
+            HYPRE_SStructGridDestroy ( grid );
         }
 
-        if ( pdatas )
-        {
-            delete[] pdatas;
-            pdatas = nullptr;
-        }
-        if ( grid )
-        {
-            delete grid;
-            grid = nullptr;
-        }
-        if ( stencil )
-        {
-            delete stencil;
-            stencil = nullptr;
-        }
-        if ( graph )
-        {
-            delete graph;
-            graph = nullptr;
-        }
-        if ( A )
-        {
-            delete A;
-            A = nullptr;
-        }
-        if ( b )
-        {
-            delete b;
-            b = nullptr;
-        }
-        if ( x )
-        {
-            delete x;
-            x = nullptr;
-        }
+        delete[] pdatas;
     };
 };
 
@@ -118,6 +90,3 @@ struct SolverStruct : public RefCounted
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreFACSolverStruct_h
-
-
-

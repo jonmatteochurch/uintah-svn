@@ -75,6 +75,242 @@ static constexpr bool dbg_doing = false;
 static constexpr bool dbg_assembling = false;
 extern DebugStream cout_doing;
 
+enum SolverType { FAC, PFMG_PCG, PFMG };
+
+template<SolverType> class SolverImpl;
+
+template<>
+class SolverImpl<FAC> : public SolverBase
+{
+    HYPRE_SStructSolver    solver;
+
+public:
+    SolverImpl (
+        MPI_Comm comm,
+        SolverStruct * solver_struct,
+        SolverParams * solver_params,
+        int * plevels,
+        int ( * prefinements ) [HYPRE_MAXDIM],
+        bool guess
+    )
+    {
+        const auto & nparts = solver_struct->data->nparts;
+
+        HYPRE(SStructFACCreate) ( comm, &solver );
+        HYPRE(SStructFACSetPLevels) ( solver, nparts, plevels );
+        HYPRE(SStructFACSetPRefinements) ( solver, nparts, prefinements );
+
+        if ( guess )
+            HYPRE(SStructFACSetNonZeroGuess) ( solver );
+        else
+            HYPRE(SStructFACSetZeroGuess) ( solver );
+
+        if ( solver_params->max_levels > 0 )
+            HYPRE(SStructFACSetMaxLevels) ( solver, solver_params->max_levels );
+        if ( solver_params->max_iter > 0 )
+            HYPRE(SStructFACSetMaxIter) ( solver, solver_params->max_iter );
+        if ( solver_params->tol > 0 )
+            HYPRE(SStructFACSetTol) ( solver, solver_params->tol );
+        if ( solver_params->rel_change > -1 )
+            HYPRE(SStructFACSetRelChange) ( solver, solver_params->rel_change );
+        if ( solver_params->relax_type >  -1 )
+            HYPRE(SStructFACSetRelaxType) ( solver, solver_params->relax_type );
+        if ( solver_params->num_pre_relax >  -1 )
+            HYPRE(SStructFACSetNumPreRelax) ( solver, solver_params->num_pre_relax );
+        if ( solver_params->num_post_relax >  -1 )
+            HYPRE(SStructFACSetNumPostRelax) ( solver, solver_params->num_post_relax );
+        if ( solver_params->csolver_type >  -1 )
+            HYPRE(SStructFACSetCoarseSolverType) ( solver, solver_params->csolver_type );
+        if ( solver_params->logging >  -1 )
+            HYPRE(SStructFACSetLogging) ( solver, solver_params->logging );
+
+        HYPRE(SStructFACSetup2) ( solver,
+                                     solver_struct->A,
+                                     solver_struct->b,
+                                     solver_struct->x
+                                   );
+    }
+
+    virtual ~SolverImpl()
+    {
+        HYPRE(SStructFACDestroy2) ( solver );
+    };
+
+    virtual void
+    solve (
+        SolverStruct * solver_struct,
+        int & num_iterations, double & final_res_norm
+    ) override
+    {
+        HYPRE(SStructFACSolve3) (
+            solver,
+            solver_struct->A,
+            solver_struct->b,
+            solver_struct->x
+        );
+        HYPRE(SStructFACGetNumIterations) ( solver, &num_iterations );
+        HYPRE(SStructFACGetFinalRelativeResidualNorm) ( solver, &final_res_norm );
+    }
+
+    virtual void destroy () override
+    {
+        ASSERTFAIL ( "hehe" );
+    }
+};
+
+template<>
+class SolverImpl<PFMG_PCG> : public SolverBase
+{
+    HYPRE_SStructSolver    solver;
+    HYPRE_SStructSolver    precond;
+
+public:
+    SolverImpl (
+        MPI_Comm comm,
+        SolverStruct * solver_struct,
+        SolverParams * solver_params//,
+//         int * plevels,
+//         int ( * prefinements ) [HYPRE_MAXDIM],
+//         bool guess
+    )
+    {
+        HYPRE_SStructPCGCreate ( comm, &solver );
+        HYPRE_PCGSetTwoNorm ( ( HYPRE_Solver ) solver, 1 );
+
+        if ( solver_params->max_iter > 0 )
+            HYPRE_PCGSetMaxIter ( ( HYPRE_Solver ) solver, solver_params->max_iter );
+        if ( solver_params->tol > 0 )
+            HYPRE_PCGSetTol ( ( HYPRE_Solver ) solver, solver_params->tol );
+
+        /* use SysPFMG solver as preconditioner */
+        HYPRE_SStructSysPFMGCreate ( comm, &precond );
+        HYPRE_SStructSysPFMGSetMaxIter ( precond, 1 );
+        HYPRE_SStructSysPFMGSetTol ( precond, 0.0 );
+        HYPRE_SStructSysPFMGSetZeroGuess ( precond );
+        /* weighted Jacobi = 1; red-black GS = 2 */
+        HYPRE_SStructSysPFMGSetRelaxType ( precond, 3 );
+        if ( solver_params->relax_type == WeightedJacobi )
+            HYPRE_SStructFACSetJacobiWeight ( precond, solver_params->weight );
+        if ( solver_params->num_pre_relax >  -1 )
+            HYPRE_SStructSysPFMGSetNumPreRelax ( precond, solver_params->num_pre_relax );
+        if ( solver_params->num_post_relax >  -1 )
+            HYPRE_SStructSysPFMGSetNumPostRelax ( precond, solver_params->num_post_relax );
+
+        HYPRE_PCGSetPrecond ( ( HYPRE_Solver ) solver,
+                              ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSolve,
+                              ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSetup,
+                              ( HYPRE_Solver ) precond );
+
+        HYPRE_PCGSetup ( ( HYPRE_Solver ) solver,
+                         ( HYPRE_Matrix ) solver_struct->A,
+                         ( HYPRE_Vector ) solver_struct->b,
+                         ( HYPRE_Vector ) solver_struct->x );
+    }
+
+    virtual ~SolverImpl()
+    {
+        HYPRE_SStructPCGDestroy ( solver );
+        HYPRE_SStructSysPFMGDestroy ( precond );
+    };
+
+    virtual void
+    solve (
+        SolverStruct * solver_struct,
+        int & num_iterations,
+        double & final_res_norm
+    ) override
+    {
+        HYPRE_PCGSolve ( ( HYPRE_Solver ) solver,
+                         ( HYPRE_Matrix ) solver_struct->A,
+                         ( HYPRE_Vector ) solver_struct->b,
+                         ( HYPRE_Vector ) solver_struct->x );
+        HYPRE_PCGGetNumIterations ( ( HYPRE_Solver ) solver, &num_iterations );
+        HYPRE_PCGGetFinalRelativeResidualNorm ( ( HYPRE_Solver ) solver, &final_res_norm );
+    }
+
+    virtual void destroy () override
+    {
+        ASSERTFAIL ( "hehe" );
+    }
+
+};
+
+template<>
+class SolverImpl<PFMG> : public SolverBase
+{
+    HYPRE_SStructSolver    solver;
+    int max_iter;
+
+public:
+    SolverImpl (
+        MPI_Comm comm,
+        SolverStruct * solver_struct,
+        SolverParams * solver_params,
+//         int * plevels,
+//         int ( * prefinements ) [HYPRE_MAXDIM],
+        bool guess
+    ) : max_iter (solver_params->max_iter)
+    {
+        HYPRE_SStructSysPFMGCreate ( comm, &solver );
+        if ( solver_params->max_iter > 0 )
+            HYPRE_SStructSysPFMGSetMaxIter ( solver, solver_params->max_iter + 1 );
+        if ( solver_params->tol > 0 )
+            HYPRE_SStructSysPFMGSetTol ( solver, solver_params->tol );
+        if ( guess )
+            HYPRE_SStructSysPFMGSetNonZeroGuess ( solver );
+        else
+            HYPRE_SStructSysPFMGSetZeroGuess ( solver );
+        /* weighted Jacobi = 1; red-black GS = 2 */
+        HYPRE_SStructSysPFMGSetRelaxType ( solver, solver_params->relax_type );
+        if ( solver_params->relax_type == WeightedJacobi )
+            HYPRE_SStructFACSetJacobiWeight ( solver, solver_params->weight );
+        if ( solver_params->num_pre_relax >  -1 )
+            HYPRE_SStructSysPFMGSetNumPreRelax ( solver, solver_params->num_pre_relax );
+        if ( solver_params->num_post_relax >  -1 )
+            HYPRE_SStructSysPFMGSetNumPostRelax ( solver, solver_params->num_post_relax );
+
+        HYPRE_SStructSysPFMGSetPrintLevel ( solver, 1 );
+
+        HYPRE_SStructSysPFMGSetup (
+            solver,
+            solver_struct->A,
+            solver_struct->b,
+            solver_struct->x
+        );
+    }
+
+    virtual ~SolverImpl()
+    {
+        HYPRE_SStructSysPFMGDestroy ( solver );
+    };
+
+    virtual void 
+    solve (
+        SolverStruct * solver_struct,
+        int & num_iterations,
+        double & final_res_norm
+    ) override
+    {
+        HYPRE_SStructSysPFMGSolve (
+            solver,
+            solver_struct->A,
+            solver_struct->b,
+            solver_struct->x
+        );
+        HYPRE_SStructSysPFMGGetNumIterations ( solver, &num_iterations );
+        if ( max_iter > 0 && num_iterations <= max_iter )
+            final_res_norm = 0.;
+        HYPRE_SStructSysPFMGGetFinalRelativeResidualNorm ( solver, &final_res_norm );  // BROKEN !
+    }
+
+    virtual void destroy () override
+    {
+        ASSERTFAIL ( "hehe" );
+    }
+
+};
+
+
 template < size_t DIM >
 class Solver : public SolverCommon
 {
@@ -257,17 +493,17 @@ public:
                 m_params->setSetupFrequency ( sFreq );
                 m_params->setUpdateCoefFrequency ( coefFreq );
 
-                ASSERTMSG( param_ps->get ( "max_levels",             m_params->max_levels ),   "HypreFAC::Solver ERROR. Missing parameter: max_level" );
-                param_ps->getWithDefault ( "maxiterations",          m_params->max_iter,       -1  );
+                ASSERTMSG ( param_ps->get ( "max_levels",             m_params->max_levels ),   "HypreFAC::Solver ERROR. Missing parameter: max_level" );
+                param_ps->getWithDefault ( "maxiterations",          m_params->max_iter,       -1 );
                 param_ps->getWithDefault ( "tolerance",              m_params->tol,            -1. );
-                param_ps->getWithDefault ( "rel_change",             m_params->rel_change,     -1  );
-                param_ps->getWithDefault ( "relax_type",   ( int & ) m_params->relax_type,     -1  );
+                param_ps->getWithDefault ( "rel_change",             m_params->rel_change,     -1 );
+                param_ps->getWithDefault ( "relax_type", ( int & ) m_params->relax_type,     -1 );
                 param_ps->getWithDefault ( "weight",                 m_params->weight,         -1. );
-                param_ps->getWithDefault ( "npre",                   m_params->num_pre_relax,  -1  );
-                param_ps->getWithDefault ( "npost",                  m_params->num_post_relax, -1  );
-                param_ps->getWithDefault ( "csolver_type", ( int & ) m_params->csolver_type,   -1  );
-                param_ps->getWithDefault ( "logging",                m_params->logging,        -1  );
-                param_ps->getWithDefault ( "C2F",                    m_params->C2F,            -1  );
+                param_ps->getWithDefault ( "npre",                   m_params->num_pre_relax,  -1 );
+                param_ps->getWithDefault ( "npost",                  m_params->num_post_relax, -1 );
+                param_ps->getWithDefault ( "csolver_type", ( int & ) m_params->csolver_type,   -1 );
+                param_ps->getWithDefault ( "logging",                m_params->logging,        -1 );
+                param_ps->getWithDefault ( "C2F",                    m_params->C2F,            -1 );
 
                 found = true;
             }
@@ -476,7 +712,7 @@ private:
         for ( int l = 1; l <= part; ++l )
         {
             auto r = level->getGrid()->getLevel ( l )->getRefinementRatio();
-            for ( int i = 0; i < 3; ++i )
+            for ( int i = 0; i < HYPRE_MAXDIM; ++i )
                 refinement[i] *= r[i];
         }
 
@@ -492,9 +728,8 @@ private:
         else
             new_dw->get ( timeStep, m_timeStepLabel );
 
-        auto solver_struct_label = hypre_solver_struct_label ( rank );
         SolverStruct * solver_struct;
-
+        auto solver_struct_label = hypre_solver_struct_label ( rank );
         if ( new_dw->exists ( solver_struct_label ) )
         {
             SoleVariable<SolverStructP> solver_struct_var;
@@ -503,8 +738,6 @@ private:
         }
         else
         {
-            solver_struct = scinew SolverStruct;
-
             GlobalData * global_data;
             auto global_data_label = hypre_global_data_label();
             if ( new_dw->exists ( global_data_label ) )
@@ -520,26 +753,18 @@ private:
                 global_data->nboxes.resize ( nranks );
                 for ( auto & nboxes : global_data->nboxes )
                     nboxes.resize ( nparts );
-                // global_data->nboxes    to be populated after pdatas fo all levels/parts and all ranks are initialized
-                // global_data->data->stencil_* to be populated by stencil solver
+                global_data->nvars = 1;
 
                 SoleVariable<GlobalDataP> global_data_var;
                 global_data_var.setData ( global_data );
                 new_dw->put ( global_data_var, global_data_label );
             }
 
+            solver_struct = scinew SolverStruct;
             solver_struct->data = global_data;
-
             solver_struct->pdatas = scinew PartDataP[nparts];
-            solver_struct->grid = scinew HYPRE_SStructGrid;
-            solver_struct->stencil = scinew HYPRE_SStructStencil;
-            solver_struct->graph = scinew HYPRE_SStructGraph;
-            solver_struct->A = scinew HYPRE_SStructMatrix;
-            solver_struct->b = scinew HYPRE_SStructVector;
-            solver_struct->x = scinew HYPRE_SStructVector;
             solver_struct->created = false;
             solver_struct->restart = true;
-            solver_struct->data->nvars = 1;
 
             SoleVariable<SolverStructP> solver_struct_var;
             solver_struct_var.setData ( solver_struct );
@@ -580,7 +805,7 @@ private:
                 std::array<bool, 6> interface = {{ false, false, false, false, false, false }};
 
                 int boxsize = 1;
-                for ( int i = 0; i < 3; i++ )
+                for ( int i = 0; i < HYPRE_MAXDIM; i++ )
                     boxsize *= ( iupper[i] - ilower[i] + 1 );
 
                 for ( Patch::FaceType f = face_start; f <= face_end; f = Patch::nextFace ( f ) )
@@ -701,15 +926,8 @@ private:
             auto & vartypes = solver_struct->data->vartypes;
             auto & nboxes = solver_struct->data->nboxes;
 
-            HYPRE_SStructGrid * grid = solver_struct->grid;
-            HYPRE_SStructStencil * stencil = solver_struct->stencil;
-            HYPRE_SStructGraph * graph = solver_struct->graph;
-            HYPRE_SStructMatrix * A = solver_struct->A;
-            HYPRE_SStructVector * b = solver_struct->b;
-            HYPRE_SStructVector * x = solver_struct->x;
-
             int * plevels = nullptr;
-            int ( *prefinements ) [3] = nullptr;
+            int ( *prefinements ) [HYPRE_MAXDIM] = nullptr;
 
             std::vector<std::vector<std::map<IntVector, std::vector<double>>>> extra_values ( nvars );
             for ( auto & v : extra_values )
@@ -718,7 +936,7 @@ private:
             if ( nparts > 1 )
             {
                 plevels = new int[nparts];
-                prefinements = new int[nparts][3];
+                prefinements = new int[nparts][HYPRE_MAXDIM];
                 for ( int part = 0; part < nparts; ++part )
                 {
                     auto pdata = solver_struct->pdatas[part];
@@ -731,16 +949,17 @@ private:
 
             if ( do_setup || restart )
             {
-                if ( solver_struct->created )
-                {
-                    HYPRE(SStructVectorDestroy) ( *x );
-                    HYPRE(SStructVectorDestroy) ( *b );
-                    HYPRE(SStructMatrixDestroy) ( *A );
-                    HYPRE(SStructGraphDestroy) ( *graph );
-                    HYPRE(SStructStencilDestroy) ( *stencil );
-                    HYPRE(SStructGridDestroy) ( *grid );
-                    solver_struct->created = false;
-                }
+//                 if ( solver_struct->created )
+//                 {
+//                     HYPRE(SStructVectorDestroy) ( solver_struct->x );
+//                     HYPRE(SStructVectorDestroy) ( solver_struct->b );
+//                     HYPRE(SStructMatrixDestroy) ( solver_struct->A );
+//                     HYPRE(SStructGraphDestroy) ( solver_struct->graph );
+//                     HYPRE(SStructStencilDestroy) ( solver_struct->stencil );
+//                     HYPRE(SStructGridDestroy) ( solver_struct->grid );
+//                     solver_struct->destroy_solver();
+//                     solver_struct->created = false;
+//                 }
 
                 /*-----------------------------------------------------------
                  * Set up the grid
@@ -748,17 +967,17 @@ private:
 
                 DOUT ( dbg_assembling, rank << "   hypre grid setup" );
 
-                HYPRE(SStructGridCreate) ( comm, DIM, nparts, grid );
+                HYPRE(SStructGridCreate) ( comm, DIM, nparts, &solver_struct->grid );
 
                 for ( int part = 0; part < nparts; ++part )
                 {
                     auto & pdata = solver_struct->pdatas[part];
                     for ( int box = 0; box < nboxes[rank][part]; ++box )
-                        HYPRE(SStructGridSetExtents) ( *grid, part, pdata->ilowers[box].get_pointer(), pdata->iuppers[box].get_pointer() );
-                    HYPRE(SStructGridSetVariables) ( *grid, part, nvars, vartypes.data() );
-                    HYPRE(SStructGridSetPeriodic) ( *grid, part, pdata->periodic );
+                        HYPRE(SStructGridSetExtents) ( solver_struct->grid, part, pdata->ilowers[box].get_pointer(), pdata->iuppers[box].get_pointer() );
+                    HYPRE(SStructGridSetVariables) ( solver_struct->grid, part, nvars, vartypes.data() );
+                    HYPRE(SStructGridSetPeriodic) ( solver_struct->grid, part, pdata->periodic );
                 }
-                HYPRE(SStructGridAssemble) ( *grid );
+                HYPRE(SStructGridAssemble) ( solver_struct->grid );
 
                 /*-----------------------------------------------------------
                  * Set up the stencils
@@ -766,10 +985,10 @@ private:
 
                 DOUT ( dbg_assembling, rank << "   hypre stencil setup" );
 
-                HYPRE(SStructStencilCreate) ( DIM, stencil_size, stencil );
+                HYPRE(SStructStencilCreate) ( DIM, stencil_size, &solver_struct->stencil );
                 for ( int var = 0; var < nvars; ++var )
                     for ( size_t entry = 0; entry < stencil_size; ++entry )
-                        HYPRE(SStructStencilSetEntry) ( *stencil, entry, offsets[entry], var );
+                        HYPRE(SStructStencilSetEntry) ( solver_struct->stencil, entry, offsets[entry], var );
 
                 /*-----------------------------------------------------------
                  * Set up the graph
@@ -777,15 +996,17 @@ private:
 
                 DOUT ( dbg_assembling, rank << "   hypre graph setup" );
 
-                GridP grd = patches->get ( 0 )->getLevel()->getGrid();
-
-                HYPRE(SStructGraphCreate) ( comm, *grid, graph );
-                HYPRE(SStructGraphSetObjectType) ( *graph, HYPRE_SSTRUCT );
+                HYPRE(SStructGraphCreate) ( comm, solver_struct->grid, &solver_struct->graph );
+                HYPRE(SStructGraphSetObjectType) ( solver_struct->graph, HYPRE_SSTRUCT );
 
                 /* set stencils */
                 for ( int part = 0; part < nparts; ++part )
                     for ( int var = 0; var < nvars; ++var )
-                        HYPRE(SStructGraphSetStencil) ( *graph, part, var, *stencil );
+                        HYPRE(SStructGraphSetStencil) ( solver_struct->graph, part, var, solver_struct->stencil );
+
+                if (patches->size())
+                {
+                GridP grd = patches->get ( 0 )->getLevel()->getGrid();
 
                 AdditionalEntries *** additional_var = scinew AdditionalEntries ** [nparts];
                 additional_var[0] = nullptr;
@@ -802,6 +1023,7 @@ private:
                     }
                 }
 
+
 #if 1
                 /* add coarse to fine entries */
                 for ( int fine_part = 1; fine_part < nparts; ++fine_part )
@@ -815,7 +1037,7 @@ private:
                     {
                     case 0:  // interpolate coarse node with fine node
                     {
-                        refine_interface = [graph, coarse_part, fine_part, &extra_values] (
+                        refine_interface = [&solver_struct, coarse_part, fine_part, &extra_values] (
                                                IntVector & coarse_index,
                                                IntVector & fine_index,
                                                const int & var,
@@ -827,7 +1049,7 @@ private:
                             if ( stencil_entry )
                             {
                                 IntVector to_index ( fine_index[0], fine_index[1], fine_index[2] );
-                                HYPRE(SStructGraphAddEntries) ( *graph, coarse_part, coarse_index.get_pointer(), var, fine_part, to_index.get_pointer(), var );
+                                HYPRE(SStructGraphAddEntries) ( solver_struct->graph, coarse_part, coarse_index.get_pointer(), var, fine_part, to_index.get_pointer(), var );
                                 extra_values[var][coarse_part][coarse_index].emplace_back ( stencil_entry );
                                 stencil_entry = 0.;
                             }
@@ -837,7 +1059,7 @@ private:
                     case 1:
                     {
                         double n_fine = pdata->prefinement[0] * pdata->prefinement[1] * pdata->prefinement[2];
-                        refine_interface = [graph, coarse_part, fine_part, pdata, n_fine, &extra_values] (
+                        refine_interface = [&solver_struct, coarse_part, fine_part, pdata, n_fine, &extra_values] (
                                                IntVector & coarse_index,
                                                IntVector & fine_index,
                                                const int & var,
@@ -854,7 +1076,7 @@ private:
                                         {
                                             IntVector to_index ( fine_index[0] + i, fine_index[1] + j, fine_index[2] + k );
                                             if ( s > 0 ) to_index[d] -= pdata->prefinement[d] - 1;
-                                            HYPRE(SStructGraphAddEntries) ( *graph, coarse_part, coarse_index.get_pointer(), var, fine_part, to_index.get_pointer(), var );
+                                            HYPRE(SStructGraphAddEntries) ( solver_struct->graph, coarse_part, coarse_index.get_pointer(), var, fine_part, to_index.get_pointer(), var );
                                             extra_values[var][coarse_part][coarse_index].emplace_back ( stencil_entry / n_fine );
                                         }
                                 stencil_entry = 0.;
@@ -882,7 +1104,7 @@ private:
                         IntVector fine_lower, fine_upper;
                         std::vector<const Patch *> fine_patches;
 
-                        for ( size_t d = 0; d < 3; ++d )
+                        for ( size_t d = 0; d < HYPRE_MAXDIM; ++d )
                         {
                             fine_lower[d] = coarse_lower[d] * prefinement[d];
                             fine_upper[d] = coarse_upper[d] * prefinement[d];
@@ -894,17 +1116,17 @@ private:
                         {
                             IntVector fine_index = fine_patch->getCellLowIndex();
                             IntVector coarse_index;
-                            for ( size_t d = 0; d < 3; ++d )
+                            for ( size_t d = 0; d < HYPRE_MAXDIM; ++d )
                                 coarse_index[d] = fine_index[d] / prefinement[d] - ( fine_index[d] < 0 );
 
                             for ( int var = 0; var < nvars; ++var )
                             {
-                                HYPRE(SStructGraphAddEntries) ( *graph, coarse_part, coarse_index.get_pointer(), var, fine_part, fine_index.get_pointer(), var );
+                                HYPRE(SStructGraphAddEntries) ( solver_struct->graph, coarse_part, coarse_index.get_pointer(), var, fine_part, fine_index.get_pointer(), var );
                                 extra_values[var][coarse_part][coarse_index].emplace_back ( 0 );
                             }
                         }
 
-                        for ( size_t d = 0; d < 3; ++d )
+                        for ( size_t d = 0; d < HYPRE_MAXDIM; ++d )
                         {
                             if ( d < DIM )
                             {
@@ -928,7 +1150,7 @@ private:
                             IntVector fine_lower = fine_patch->getCellLowIndex();
                             IntVector fine_upper = fine_patch->getCellHighIndex();
 
-                            for ( size_t d = 0; d < 3; ++d )
+                            for ( size_t d = 0; d < HYPRE_MAXDIM; ++d )
                             {
                                 fine_upper[d] -= 1;
                                 coarse_lower[d] = fine_lower[d] / prefinement[d] - ( fine_lower[d] < 0 );
@@ -937,7 +1159,10 @@ private:
 
                             IntVector fine_index, coarse_index, ilower, iupper;
                             for ( size_t d = 0; d < DIM; ++d )
-                                for ( int s : { -1, 1 } )
+                                for ( int s :
+                                        {
+                                            -1, 1
+                                        } )
                                 {
                                     size_t f = 2 * d + ( s + 1 ) / 2;
                                     if ( fine_patch->getBCType ( ( Patch::FaceType ) f ) == Patch::Coarse )
@@ -1057,7 +1282,7 @@ private:
                             if ( fine_part - coarse_part == 1 )
                             {
                                 IntVector to_fine_index;
-                                for ( size_t i = 0; i < 3; ++i ) // till last dimension otherwise getPatchFromIndex fails!
+                                for ( size_t i = 0; i < HYPRE_MAXDIM; ++i ) // till last dimension otherwise getPatchFromIndex fails!
                                     to_fine_index[i] = coarse_index[i] * pdata->prefinement[i];
 
                                 for ( int to_fine_box = 0; to_fine_box < nboxes[rank][fine_part]; ++to_fine_box )
@@ -1090,7 +1315,7 @@ private:
 
                             for ( int var = 0; var < nvars; ++var )
                             {
-                                HYPRE(SStructGraphAddEntries) ( *graph, fine_part, fine_index.get_pointer(), var, coarse_part, coarse_index.get_pointer(), var );
+                                HYPRE(SStructGraphAddEntries) ( solver_struct->graph, fine_part, fine_index.get_pointer(), var, coarse_part, coarse_index.get_pointer(), var );
                                 extra_values[var][fine_part][fine_index].emplace_back ( value );
                             }
                         }
@@ -1101,8 +1326,8 @@ private:
                 for ( int fine_part = 0; fine_part < nparts; ++fine_part )
                     delete[] additional_var[fine_part];
                 delete[] additional_var;
-
-                HYPRE(SStructGraphAssemble) ( *graph );
+                }
+                HYPRE(SStructGraphAssemble) ( solver_struct->graph );
 
                 /*-----------------------------------------------------------
                  * Set up the matrix
@@ -1110,15 +1335,13 @@ private:
 
                 DOUT ( dbg_assembling, rank << "   hypre matrix setup" );
 
-                HYPRE(SStructMatrixCreate) ( comm, *graph, A );
-                HYPRE(SStructMatrixSetObjectType) ( *A, HYPRE_SSTRUCT );
-                HYPRE(SStructMatrixInitialize) ( *A );
+                HYPRE(SStructMatrixCreate) ( comm, solver_struct->graph, &solver_struct->A );
+                HYPRE(SStructMatrixSetObjectType) ( solver_struct->A, HYPRE_SSTRUCT );
+                HYPRE(SStructMatrixInitialize) ( solver_struct->A );
             }
 
             if ( do_update || restart )
             {
-                GridP grd = patches->get ( 0 )->getLevel()->getGrid();
-
                 /* set stencil values */
                 DOUT ( dbg_assembling, rank << "   hypre update matrix stencil entries" );
                 for ( int p = 0; p < patches->size(); ++p )
@@ -1137,7 +1360,7 @@ private:
 
                         std::vector<int> stencil_indices ( stencil_size );
                         std::iota ( std::begin ( stencil_indices ), std::end ( stencil_indices ), 0 );
-                        HYPRE(SStructMatrixSetBoxValues) ( *A, part, pdata->ilowers[box].get_pointer(), pdata->iuppers[box].get_pointer(), var, stencil_size, stencil_indices.data(), values.data() );
+                        HYPRE(SStructMatrixSetBoxValues) ( solver_struct->A, part, pdata->ilowers[box].get_pointer(), pdata->iuppers[box].get_pointer(), var, stencil_size, stencil_indices.data(), values.data() );
                     }
 
                 if ( nparts > 1 )
@@ -1151,7 +1374,7 @@ private:
                                 auto nvalues = values.size();
                                 std::vector<int> entries ( nvalues );
                                 std::iota ( entries.begin(), entries.end(), stencil_size );
-                                HYPRE(SStructMatrixSetValues) ( *A, part, index.get_pointer(), var, nvalues, entries.data(), values.data() );
+                                HYPRE(SStructMatrixSetValues) ( solver_struct->A, part, index.get_pointer(), var, nvalues, entries.data(), values.data() );
                             }
 
                     /* reset matrix values so that stencil connections between two parts are zeroed */
@@ -1159,9 +1382,9 @@ private:
                     for ( int part = nparts - 1; part > 0; part-- )
                     {
                         auto & pdata = solver_struct->pdatas[part];
-                        HYPRE(SStructFACZeroCFSten) ( *A, *grid, part, pdata->prefinement );
-                        HYPRE(SStructFACZeroFCSten) ( *A, *grid, part );
-                        HYPRE(SStructFACZeroAMRMatrixData) ( *A, part - 1, pdata->prefinement );
+                        HYPRE(SStructFACZeroCFSten) ( solver_struct->A, solver_struct->grid, part, pdata->prefinement );
+                        HYPRE(SStructFACZeroFCSten) ( solver_struct->A, solver_struct->grid, part );
+                        HYPRE(SStructFACZeroAMRMatrixData) ( solver_struct->A, part - 1, pdata->prefinement );
                     }
                 }
             }
@@ -1169,15 +1392,15 @@ private:
             if ( do_setup || restart )
             {
                 DOUT ( dbg_assembling, rank << "   hypre matrix assemble" );
-                HYPRE(SStructMatrixAssemble) ( *A );
+                HYPRE(SStructMatrixAssemble) ( solver_struct->A );
 
                 /*-----------------------------------------------------------
                  * Set up the linear system
                  *-----------------------------------------------------------*/
                 DOUT ( dbg_assembling, rank << "   hypre rhs vector setup" );
-                HYPRE(SStructVectorCreate) ( comm, *grid, b );
-//              HYPRE(SStructVectorSetObjectType) ( *b, object_type );
-                HYPRE(SStructVectorInitialize) ( *b );
+                HYPRE(SStructVectorCreate) ( comm, solver_struct->grid, &solver_struct->b );
+//              HYPRE(SStructVectorSetObjectType) ( solver_struct->b, object_type );
+                HYPRE(SStructVectorInitialize) ( solver_struct->b );
             }
 
             DOUT ( dbg_assembling, rank << "   hypre rhs vector update coefficients" );
@@ -1199,22 +1422,22 @@ private:
                             const double * vals = &rhs_var[IntVector ( pdata->ilowers[box][0], j, k )];
                             IntVector ll ( pdata->ilowers[box][0], j, k );
                             IntVector hh ( pdata->iuppers[box][0], j, k );
-                            HYPRE(SStructVectorSetBoxValues) ( *b, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
+                            HYPRE(SStructVectorSetBoxValues) ( solver_struct->b, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
                         }
                 }
 
             if ( nparts > 1 )
-                HYPRE(SStructFACZeroAMRVectorData) ( *b, plevels, prefinements );
+                HYPRE(SStructFACZeroAMRVectorData) ( solver_struct->b, plevels, prefinements );
 
             if ( do_setup || restart )
             {
                 DOUT ( dbg_assembling, rank << "   hypre rhs vector assemble" );
-                HYPRE(SStructVectorAssemble) ( *b );
+                HYPRE(SStructVectorAssemble) ( solver_struct->b );
 
                 DOUT ( dbg_assembling, rank << "   hypre solution vector setup" );
-                HYPRE(SStructVectorCreate) ( comm, *grid, x );
-//              SStructVectorSetObjectType ( *x, object_type );
-                HYPRE(SStructVectorInitialize) ( *x );
+                HYPRE(SStructVectorCreate) ( comm, solver_struct->grid, &solver_struct->x );
+//              SStructVectorSetObjectType ( solver_struct->x, object_type );
+                HYPRE(SStructVectorInitialize) ( solver_struct->x );
             }
 
             if ( m_guess_label )
@@ -1238,19 +1461,18 @@ private:
                                 const double * vals = &guess_var[IntVector ( pdata->ilowers[box][0], j, k )];
                                 IntVector ll ( pdata->ilowers[box][0], j, k );
                                 IntVector hh ( pdata->iuppers[box][0], j, k );
-                                HYPRE(SStructVectorSetBoxValues) ( *x, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
+                                HYPRE(SStructVectorSetBoxValues) ( solver_struct->x, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
                             }
                     }
 
                 if ( nparts > 1 )
-                    HYPRE(SStructFACZeroAMRVectorData) ( *x, plevels, prefinements );
+                    HYPRE(SStructFACZeroAMRVectorData) ( solver_struct->x, plevels, prefinements );
             }
 
             if ( do_setup || restart )
             {
                 DOUT ( dbg_assembling, rank << "   hypre solution vector assemble" );
-                HYPRE(SStructVectorAssemble) ( *x );
-
+                HYPRE(SStructVectorAssemble) ( solver_struct->x );
                 solver_struct->created = true;
             }
 
@@ -1273,130 +1495,22 @@ private:
             int   num_iterations = -1;
             double  final_res_norm = NAN;
 
-            if ( nparts > 1 )
+            if ( do_setup || restart )
             {
-                HYPRE_SStructSolver solver;
-
-                HYPRE(SStructFACCreate) ( comm, &solver );
-                HYPRE(SStructFACSetPLevels) ( solver, nparts, plevels );
-                HYPRE(SStructFACSetPRefinements) ( solver, nparts, prefinements );
-
-                if ( m_guess_label )
-                    HYPRE(SStructFACSetNonZeroGuess) ( solver );
-                else
-                    HYPRE(SStructFACSetZeroGuess) ( solver );
-
-                if ( m_params->max_levels > 0 )
-                    HYPRE(SStructFACSetMaxLevels) ( solver, m_params->max_levels );
-                if ( m_params->max_iter > 0 )
-                    HYPRE(SStructFACSetMaxIter) ( solver, m_params->max_iter );
-                if ( m_params->tol > 0 )
-                    HYPRE(SStructFACSetTol) ( solver, m_params->tol );
-                if ( m_params->rel_change > -1 )
-                    HYPRE(SStructFACSetRelChange) ( solver, m_params->rel_change );
-                if ( m_params->relax_type >  -1 )
-                    HYPRE(SStructFACSetRelaxType) ( solver, m_params->relax_type );
-                if ( m_params->num_pre_relax >  -1 )
-                    HYPRE(SStructFACSetNumPreRelax) ( solver, m_params->num_pre_relax );
-                if ( m_params->num_post_relax >  -1 )
-                    HYPRE(SStructFACSetNumPostRelax) ( solver, m_params->num_post_relax );
-                if ( m_params->csolver_type >  -1 )
-                    HYPRE(SStructFACSetCoarseSolverType) ( solver, m_params->csolver_type );
-                if ( m_params->logging >  -1 )
-                    HYPRE(SStructFACSetLogging) ( solver, m_params->logging );
-
-                HYPRE(SStructFACSetup2) ( solver, *A, *b, *x );
-                HYPRE(SStructFACSolve3) ( solver, *A, *b, *x );
-
-                HYPRE(SStructFACGetNumIterations) ( solver, &num_iterations );
-                HYPRE(SStructFACGetFinalRelativeResidualNorm) ( solver, &final_res_norm );
-
-                HYPRE(SStructFACDestroy2) ( solver );
+                if ( nparts > 1 )
+                    solver_struct->solver = scinew SolverImpl<FAC> ( comm, solver_struct, m_params, plevels, prefinements, m_guess_label );
+                else if ( m_params->csolver_type == SysPFMG_PCG )
+                    solver_struct->solver = scinew SolverImpl<PFMG_PCG> ( comm, solver_struct, m_params );
+                else if ( m_params->csolver_type == SysPFMG )
+                    solver_struct->solver = scinew SolverImpl<PFMG> ( comm, solver_struct, m_params, m_guess_label );
             }
-            else if ( m_params->csolver_type == SysPFMG_PCG )
-            {
-                HYPRE_SStructSolver solver;
-                HYPRE_SStructSolver precond;
 
-                HYPRE_SStructPCGCreate ( comm, &solver );
-                HYPRE_PCGSetTwoNorm ( ( HYPRE_Solver ) solver, 1 );
-
-                if ( m_params->max_iter > 0 )
-                    HYPRE_PCGSetMaxIter ( ( HYPRE_Solver ) solver, m_params->max_iter );
-                if ( m_params->tol > 0 )
-                    HYPRE_PCGSetTol ( ( HYPRE_Solver ) solver, m_params->tol );
-
-                /* use SysPFMG solver as preconditioner */
-                HYPRE_SStructSysPFMGCreate ( comm, &precond );
-                HYPRE_SStructSysPFMGSetMaxIter ( precond, 1 );
-                HYPRE_SStructSysPFMGSetTol ( precond, 0.0 );
-                HYPRE_SStructSysPFMGSetZeroGuess ( precond );
-                /* weighted Jacobi = 1; red-black GS = 2 */
-                HYPRE_SStructSysPFMGSetRelaxType ( precond, 3 );
-                if ( m_params->relax_type == WeightedJacobi )
-                    HYPRE_SStructFACSetJacobiWeight ( precond, m_params->weight );
-                if ( m_params->num_pre_relax >  -1 )
-                    HYPRE_SStructSysPFMGSetNumPreRelax ( precond, m_params->num_pre_relax );
-                if ( m_params->num_post_relax >  -1 )
-                    HYPRE_SStructSysPFMGSetNumPostRelax ( precond, m_params->num_post_relax );
-
-                HYPRE_PCGSetPrecond ( ( HYPRE_Solver ) solver,
-                                      ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSolve,
-                                      ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSetup,
-                                      ( HYPRE_Solver ) precond );
-
-                HYPRE_PCGSetup ( ( HYPRE_Solver ) solver,
-                                 ( HYPRE_Matrix ) *A,
-                                 ( HYPRE_Vector ) *b,
-                                 ( HYPRE_Vector ) *x );
-                HYPRE_PCGSolve ( ( HYPRE_Solver ) solver,
-                                 ( HYPRE_Matrix ) *A,
-                                 ( HYPRE_Vector ) *b,
-                                 ( HYPRE_Vector ) *x );
-                HYPRE_PCGGetNumIterations ( ( HYPRE_Solver ) solver, &num_iterations );
-                HYPRE_PCGGetFinalRelativeResidualNorm ( ( HYPRE_Solver ) solver, &final_res_norm );
-
-                HYPRE_SStructPCGDestroy ( solver );
-                HYPRE_SStructSysPFMGDestroy ( precond );
-            }
-            else if ( m_params->csolver_type == SysPFMG )
-            {
-                HYPRE_SStructSolver solver;
-
-                HYPRE_SStructSysPFMGCreate ( comm, &solver );
-                if ( m_params->max_iter > 0 )
-                    HYPRE_SStructSysPFMGSetMaxIter ( solver, m_params->max_iter + 1 );
-                if ( m_params->tol > 0 )
-                    HYPRE_SStructSysPFMGSetTol ( solver, m_params->tol );
-                if ( m_guess_label )
-                    HYPRE_SStructSysPFMGSetNonZeroGuess ( solver );
-                else
-                    HYPRE_SStructSysPFMGSetZeroGuess ( solver );
-                /* weighted Jacobi = 1; red-black GS = 2 */
-                HYPRE_SStructSysPFMGSetRelaxType ( solver, m_params->relax_type );
-                if ( m_params->relax_type == WeightedJacobi )
-                    HYPRE_SStructFACSetJacobiWeight ( solver, m_params->weight );
-                if ( m_params->num_pre_relax >  -1 )
-                    HYPRE_SStructSysPFMGSetNumPreRelax ( solver, m_params->num_pre_relax );
-                if ( m_params->num_post_relax >  -1 )
-                    HYPRE_SStructSysPFMGSetNumPostRelax ( solver, m_params->num_post_relax );
-
-                HYPRE_SStructSysPFMGSetPrintLevel ( solver, 1 );
-
-                HYPRE_SStructSysPFMGSetup ( solver, *A, *b, *x );
-                HYPRE_SStructSysPFMGSolve ( solver, *A, *b, *x );
-
-                HYPRE_SStructSysPFMGGetNumIterations ( solver, &num_iterations );
-                if ( m_params->max_iter > 0 && num_iterations <= m_params->max_iter )
-                    final_res_norm = 0.;
-                HYPRE_SStructSysPFMGGetFinalRelativeResidualNorm ( solver, &final_res_norm );  // BROKEN !
-                HYPRE_SStructSysPFMGDestroy ( solver );
-            }
+            solver_struct->solver->solve ( solver_struct, num_iterations, final_res_norm );
 
             /*-----------------------------------------------------------
             * Gather the solution vector
             *-----------------------------------------------------------*/
-            HYPRE(SStructVectorGather) ( *x );
+            HYPRE(SStructVectorGather) ( solver_struct->x );
 
             /*-----------------------------------------------------------
             * Print the solution and other info
@@ -1413,9 +1527,9 @@ private:
 
             for ( auto name : fname )
                 DOUT ( dbg_doing, "   hypre print " << name );
-            HYPRE_SStructMatrixPrint ( fname[0].c_str(), *A, 0 );
-            HYPRE_SStructVectorPrint ( fname[1].c_str(), *b, 0 );
-            HYPRE_SStructVectorPrint ( fname[2].c_str(), *x, 0 );
+            HYPRE_SStructMatrixPrint ( fname[0].c_str(), solver_struct->A, 0 );
+            HYPRE_SStructVectorPrint ( fname[1].c_str(), solver_struct->b, 0 );
+            HYPRE_SStructVectorPrint ( fname[2].c_str(), solver_struct->x, 0 );
 #endif
 
             //__________________________________
@@ -1469,7 +1583,7 @@ private:
                             double * vals = &solution_var[IntVector ( pdata->ilowers[box][0], j, k )];
                             IntVector ll ( pdata->ilowers[box][0], j, k );
                             IntVector hh ( pdata->iuppers[box][0], j, k );
-                            HYPRE(SStructVectorGetBoxValues) ( *x, part, ll.get_pointer(), hh.get_pointer(), var, vals );
+                            HYPRE(SStructVectorGetBoxValues) ( solver_struct->x, part, ll.get_pointer(), hh.get_pointer(), var, vals );
                         }
                 }
 
@@ -1502,12 +1616,12 @@ private:
                                 double * An = &stencil_var ( i, j, k ).n;
                                 double * As = &stencil_var ( i, j, k ).s;
 
-                                HYPRE(SStructVectorGetValues) ( *b, part, index, var, rhs );
-                                HYPRE(SStructMatrixGetValues) ( *A, part, index, var, 1, &stn0, Ap );
-                                HYPRE(SStructMatrixGetValues) ( *A, part, index, var, 1, &stnE, Ae );
-                                HYPRE(SStructMatrixGetValues) ( *A, part, index, var, 1, &stnW, Aw );
-                                HYPRE(SStructMatrixGetValues) ( *A, part, index, var, 1, &stnN, An );
-                                HYPRE(SStructMatrixGetValues) ( *A, part, index, var, 1, &stnS, As );
+                                HYPRE(SStructVectorGetValues) ( solver_struct->b, part, index, var, rhs );
+                                HYPRE(SStructMatrixGetValues) ( solver_struct->A, part, index, var, 1, &stn0, Ap );
+                                HYPRE(SStructMatrixGetValues) ( solver_struct->A, part, index, var, 1, &stnE, Ae );
+                                HYPRE(SStructMatrixGetValues) ( solver_struct->A, part, index, var, 1, &stnW, Aw );
+                                HYPRE(SStructMatrixGetValues) ( solver_struct->A, part, index, var, 1, &stnN, An );
+                                HYPRE(SStructMatrixGetValues) ( solver_struct->A, part, index, var, 1, &stnS, As );
 
                             }
                 }
@@ -1572,5 +1686,3 @@ private:
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_Solver_h
-
-
