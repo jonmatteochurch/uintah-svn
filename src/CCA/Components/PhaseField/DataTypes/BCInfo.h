@@ -100,17 +100,16 @@ private: // STATIC METHODS
     static MPI_Datatype
     make_mpitype()
     {
-        static constexpr int count = 4;
+        static constexpr int count = 3;
 
         MPI_Datatype datatype;
-        int blocklengths[count] = {1, 1, 1, 1};
+        int blocklengths[count] = {1, 1, 1};
 
         MPI_Aint displacements[count] =
         {
             offsetof ( BCInfo, value ),
             offsetof ( BCInfo, bc ),
-            offsetof ( BCInfo, c2f ),
-            sizeof ( BCInfo )
+            offsetof ( BCInfo, c2f )
         };
 
         MPI_Datatype types[count] =
@@ -118,10 +117,10 @@ private: // STATIC METHODS
             PhaseField::getTypeDescription<T>()->getMPIType(),
             PhaseField::getTypeDescription<size_t>()->getMPIType(),
             PhaseField::getTypeDescription<size_t>()->getMPIType(),
-            MPI_UB
         };
 
         Uintah::MPI::Type_create_struct ( count, blocklengths, displacements, types, &datatype );
+        Uintah::MPI::Type_create_resized ( datatype, 0, sizeof ( BCInfo ), &datatype );
         Uintah::MPI::Type_commit ( &datatype );
 
         return datatype;
@@ -221,28 +220,27 @@ private: // STATIC METHODS
     static MPI_Datatype
     make_mpitype()
     {
-        static constexpr int count = 4;
+        static constexpr int count = 3;
 
         MPI_Datatype datatype;
-        int blocklengths[count] = {N, 1, 1, 1};
+        int blocklengths[count] = {N, 1, 1};
 
         MPI_Aint displacements[count] =
         {
             offsetof ( BCInfo, value ),
             offsetof ( BCInfo, bc ),
-            offsetof ( BCInfo, c2f ),
-            sizeof ( BCInfo )
+            offsetof ( BCInfo, c2f )
         };
 
         MPI_Datatype types[count] =
         {
             getMPIType<T>(),
             getMPIType<size_t>(),
-            getMPIType<size_t>(),
-            MPI_UB
+            getMPIType<size_t>()
         };
 
         Uintah::MPI::Type_create_struct ( count, blocklengths, displacements, types, &datatype );
+        Uintah::MPI::Type_create_resized ( datatype, 0, sizeof ( BCInfo ), &datatype );
         Uintah::MPI::Type_commit ( &datatype );
 
         return datatype;
