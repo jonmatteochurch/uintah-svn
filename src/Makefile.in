@@ -335,7 +335,7 @@ CTAGS := ctags
 
 $(OBJTOP_ABS)/include/svn_info.h : .FORCE
 	@IFS=' ';                                                                                       \
-         tmp_svn=`((svn info $(SRCTOP_ABS) && echo 0) || ( git svn info $(SRCTOP_ABS) && echo 1)) 2>/dev/null`; \
+         tmp_svn=`((svn info $(SRCTOP_ABS) && echo 0) || (git svn info $(SRCTOP_ABS) && echo 1) || (echo 0)) 2>/dev/null`; \
          sed -e "s%UNKNOWN_REVISION%`echo $$tmp_svn | grep Revision`%"                                  \
              -e "s%UNKNOWN_DATE%`echo $$tmp_svn | grep Date`%"                                          \
              -e "s%UNKNOWN_URL%`echo $$tmp_svn | grep ^URL`%"                                           \
