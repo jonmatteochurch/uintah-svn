@@ -85,6 +85,8 @@ private: // TYPES
     using V = typename std::remove_const<T>::type;
 
     static constexpr size_t ORD = sizeof... ( P );
+    
+    static_assert ( ORD >=2, "bc_vertical_angle_view must be used only over edges or vertices" );
 
 private: // MEMBERS
 
@@ -384,7 +386,6 @@ public: // VIEW METHODS
         const IntVector & id
     ) const override
     {
-        ASSERT ( ORD > 1 );
         IntVector opp = opposite ( id );
         V result = - ( *m_dw_view ) [opp];
         std::array<bool, ORD> {{ add_adj<P> ( opp, result ) ... }};
@@ -397,8 +398,6 @@ public: // VIEW METHODS
         const IntVector & id
     ) const override
     {
-        ASSERT ( ORD > 1 );
-
         IntVector opp = opposite ( id );
         V w = 1./(ORD - 1);
 

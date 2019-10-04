@@ -150,7 +150,20 @@ private: // MEMBERS
 
 private: // INDEXED CONSTRUCTOR
 
-    /**
+    template < BCF... FP >
+    typename std::enable_if < (sizeof...(FP)>1), view<Field> * >::type
+    create_va_view ()
+    {
+        return scinew bc_vertical_angle_view < Field, STN, FP... > ( m_dw_view.get(), m_fd_view );
+    }
+
+    template < BCF... FP >
+    typename std::enable_if < (sizeof...(FP)<2), view<Field> * >::type
+    create_va_view ()
+    {
+        return nullptr;
+    }
+/**
      * @brief Indexed constructor
      *
      * Instantiate a copy of a given view
@@ -175,7 +188,7 @@ private: // INDEXED CONSTRUCTOR
         m_dw_view ( dynamic_cast < dw_basic_fd_view < Field, STN, VAR > * > ( copy->m_dw_view->clone ( deep ) ) ),
         m_fd_view ( DIM, m_dw_view.get () ),
         m_bc_view { std::unique_ptr < bc_basic_fd_view < Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = dynamic_cast < bc_basic_fd_view<Field, STN, VAR, P> * > ( std::get<J> ( copy->m_bc_view )->clone ( this, deep ) ) ) ) ... },
-        m_va_view ( sizeof...(FP)>1 ? scinew bc_vertical_angle_view < Field, STN, FP... > ( m_dw_view.get(), m_fd_view ) : nullptr )
+        m_va_view ( create_va_view<FP...> () )
     {
         std::array<bool, N> {{ push_back_bc<J> () ... }};
 
@@ -215,7 +228,7 @@ private: // INDEXED CONSTRUCTOR
         m_dw_view ( scinew dw_basic_fd_view < Field, STN, VAR>  { label, material, level } ),
         m_fd_view ( DIM, m_dw_view.get () ),
         m_bc_view { std::unique_ptr< bc_basic_fd_view< Field, STN, VAR, P > > ( dynamic_cast < bc_basic_fd_view < Field, STN, VAR, P > * > ( m_fd_view[get_face< get_bcf<P>::face >::dir] = scinew bc_basic_fd_view<Field, STN, VAR, P> ( this, label, material, level, get_value<J> ( bcs ) ) ) ) ...  },
-        m_va_view ( sizeof...(FP)>1 ? scinew bc_vertical_angle_view < Field, STN, FP... > ( m_dw_view.get(), m_fd_view ) : nullptr )
+        m_va_view ( create_va_view<FP...> () )
     {
         std::array<bool, N> {{ push_back_bc<J> () ... }};
 
