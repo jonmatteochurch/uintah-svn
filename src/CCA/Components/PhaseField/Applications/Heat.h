@@ -3801,21 +3801,23 @@ Heat<VAR, DIM, STN, AMR>::error_estimate_solution
     bool & refine_patch
 )
 {
-    bool refine = false;
     auto grad = u.gradient ( id );
     double err2 = 0;
     for ( size_t d = 0; d < DIM; ++d )
         err2 += grad[d] * grad[d];
-    refine = err2 > refine_threshold * refine_threshold;
-    if ( refine_flag.is_defined_at ( id ) ) refine_flag[id] = refine;
-    for ( size_t d = 0; d < DIM; ++d )
+    if ( err2 > refine_threshold * refine_threshold )
     {
-        IntVector id0 ( id );
-        id0[d] -= 1;
-        if ( refine_flag.is_defined_at ( id0 ) ) refine_flag[id0] = refine;
-    }
+        refine_patch = true;
 
-    refine_patch |= refine;
+        // loop over all cells sharing node id
+        IntVector id0 = id - get_dim<DIM>::unit_vector();
+        IntVector i;
+        for ( i[Z] = id0[Z]; i[Z] <= id[Z]; ++i[Z] )
+            for ( i[Y] = id0[Y]; i[Y] <= id[Y]; ++i[Y] )
+                for ( i[X] = id0[X]; i[X] <= id[X]; ++i[X] )
+                    if ( refine_flag.is_defined_at ( i ) )
+                        refine_flag[i] = 1;
+    }
 }
 
 } // namespace PhaseField

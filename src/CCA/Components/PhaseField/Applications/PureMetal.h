@@ -505,6 +505,28 @@ protected: // SCHEDULINGS
     );
 
     /**
+     * @brief Schedule task_communicate_psi
+     *
+     * Defines the dependencies and output of the task which forces the
+     * communication of ghost layers around refine coarse cells since they are
+     * not triggered by the dependencies scheduleRefine_grad_psi
+     *
+     * @param level refined coarse level
+     * @param sched scheduler to manage the tasks
+     */
+    void
+    scheduleRefine_communicate_psi (
+        const LevelP & level,
+        SchedulerP & sched
+    )
+    {
+        Task * task = scinew Task ( "PureMetal::task_communicate_psi", this, &PureMetal::task_communicate_psi );
+        task->requires ( Task::NewDW, psi_label, CGT, CGN );
+        task->modifies ( psi_label );
+        sched->addTask ( task, sched->getLoadBalancer()->getPerProcessorPatchSet(level), this->m_materialManager->allMaterials() );
+    }
+
+    /**
      * @brief Schedule task_refine_grad_psi
      *
      * Defines the dependencies and output of the task which computes the
@@ -853,6 +875,16 @@ protected: // TASKS
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
     );
+
+    void
+    task_communicate_psi (
+        const ProcessorGroup * _DOXYARG ( myworld ),
+        const PatchSubset * _DOXYARG ( patches ),
+        const MaterialSubset * _DOXYARG ( matls ),
+        DataWarehouse * _DOXYARG ( dw_old ),
+        DataWarehouse * _DOXYARG ( dw_new )
+    )
+    {}
 
 protected: // IMPLEMENTATIONS
 
@@ -1341,6 +1373,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine
     if ( level->hasCoarserLevel() )
     {
         scheduleRefine_solution ( new_patches, sched );
+        scheduleRefine_communicate_psi ( level->getCoarserLevel(), sched );
         scheduleRefine_grad_psi ( new_patches, sched );
     }
 }
@@ -1375,7 +1408,9 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine_grad_psi (
 
     Task * task = scinew Task ( "PureMetal::task_refine_grad_psi", this, &PureMetal::task_refine_grad_psi );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
-    task->requires ( Task::NewDW, psi_label, nullptr, Task::ThisLevel, nullptr, Task::NormalDomain, FGT, FGN );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::NewDW, psi_label, FGT, FGN );
+    task->requires ( Task::NewDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->computes ( grad_psi_norm2_label );
     for ( size_t d = 0; d < DIM; ++d )
         task->computes ( grad_psi_label[d] );
@@ -2045,21 +2080,23 @@ PureMetal<VAR, DIM, STN, AMR>::error_estimate_grad_psi (
     if ( VAR == CC ) // static if
     {
         refine_flag[id] = refine;
-        refine_patch |= refine;
+        refine_patch = refine_patch || refine;
     }
     else
     {
-        // loop over all cells sharing node id
-        IntVector id0 = id - get_dim<DIM>::unit_vector();
-        IntVector i;
-        for ( i[Z] = id0[Z]; i[Z] <= id[Z]; ++i[Z] )
-            for ( i[Y] = id0[Y]; i[Y] <= id[Y]; ++i[Y] )
-                for ( i[X] = id0[X]; i[X] <= id[X]; ++i[X] )
-                    if ( refine_flag.is_defined_at ( i ) )
-                    {
-                        refine_flag[i] = refine;
-                        refine_patch |= refine;
-                    }
+        if ( refine )
+        {
+            refine_patch = true;
+
+            // loop over all cells sharing node id
+            IntVector id0 = id - get_dim<DIM>::unit_vector();
+            IntVector i;
+            for ( i[Z] = id0[Z]; i[Z] <= id[Z]; ++i[Z] )
+                for ( i[Y] = id0[Y]; i[Y] <= id[Y]; ++i[Y] )
+                    for ( i[X] = id0[X]; i[X] <= id[X]; ++i[X] )
+                        if ( refine_flag.is_defined_at ( i ) )
+                            refine_flag[i] = 1;
+        }
     }
 }
 
