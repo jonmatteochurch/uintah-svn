@@ -388,7 +388,7 @@ private:
         }
 
         // otherwise is additional entry
-        MatrixEntry::first_type key = {index, part, to_index};
+        MatrixEntry::first_type key { index, part, to_index };
         auto res = additional_entries.emplace ( key, value );
         if ( !res.second ) res.first->second += value;
     }
@@ -493,17 +493,21 @@ public:
                 m_params->setSetupFrequency ( sFreq );
                 m_params->setUpdateCoefFrequency ( coefFreq );
 
-                ASSERTMSG ( param_ps->get ( "max_levels",             m_params->max_levels ),   "HypreFAC::Solver ERROR. Missing parameter: max_level" );
-                param_ps->getWithDefault ( "maxiterations",          m_params->max_iter,       -1 );
-                param_ps->getWithDefault ( "tolerance",              m_params->tol,            -1. );
-                param_ps->getWithDefault ( "rel_change",             m_params->rel_change,     -1 );
-                param_ps->getWithDefault ( "relax_type", ( int & ) m_params->relax_type,     -1 );
-                param_ps->getWithDefault ( "weight",                 m_params->weight,         -1. );
-                param_ps->getWithDefault ( "npre",                   m_params->num_pre_relax,  -1 );
-                param_ps->getWithDefault ( "npost",                  m_params->num_post_relax, -1 );
-                param_ps->getWithDefault ( "csolver_type", ( int & ) m_params->csolver_type,   -1 );
-                param_ps->getWithDefault ( "logging",                m_params->logging,        -1 );
-                param_ps->getWithDefault ( "C2F",                    m_params->C2F,            -1 );
+                int cSolverType;
+                int relaxType;
+                ASSERTMSG( param_ps->get ( "max_levels",    m_params->max_levels ),   "HypreFAC::Solver ERROR. Missing parameter: max_level" );
+                param_ps->getWithDefault ( "maxiterations", m_params->max_iter,       -1  );
+                param_ps->getWithDefault ( "tolerance",     m_params->tol,            -1. );
+                param_ps->getWithDefault ( "rel_change",    m_params->rel_change,     -1  );
+                param_ps->getWithDefault ( "relax_type",    relaxType,                -1  );
+                param_ps->getWithDefault ( "weight",        m_params->weight,         -1. );
+                param_ps->getWithDefault ( "npre",          m_params->num_pre_relax,  -1  );
+                param_ps->getWithDefault ( "npost",         m_params->num_post_relax, -1  );
+                param_ps->getWithDefault ( "csolver_type",  cSolverType,              -1  );
+                param_ps->getWithDefault ( "logging",       m_params->logging,        -1  );
+                param_ps->getWithDefault ( "C2F",           m_params->C2F,            -1  );
+                m_params->relax_type = (RelaxType) relaxType;
+                m_params->csolver_type = (CoarseSolverType) cSolverType;
 
                 found = true;
             }

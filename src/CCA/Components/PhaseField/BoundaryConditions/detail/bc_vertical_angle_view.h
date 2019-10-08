@@ -133,7 +133,7 @@ private: // SINGLE FACE METHODS
     bool
     set ()
     {
-        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface );
+        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface, "Unsupported BC" );
         constexpr Patch::FaceType F = get_bcf<Q>::face;
         constexpr DirType D = get_face<F>::dir;
         constexpr int SGN = get_face<F>::sgn;
@@ -168,7 +168,7 @@ private: // SINGLE FACE METHODS
         IntVector & result
     ) const
     {
-        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface );
+        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface, "Unsupported BC" );
 
         constexpr Patch::FaceType F = get_bcf<Q>::face;
         constexpr DirType D = get_face<F>::dir;
@@ -196,7 +196,7 @@ private: // SINGLE FACE METHODS
         V & result
     ) const
     {
-        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface );
+        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface, "Unsupported BC" );
 
         constexpr Patch::FaceType F = get_bcf<Q>::face;
         constexpr DirType D = get_face<F>::dir;
@@ -218,7 +218,7 @@ private: // SINGLE FACE METHODS
         const V & w
     ) const
     {
-        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface );
+        static_assert ( get_bcf<Q>::bc != BC::FineCoarseInterface, "Unsupported BC" );
 
         constexpr Patch::FaceType F = get_bcf<Q>::face;
         constexpr DirType D = get_face<F>::dir;
