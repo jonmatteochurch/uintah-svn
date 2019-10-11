@@ -1,0 +1,79 @@
+<Uintah_specification>
+    <Meta>
+        <!--title-->
+    </Meta>
+    <SimulationComponent type="phasefield" />
+<!--__________________________________-->
+    <PhaseField type="heat">
+        <!--var-->
+        <!--dim-->
+        <!--delt-->
+        <!--scheme-->
+        <refine_threshold>0.05</refine_threshold>
+        <alpha>1.</alpha>
+        <verbosity>0</verbosity>
+        <test>true</test>
+    </PhaseField>
+<!--__________________________________-->
+    <Time>
+        <maxTime>101.</maxTime>
+        <initTime>0.0</initTime>
+        <delt_min>0.0</delt_min>
+        <delt_max>1.</delt_max>
+        <timestep_multiplier>1.</timestep_multiplier>
+    </Time>
+<!--__________________________________-->
+    <Grid>
+        <Level>
+            <Box label="1">
+                <lower>[  0.,  0.,  0.]</lower>
+                <!--upper-->
+                <!--patches-->
+            </Box>
+            <!--spacing-->
+        </Level>
+        <BoundaryConditions>
+            <Face side="x-">
+                <BCType id="0" label="u" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+            </Face>
+            <Face side="x+">
+                <BCType id="0" label="u" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+            </Face>
+            <Face side="y-">
+                <BCType id="0" label="u" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+            </Face>
+            <Face side="y+">
+                <BCType id="0" label="u" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+            </Face>
+        </BoundaryConditions>
+    </Grid>
+<!--AMR-->
+<!--Solver-->
+<!--__________________________________-->
+    <DataArchiver>
+        <!--filebase-->
+        <!--outputTimestepInterval-->
+        <checkpoint cycle="2" timestepInterval="100"/>
+        <save label="u" />
+        <save label="u_normL2" />
+        <save label="u_normH10" />
+        <save label="u_normH20" />
+        <save label="epsilon_u" />
+        <save label="error_u" />
+        <save label="error_ux" />
+        <save label="error_uy" />
+        <save label="error_uxx" />
+        <save label="error_uyy" />
+        <save label="error_normL2" />
+        <save label="error_normH10" />
+        <save label="error_normH20" />
+    </DataArchiver>
+</Uintah_specification>
