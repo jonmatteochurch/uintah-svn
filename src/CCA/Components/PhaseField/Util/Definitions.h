@@ -195,11 +195,19 @@ enum class TS : size_t
     SemiImplicit  = 0x02000000, ///< SemiImplicit time schemes mask
     SemiImplicit0 = 0x02000001, ///< SemiImplicit0 time scheme (Application dependent)
     SemiImplicit1 = 0x02000002, ///< SemiImplicit1 time scheme (Application dependent)
-    SemiImplicit2 = 0x02000003, ///< SemiImplicit0 time scheme (Application dependent)
-    SemiImplicit3 = 0x02000004, ///< SemiImplicit0 time scheme (Application dependent)
-    SemiImplicit4 = 0x02000005, ///< SemiImplicit0 time scheme (Application dependent)
-    SemiImplicit5 = 0x02000006, ///< SemiImplicit0 time scheme (Application dependent)
-    SemiImplicit6 = 0x02000007, ///< SemiImplicit0 time scheme (Application dependent)
+    SemiImplicit2 = 0x02000003, ///< SemiImplicit2 time scheme (Application dependent)
+    SemiImplicit3 = 0x02000004, ///< SemiImplicit3 time scheme (Application dependent)
+    SemiImplicit4 = 0x02000005, ///< SemiImplicit4 time scheme (Application dependent)
+    SemiImplicit5 = 0x02000006, ///< SemiImplicit5 time scheme (Application dependent)
+    SemiImplicit6 = 0x02000007, ///< SemiImplicit6 time scheme (Application dependent)
+    SemiImplicit7 = 0x02000008, ///< SemiImplicit7 time scheme (Application dependent)
+    SemiImplicit8 = 0x02000009, ///< SemiImplicit8 time scheme (Application dependent)
+    SemiImplicit9 = 0x0200000A, ///< SemiImplicit9 time scheme (Application dependent)
+    SemiImplicit10 = 0x0200000B, ///< SemiImplicit10 time scheme (Application dependent)
+    SemiImplicit11 = 0x0200000C, ///< SemiImplicit11 time scheme (Application dependent)
+    SemiImplicit12 = 0x0200000D, ///< SemiImplicit12 time scheme (Application dependent)
+    SemiImplicit13 = 0x0200000E, ///< SemiImplicit13 time scheme (Application dependent)
+    SemiImplicit14 = 0x0200000F, ///< SemiImplicit14 time scheme (Application dependent)
 
     Implicit      = 0x04000000, ///< Implicit time schemes mask
     BackwardEuler = 0x04000001, ///< Implicit backward Euler time scheme
@@ -841,6 +849,14 @@ str_to_ts (
     if ( value == "semi_implicit_4" ) return TS::SemiImplicit4;
     if ( value == "semi_implicit_5" ) return TS::SemiImplicit5;
     if ( value == "semi_implicit_6" ) return TS::SemiImplicit6;
+    if ( value == "semi_implicit_7" ) return TS::SemiImplicit7;
+    if ( value == "semi_implicit_8" ) return TS::SemiImplicit8;
+    if ( value == "semi_implicit_9" ) return TS::SemiImplicit9;
+    if ( value == "semi_implicit_10" ) return TS::SemiImplicit10;
+    if ( value == "semi_implicit_11" ) return TS::SemiImplicit11;
+    if ( value == "semi_implicit_12" ) return TS::SemiImplicit12;
+    if ( value == "semi_implicit_13" ) return TS::SemiImplicit13;
+    if ( value == "semi_implicit_14" ) return TS::SemiImplicit14;
     if ( value == "backward_euler" )  return TS::BackwardEuler;
     if ( value == "crank_nicolson" )  return TS::CrankNicolson;
 #endif

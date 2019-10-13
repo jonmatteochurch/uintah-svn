@@ -1198,7 +1198,7 @@
     <delt                     spec="REQUIRED DOUBLE" />
     <dim                      spec="OPTIONAL INTEGER '1,3'"/>
     <var                      spec="OPTIONAL STRING 'cc, nc'"/>
-    <scheme                   spec="OPTIONAL STRING 'forward_euler, backward_euler, crank_nicolson'" />
+    <scheme                   spec="OPTIONAL STRING 'forward_euler, semi_implicit_0, semi_implicit_1, semi_implicit_2, semi_implicit_3, semi_implicit_4, semi_implicit_5, semi_implicit_6, semi_implicit_7, semi_implicit_8, semi_implicit_9, semi_implicit_10, semi_implicit_11, semi_implicit_12, semi_implicit_13, semi_implicit_14, backward_euler, crank_nicolson'" />
     <verbosity                spec="OPTIONAL INTEGER '0,4'"/>
     <alpha                    spec="OPTIONAL DOUBLE" />
     <R0                       spec="OPTIONAL DOUBLE" />

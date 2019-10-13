@@ -34,7 +34,7 @@
 #include <CCA/Components/PhaseField/Util/Definitions.h>
 #include <CCA/Components/PhaseField/Util/Expressions.h>
 #include <CCA/Components/Solvers/HypreFAC/AdditionalEntriesP.h>
-#include <CCA/Components/PhaseField/DataTypes/HeatProblem.h>
+#include <CCA/Components/PhaseField/DataTypes/ScalarProblem.h>
 #include <CCA/Components/PhaseField/DataTypes/SubProblems.h>
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
@@ -46,7 +46,9 @@
 #include <CCA/Components/PhaseField/AMR/AMRInterpolator.h>
 #include <CCA/Components/PhaseField/AMR/AMRRestrictor.h>
 
-#include <CCA/Components/Solvers/HypreFAC/Solver.h>
+#ifdef HAVE_HYPRE
+#   include <CCA/Components/Solvers/HypreFAC/Solver.h>
+#endif
 
 #include <Core/Util/DebugStream.h>
 #include <Core/Grid/SimpleMaterial.h>
@@ -125,7 +127,7 @@ static constexpr bool dbg_heat_scheduling = false;
  */
 template<VarType VAR, DimType DIM, StnType STN, bool AMR = false>
 class Heat
-    : public Application< HeatProblem<VAR, STN>, AMR >
+    : public Application< ScalarProblem<VAR, STN>, AMR >
     , public Implementation< Heat<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
 {
 private: // STATIC MEMBERS
@@ -137,22 +139,22 @@ private: // STATIC MEMBERS
     static constexpr int material = 0;
 
     /// Number of ghost elements required by STN (on the same level)
-    using Application< HeatProblem<VAR, STN> >::FGN;
+    using Application< ScalarProblem<VAR, STN> >::FGN;
 
     /// Type of ghost elements required by VAR and STN (on coarser level)
-    using Application< HeatProblem<VAR, STN> >::FGT;
+    using Application< ScalarProblem<VAR, STN> >::FGT;
 
     /// Number of ghost elements required by STN (on coarser level)
-    using Application< HeatProblem<VAR, STN> >::CGN;
+    using Application< ScalarProblem<VAR, STN> >::CGN;
 
     /// Type of ghost elements required by VAR and STN (on the same level)
-    using Application< HeatProblem<VAR, STN> >::CGT;
+    using Application< ScalarProblem<VAR, STN> >::CGT;
 
     /// Interpolation type for refinement
-    using Application< HeatProblem<VAR, STN> >::C2F;
+    using Application< ScalarProblem<VAR, STN> >::C2F;
 
     /// Restriction type for coarsening
-    using Application< HeatProblem<VAR, STN> >::F2C;
+    using Application< ScalarProblem<VAR, STN> >::F2C;
 
 #ifdef HAVE_HYPRE
     using _AdditionalEntries = PerPatch<HypreFAC::AdditionalEntriesP>;
@@ -174,14 +176,17 @@ protected: // MEMBERS
     /// Label for the local error in u in the DataWarehouse
     const VarLabel * error_u_label;
 
-    /// Label for the discrete H0-norm of the solution in the DataWarehouse
-    const VarLabel * u_normL2_label;
+    /// Label for the square of the global discrete norm of the solution in the DataWarehouse
+    const VarLabel * u_norm2_discrete_label;
 
-    /// Label for the global deiscrete error of the solution in the DataWarehouse
-    const VarLabel * error_discrete_label;
+    /// Label for the square of the global discrete error of the solution in the DataWarehouse
+    const VarLabel * error_norm2_discrete_label;
 
-    /// Label for the global H0-error of the solution in the DataWarehouse
-    const VarLabel * error_normL2_label;
+    /// Label for the square of the discrete H0-norm of the solution in the DataWarehouse
+    const VarLabel * u_norm2_L2_label;
+
+    /// Label for the square of the global H0-error of the solution in the DataWarehouse
+    const VarLabel * error_norm2_L2_label;
 
 #ifdef PhaseField_Heat_DBG_DERIVATIVES
     /// Label for the gradient vector of the solution in the DataWarehouse
@@ -196,17 +201,17 @@ protected: // MEMBERS
     /// Label for the local error in the second order derivatives of u in the DataWarehouse
     std::array<const VarLabel *, DIM> error_ddu_label;
 
-    /// Label for the discrete H1-seminorm of the solution in the DataWarehouse
-    const VarLabel * u_normH10_label;
+    /// Label for the square of the discrete H1-seminorm of the solution in the DataWarehouse
+    const VarLabel * u_norm2_H10_label;
 
-    /// Label for the global H1-error of the solution in the DataWarehouse
-    const VarLabel * error_normH10_label;
+    /// Label for the square of the global H1-error of the solution in the DataWarehouse
+    const VarLabel * error_norm2_H10_label;
 
-    /// Label for the discrete H2-seminorm of the solution in the DataWarehouse
-    const VarLabel * u_normH20_label;
+    /// Label for the square of the discrete H2-seminorm of the solution in the DataWarehouse
+    const VarLabel * u_norm2_H20_label;
 
-    /// Label for the global H2-error of the solution in the DataWarehouse
-    const VarLabel * error_normH20_label;
+    /// Label for the square of the global H2-error of the solution in the DataWarehouse
+    const VarLabel * error_norm2_H20_label;
 
 #endif // PhaseField_Heat_DBG_DERIVATIVES
 
@@ -1542,9 +1547,10 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<const double> > & u,
         View < ScalarField<double> > & epsilon_u,
         View < ScalarField<double> > & error_u,
-        double & error_discrete,
-        double & u_normL2,
-        double & error_normL2
+        double & u_norm2_discrete,
+        double & error_norm2_discrete,
+        double & u_norm2_L2,
+        double & error_norm2_L2
     );
 
     /**
@@ -1631,14 +1637,15 @@ Heat<VAR, DIM, STN, AMR>::Heat (
     const ProcessorGroup * myworld,
     const MaterialManagerP materialManager,
     int verbosity
-) : Application< HeatProblem<VAR, STN>, AMR > ( myworld, materialManager, verbosity )
+) : Application< ScalarProblem<VAR, STN>, AMR > ( myworld, materialManager, verbosity )
 {
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
     epsilon_u_label = VarLabel::create ( "epsilon_u", Variable<VAR, double>::getTypeDescription() );
     error_u_label = VarLabel::create ( "error_u", Variable<VAR, double>::getTypeDescription() );
-    u_normL2_label = VarLabel::create ( "u_normL2", sum_vartype::getTypeDescription() );
-    error_normL2_label = VarLabel::create ( "error_normL2", sum_vartype::getTypeDescription() );
-    error_discrete_label = VarLabel::create ( "error_discrete", sum_vartype::getTypeDescription() );
+    u_norm2_discrete_label = VarLabel::create ( "u_norm2_discrete", sum_vartype::getTypeDescription() );
+    u_norm2_L2_label = VarLabel::create ( "u_norm2_L2", sum_vartype::getTypeDescription() );
+    error_norm2_discrete_label = VarLabel::create ( "error_norm2_discrete", sum_vartype::getTypeDescription() );
+    error_norm2_L2_label = VarLabel::create ( "error_norm2_L2", sum_vartype::getTypeDescription() );
 
 #ifdef HAVE_HYPRE
     matrix_label = VarLabel::create ( "A", Variable<VAR, Stencil7>::getTypeDescription() );
@@ -1674,10 +1681,10 @@ Heat<VAR, DIM, STN, AMR>::Heat (
         error_du_label[Z] = VarLabel::create ( "error_uz", Variable<VAR, double>::getTypeDescription() );
         error_ddu_label[Z] = VarLabel::create ( "error_uzz", Variable<VAR, double>::getTypeDescription() );
     }
-    u_normH10_label = VarLabel::create ( "u_normH10", sum_vartype::getTypeDescription() );
-    u_normH20_label = VarLabel::create ( "u_normH20", sum_vartype::getTypeDescription() );
-    error_normH10_label = VarLabel::create ( "error_normH10", sum_vartype::getTypeDescription() );
-    error_normH20_label = VarLabel::create ( "error_normH20", sum_vartype::getTypeDescription() );
+    u_norm2_H10_label = VarLabel::create ( "u_norm2_H10", sum_vartype::getTypeDescription() );
+    u_norm2_H20_label = VarLabel::create ( "u_norm2_H20", sum_vartype::getTypeDescription() );
+    error_norm2_H10_label = VarLabel::create ( "error_norm2_H10", sum_vartype::getTypeDescription() );
+    error_norm2_H20_label = VarLabel::create ( "error_norm2_H20", sum_vartype::getTypeDescription() );
 #endif
 }
 
@@ -1687,9 +1694,10 @@ Heat<VAR, DIM, STN, AMR>::~Heat()
     VarLabel::destroy ( u_label );
     VarLabel::destroy ( epsilon_u_label );
     VarLabel::destroy ( error_u_label );
-    VarLabel::destroy ( u_normL2_label );
-    VarLabel::destroy ( error_discrete_label );
-    VarLabel::destroy ( error_normL2_label );
+    VarLabel::destroy ( u_norm2_discrete_label );
+    VarLabel::destroy ( u_norm2_L2_label );
+    VarLabel::destroy ( error_norm2_discrete_label );
+    VarLabel::destroy ( error_norm2_L2_label );
 #ifdef HAVE_HYPRE
     VarLabel::destroy ( matrix_label );
     VarLabel::destroy ( additional_entries_label );
@@ -1712,10 +1720,10 @@ Heat<VAR, DIM, STN, AMR>::~Heat()
         VarLabel::destroy ( error_du_label[D] );
         VarLabel::destroy ( error_ddu_label[D] );
     }
-    VarLabel::destroy ( u_normH10_label );
-    VarLabel::destroy ( u_normH20_label );
-    VarLabel::destroy ( error_normH10_label );
-    VarLabel::destroy ( error_normH20_label );
+    VarLabel::destroy ( u_norm2_H10_label );
+    VarLabel::destroy ( u_norm2_H20_label );
+    VarLabel::destroy ( error_norm2_H10_label );
+    VarLabel::destroy ( error_norm2_H20_label );
 #endif
 }
 
@@ -1963,10 +1971,10 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives_error (
         task->computes ( error_du_label[D] );
         task->computes ( error_ddu_label[D] );
     }
-    task->computes ( u_normH10_label );
-    task->computes ( error_normH10_label );
-    task->computes ( u_normH20_label );
-    task->computes ( error_normH20_label );
+    task->computes ( u_norm2_H10_label );
+    task->computes ( error_norm2_H10_label );
+    task->computes ( u_norm2_H20_label );
+    task->computes ( error_norm2_H20_label );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
@@ -1993,10 +2001,10 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_dbg_derivatives_error (
             task->computes ( error_du_label[D] );
             task->computes ( error_ddu_label[D] );
         }
-        task->computes ( u_normH10_label );
-        task->computes ( error_normH10_label );
-        task->computes ( u_normH20_label );
-        task->computes ( error_normH20_label );
+        task->computes ( u_norm2_H10_label );
+        task->computes ( u_norm2_H20_label );
+        task->computes ( error_norm2_H10_label );
+        task->computes ( error_norm2_H20_label );
         sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
     }
 }
@@ -2066,7 +2074,8 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_forward_euler (
 {
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_forward_euler " );
 
-    if ( !level->hasCoarserLevel() ) scheduleTimeAdvance_solution_forward_euler < !MG > ( level, sched );
+    if ( !level->hasCoarserLevel() ) 
+        scheduleTimeAdvance_solution_forward_euler < !MG > ( level, sched );
     else
     {
         Task * task = scinew Task ( "Heat::task_time_advance_solution_forward_euler", this, &Heat::task_time_advance_solution_forward_euler );
@@ -2409,9 +2418,10 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_error (
     task->requires ( Task::NewDW, u_label, Ghost::None, 0 );
     task->computes ( epsilon_u_label );
     task->computes ( error_u_label );
-    task->computes ( u_normL2_label );
-    task->computes ( error_discrete_label );
-    task->computes ( error_normL2_label );
+    task->computes ( u_norm2_discrete_label );
+    task->computes ( u_norm2_L2_label );
+    task->computes ( error_norm2_discrete_label );
+    task->computes ( error_norm2_L2_label );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
@@ -2553,7 +2563,8 @@ Heat<VAR, DIM, STN, AMR>::scheduleErrorEstimate_solution (
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void Heat<VAR, DIM, STN, AMR>::scheduleInitialErrorEstimate
+void 
+Heat<VAR, DIM, STN, AMR>::scheduleInitialErrorEstimate
 (
     const LevelP & level,
     SchedulerP & sched
@@ -2642,7 +2653,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_dbg_derivatives (
         DWView < VectorField<double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
 
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2704,10 +2715,10 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_dbg_derivatives_error
         );
     }
 
-    dw_new->put ( sum_vartype ( norms[0] ), u_normH10_label );
-    dw_new->put ( sum_vartype ( norms[1] ), u_normH20_label );
-    dw_new->put ( sum_vartype ( norms[2] ), error_normH10_label );
-    dw_new->put ( sum_vartype ( norms[3] ), error_normH20_label );
+    dw_new->put ( sum_vartype ( norms[0] ), u_norm2_H10_label );
+    dw_new->put ( sum_vartype ( norms[1] ), u_norm2_H20_label );
+    dw_new->put ( sum_vartype ( norms[2] ), error_norm2_H10_label );
+    dw_new->put ( sum_vartype ( norms[3] ), error_norm2_H20_label );
 
     DOUT ( this->m_dbg_lvl2, myrank );
 }
@@ -2734,7 +2745,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_forward_euler (
 
         DWView < ScalarField<double>, VAR, DIM > u_new ( dw_new, u_label, material, patch );
 
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
         for ( const auto & p : subproblems )
         {
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
@@ -2791,7 +2802,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2828,7 +2839,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2886,7 +2897,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
         DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
         HypreFAC::AdditionalEntries * A_additional = scinew HypreFAC::AdditionalEntries;
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2928,7 +2939,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hyp
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -2985,7 +2996,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -3022,7 +3033,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -3080,7 +3091,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
         DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
         HypreFAC::AdditionalEntries * A_additional = scinew HypreFAC::AdditionalEntries;
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -3122,7 +3133,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hyp
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
-        SubProblems < HeatProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+        SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -3192,7 +3203,7 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_error
 
     DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_error ====" );
 
-    std::array<double, 3> norms {{ 0., 0., 0. }}; // { error_discrete, u_normL2, error_normL2 }
+    std::array<double, 4> norms {{ 0., 0., 0., 0. }}; // { u_norm2_discrete, error_norm2_discrete, u_norm2_L2, error_norm2_L2 }
 
     simTime_vartype simTimeVar;
     dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
@@ -3219,12 +3230,13 @@ Heat<VAR, DIM, STN, AMR>::task_time_advance_solution_error
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
 
-        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 3> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1], norms[2] ); }, norms );
+        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1], norms[2], norms[3] ); }, norms );
     }
 
-    dw_new->put ( sum_vartype ( norms[0] ), error_discrete_label );
-    dw_new->put ( sum_vartype ( norms[1] ), u_normL2_label );
-    dw_new->put ( sum_vartype ( norms[2] ), error_normL2_label );
+    dw_new->put ( sum_vartype ( norms[0] ), u_norm2_discrete_label );
+    dw_new->put ( sum_vartype ( norms[1] ), error_norm2_discrete_label );
+    dw_new->put ( sum_vartype ( norms[2] ), u_norm2_L2_label );
+    dw_new->put ( sum_vartype ( norms[3] ), error_norm2_L2_label );
 
     DOUT ( this->m_dbg_lvl2, myrank );
 }
@@ -3251,7 +3263,7 @@ Heat<VAR, DIM, STN, AMR>::task_refine_solution
 
         DWView < ScalarField<double>, VAR, DIM > u_fine ( dw_new, u_label, material, patch_fine );
 
-        AMRInterpolator < HeatProblem<VAR, STN>, U, C2F > u_coarse_interp ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_fine );
+        AMRInterpolator < ScalarProblem<VAR, STN>, U, C2F > u_coarse_interp ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_fine );
 
         BlockRange range_fine ( this->get_range ( patch_fine ) );
         DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over fine range" << range_fine );
@@ -3282,7 +3294,7 @@ Heat<VAR, DIM, STN, AMR>::task_coarsen_solution (
 
         DWView < ScalarField<double>, VAR, DIM > u_coarse ( dw_new, u_label, material, patch_coarse );
 
-        AMRRestrictor < HeatProblem<VAR, STN>, U, F2C > u_fine_restr ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_coarse, false );
+        AMRRestrictor < ScalarProblem<VAR, STN>, U, F2C > u_fine_restr ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_coarse, false );
 
         for ( const auto & region : u_fine_restr.get_support() )
         {
@@ -3327,7 +3339,7 @@ Heat<VAR, DIM, STN, AMR>::task_error_estimate_solution
         bool refine_patch = false;
 
         DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
-        SubProblems< HeatProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        SubProblems< ScalarProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
 
         for ( const auto & p : subproblems )
         {
@@ -3694,9 +3706,10 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
     View < ScalarField<const double> > & u,
     View < ScalarField<double> > & epsilon_u,
     View < ScalarField<double> > & error_u,
-    double & error_discrete,
-    double & u_normL2,
-    double & error_normL2
+    double & u_norm2_discrete,
+    double & error_norm2_discrete,
+    double & u_norm2_L2,
+    double & error_norm2_L2
 )
 {
     const Level  * level ( patch->getLevel() );
@@ -3719,29 +3732,31 @@ Heat<VAR, DIM, STN, AMR>::time_advance_solution_error
         double a = M_PI_2 / L;
         double da2 = a * a * static_cast<double> ( DIM );
         double area = 1.;
-        double del_u = exp ( -da2 * ( t + delt ) );
-        double int_u = del_u;
-        double int_u2 = del_u * del_u;
+        double u_ex = exp ( -da2 * ( t + delt ) );
+        double int_u = u_ex;
+        double int_u2 = u_ex * u_ex;
 
         for ( size_t i = 0; i < DIM; ++i )
         {
             double vi0 = v[i] - 0.5 * dCell[i];
             double vi1 = v[i] + 0.5 * dCell[i];
             area *= dCell[i];
-            del_u *= cos ( a * v[i] );;
+            u_ex *= cos ( a * v[i] );
             int_u *= ( sin ( a * vi1 ) - sin ( a * vi0 ) ) / a;
             int_u2 *= ( vi1 - vi0 ) / 2. + ( sin ( 2. * a * vi1 ) - sin ( 2. * a * vi0 ) ) / ( 4. * a );
         }
 
-        double e2 = area * u[id] * u[id];
-        double int_e2 = area * e2 - 2. * u[id] * int_u + int_u2;
+        double u2 = area * u[id] * u[id];
+        double int_e2 = u2 - 2. * u[id] * int_u + int_u2;
 
-        epsilon_u[id] = del_u - u[id];
+        epsilon_u[id] = u_ex - u[id];
         error_u[id] = sqrt ( int_e2 ) / area;
 
-        error_discrete += e2;
-        u_normL2 += int_u2;
-        error_normL2 += int_e2;
+        u_norm2_discrete += u2;
+        error_norm2_discrete += area * epsilon_u[id] * epsilon_u[id];
+
+        u_norm2_L2 += int_u2;
+        error_norm2_L2 += int_e2;
     }
 }
 

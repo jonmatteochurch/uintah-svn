@@ -13,7 +13,7 @@ for VAR in ${VARs[@]}; do
   for DIM in ${DIMs[@]}; do
     for ((r=0; r<${#Rs[@]}; r++)); do
       R=${Rs[r]}
-      N=$(( 16 * R ))
+      N=$(( 16 * R )) 
       M=$(( 2 * Pe * DIM * R * R ))
       H=$(bc <<< "scale=4;  ( 1 / $R )");
       K=$(bc <<< "scale=12; ( 1 / $M )");
@@ -23,13 +23,13 @@ for VAR in ${VARs[@]}; do
         TWO="[2,2,2]"
         SXT="[16,16,16]"
         DST="[ 16., 16., 16.]"
-        SPA="[$H,$H,$H]"
+        RES="[$N,$N,$N]"
       else
         ONE="[1,1,0]"
         TWO="[2,2,1]"
         SXT="[16,16,1]"
         DST="[ 16., 16.,  1.]"
-        SPA="[$H,$H,1.]"
+        RES="[$N,$N,1]"
       fi
 
 # explicit no amr
@@ -42,10 +42,9 @@ for VAR in ${VARs[@]}; do
            s|<!--delt-->|<delt>$K</delt>|g;
            s|<!--scheme-->|<scheme>forward_euler</scheme>|g;
            s|<!--upper-->|<upper>$DST</upper>|g;
+           s|<!--resolution-->|<resolution>$RES</resolution>|g;
            s|<!--patches-->|<patches>$TWO</patches>|g;
-           s|<!--spacing-->|<spacing>$SPA</spacing>|g;
            s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-           s|<!--outputTimestepInterval-->|<outputTimestepInterval>$M</outputTimestepInterval>|g;
            /<!--AMR-->/d;
            /<!--Solver-->/d" heat_amr.template > $TIT.ups
 
@@ -60,7 +59,7 @@ for VAR in ${VARs[@]}; do
           <solver>smg</solver>\n
           <preconditioner>diagonal</preconditioner>\n
           <tolerance>1.e-6</tolerance>\n
-          <maxiterations>1000</maxiterations>\n
+          <maxiterations>1000000</maxiterations>\n
           <precond_maxiters>1</precond_maxiters>\n
           <precond_tolerance>0</precond_tolerance>\n
           <npre>1</npre>\n
@@ -90,17 +89,16 @@ SLV_END0
                s|<!--delt-->|<delt>1.</delt>|g;
                s|<!--scheme-->|<scheme>$SCH</scheme>|g;
                s|<!--upper-->|<upper>$DST</upper>|g;
+               s|<!--resolution-->|<resolution>$RES</resolution>|g;
                s|<!--patches-->|<patches>$TWO</patches>|g;
-               s|<!--spacing-->|<spacing>$SPA</spacing>|g;
                s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-               s|<!--outputTimestepInterval-->|<outputTimestepInterval>1</outputTimestepInterval>|g;
                s|<!--Solver-->|$SLV|g;
                /<!--AMR-->/d" heat_amr.template > $TIT.ups
 
         done
       fi
 
-      for ((L=2; L<6-r; L++)); do
+      for ((L=2; L<5-r; L++)); do
 
 # explicit with amr
 
@@ -140,10 +138,9 @@ AMR_END0
                s|<!--delt-->|<delt>$K</delt>|g;
                s|<!--scheme-->|<scheme>forward_euler</scheme>|g;
                s|<!--upper-->|<upper>$DST</upper>|g;
+               s|<!--resolution-->|<resolution>$RES</resolution>|g;
                s|<!--patches-->|<patches>$TWO</patches>|g;
-               s|<!--spacing-->|<spacing>$SPA</spacing>|g;
                s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-               s|<!--outputTimestepInterval-->|<outputTimestepInterval>$M</outputTimestepInterval>|g;
                s|<!--AMR-->|$AMR|g; 
                /<!--Solver-->/d" heat_amr.template > $TIT.ups
 
@@ -209,17 +206,16 @@ AMR_END1
               TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_n%03d_l%1d_%snew" $VAR $DIM $TS $N $L ${FCI,,})
 
               sed "s|<!--title-->|<title>$TIT</title>|g;
-                  s|<!--var-->|<var>$VAR</var>|g;
-                  s|<!--dim-->|<dim>$DIM</dim>|g;
-                  s|<!--delt-->|<delt>1.</delt>|g;
-                  s|<!--scheme-->|<scheme>$SCH</scheme>|g;
-                  s|<!--upper-->|<upper>$DST</upper>|g;
-                  s|<!--patches-->|<patches>$TWO</patches>|g;
-                  s|<!--spacing-->|<spacing>$SPA</spacing>|g;
-                  s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-                  s|<!--outputTimestepInterval-->|<outputTimestepInterval>1</outputTimestepInterval>|g;
-                  s|<!--AMR-->|$AMR|g;
-                  s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
+                   s|<!--var-->|<var>$VAR</var>|g;
+                   s|<!--dim-->|<dim>$DIM</dim>|g;
+                   s|<!--delt-->|<delt>1.</delt>|g;
+                   s|<!--scheme-->|<scheme>$SCH</scheme>|g;
+                   s|<!--upper-->|<upper>$DST</upper>|g;
+                   s|<!--resolution-->|<resolution>$RES</resolution>|g;
+                   s|<!--patches-->|<patches>$TWO</patches>|g;
+                   s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+                   s|<!--AMR-->|$AMR|g;
+                   s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
 
             done
           done
@@ -279,22 +275,20 @@ AMR_END2
               TIT=$(printf "heat_amr_%s_%1dd_%s_hyprefac_n%03d_l%1d_%s" $VAR $DIM $TS $N $L ${FCI,,})
 
               sed "s|<!--title-->|<title>$TIT</title>|g;
-                  s|<!--var-->|<var>$VAR</var>|g;
-                  s|<!--dim-->|<dim>$DIM</dim>|g;
-                  s|<!--delt-->|<delt>1.</delt>|g;
-                  s|<!--scheme-->|<scheme>$SCH</scheme>|g;
-                  s|<!--upper-->|<upper>$DST</upper>|g;
-                  s|<!--patches-->|<patches>$TWO</patches>|g;
-                  s|<!--spacing-->|<spacing>$SPA</spacing>|g;
-                  s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-                  s|<!--outputTimestepInterval-->|<outputTimestepInterval>1</outputTimestepInterval>|g;
-                  s|<!--AMR-->|$AMR|g;
-                  s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
+                   s|<!--var-->|<var>$VAR</var>|g;
+                   s|<!--dim-->|<dim>$DIM</dim>|g;
+                   s|<!--delt-->|<delt>1.</delt>|g;
+                   s|<!--scheme-->|<scheme>$SCH</scheme>|g;
+                   s|<!--upper-->|<upper>$DST</upper>|g;
+                   s|<!--resolution-->|<resolution>$RES</resolution>|g;
+                   s|<!--patches-->|<patches>$TWO</patches>|g;
+                   s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+                   s|<!--AMR-->|$AMR|g;
+                   s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
 
             done
-          done
-        fi
-
+        done
+      fi
       done
     done
   done

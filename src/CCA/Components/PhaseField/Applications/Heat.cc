@@ -39,11 +39,6 @@ namespace PhaseField
 {
 
 /// @cond DOXYIGNORE
-template<> const std::string HeatProblem<CC, P5>::Name = "HeatProblem";
-template<> const std::string HeatProblem<NC, P5>::Name = "HeatProblem";
-template<> const std::string HeatProblem<CC, P7>::Name = "HeatProblem";
-template<> const std::string HeatProblem<NC, P7>::Name = "HeatProblem";
-
 template<> const std::string Heat<CC, D2, P5>::Name = "heat|cc|d2|p5";
 template<> const std::string Heat<NC, D2, P5>::Name = "heat|nc|d2|p5";
 template<> const std::string Heat<CC, D3, P7>::Name = "heat|cc|d3|p7";

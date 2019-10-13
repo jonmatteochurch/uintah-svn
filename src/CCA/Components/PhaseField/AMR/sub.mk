@@ -30,20 +30,20 @@
 SRCDIR := CCA/Components/PhaseField/AMR
 
 SRCS += \
-  $(SRCDIR)/AMRFDViewHeatProblemCCP5FC0-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemCCP5FC1-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemCCP5FCSimple-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemCCP5FCLinear-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemCCP5FCBilinear-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemCCP7FC0-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemCCP7FC1-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemNCP5FC0-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemNCP5FC1-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemNCP5FCSimple-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemNCP5FCLinear-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemNCP5FCBilinear-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemNCP7FC0-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatProblemNCP7FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP5FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP5FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP5FCSimple-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP5FCLinear-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP5FCBilinear-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP7FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP7FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemNCP5FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemNCP5FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemNCP5FCSimple-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemNCP5FCLinear-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemNCP5FCBilinear-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FC0-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \
@@ -62,20 +62,20 @@ SRCS += \
 BLDDIR := $(SRCTOP)/$(SRCDIR)
 
 BLDSRCS += \
-  $(BLDDIR)/AMRFDViewHeatProblemCCP5FC0-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemCCP5FC1-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemCCP5FCSimple-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemCCP5FCLinear-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemCCP5FCBilinear-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemCCP7FC0-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemCCP7FC1-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemNCP5FC0-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemNCP5FC1-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemNCP5FCSimple-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemNCP5FCLinear-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemNCP5FCBilinear-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemNCP7FC0-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatProblemNCP7FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP5FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP5FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP5FCSimple-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP5FCLinear-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP5FCBilinear-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP7FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP7FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemNCP5FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemNCP5FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemNCP5FCSimple-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemNCP5FCLinear-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemNCP5FCBilinear-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FC0-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \
@@ -93,15 +93,15 @@ BLDSRCS += \
 
 ifeq ($(HAVE_HYPRE),yes)
   SRCS += \
-    $(SRCDIR)/AMRFDViewHeatProblemCCP5FC0New-bld.cc \
-    $(SRCDIR)/AMRFDViewHeatProblemCCP5FC1New-bld.cc \
-    $(SRCDIR)/AMRFDViewHeatProblemCCP7FC0New-bld.cc \
-    $(SRCDIR)/AMRFDViewHeatProblemCCP7FC1New-bld.cc \
+    $(SRCDIR)/AMRFDViewScalarProblemCCP5FC0New-bld.cc \
+    $(SRCDIR)/AMRFDViewScalarProblemCCP5FC1New-bld.cc \
+    $(SRCDIR)/AMRFDViewScalarProblemCCP7FC0New-bld.cc \
+    $(SRCDIR)/AMRFDViewScalarProblemCCP7FC1New-bld.cc \
 
   BLDSRCS += \
-    $(BLDDIR)/AMRFDViewHeatProblemCCP5FC0New-bld.cc \
-    $(BLDDIR)/AMRFDViewHeatProblemCCP5FC1New-bld.cc \
-    $(BLDDIR)/AMRFDViewHeatProblemCCP7FC0New-bld.cc \
-    $(BLDDIR)/AMRFDViewHeatProblemCCP7FC1New-bld.cc \
+    $(BLDDIR)/AMRFDViewScalarProblemCCP5FC0New-bld.cc \
+    $(BLDDIR)/AMRFDViewScalarProblemCCP5FC1New-bld.cc \
+    $(BLDDIR)/AMRFDViewScalarProblemCCP7FC0New-bld.cc \
+    $(BLDDIR)/AMRFDViewScalarProblemCCP7FC1New-bld.cc \
 
 endif # HAVE_HYPRE

@@ -31,3 +31,4 @@ SRCDIR := CCA/Components/PhaseField/DataTypes
 
 SRCS += \
   $(SRCDIR)/SubProblems.cc \
+  $(SRCDIR)/ScalarProblem.cc \

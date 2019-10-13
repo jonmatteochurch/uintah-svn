@@ -31,16 +31,16 @@ SRCDIR := CCA/Components/PhaseField/BoundaryConditions
 
 SRCS += \
   $(SRCDIR)/BCFDViewFactory-bld.cc \
-  $(SRCDIR)/BCFDViewHeatProblemCCP5-bld.cc \
-  $(SRCDIR)/BCFDViewHeatProblemCCP7-bld.cc \
-  $(SRCDIR)/BCFDViewHeatProblemNCP5-bld.cc \
-  $(SRCDIR)/BCFDViewHeatProblemNCP7-bld.cc \
+  $(SRCDIR)/BCFDViewScalarProblemCCP5-bld.cc \
+  $(SRCDIR)/BCFDViewScalarProblemCCP7-bld.cc \
+  $(SRCDIR)/BCFDViewScalarProblemNCP5-bld.cc \
+  $(SRCDIR)/BCFDViewScalarProblemNCP7-bld.cc \
 
 BLDDIR := $(SRCTOP)/$(SRCDIR)
 
 BLDSRCS += \
   $(BLDDIR)/BCFDViewFactory-bld.cc \
-  $(BLDDIR)/BCFDViewHeatProblemCCP5-bld.cc \
-  $(BLDDIR)/BCFDViewHeatProblemCCP7-bld.cc \
-  $(BLDDIR)/BCFDViewHeatProblemNCP5-bld.cc \
-  $(BLDDIR)/BCFDViewHeatProblemNCP7-bld.cc \
+  $(BLDDIR)/BCFDViewScalarProblemCCP5-bld.cc \
+  $(BLDDIR)/BCFDViewScalarProblemCCP7-bld.cc \
+  $(BLDDIR)/BCFDViewScalarProblemNCP5-bld.cc \
+  $(BLDDIR)/BCFDViewScalarProblemNCP7-bld.cc \

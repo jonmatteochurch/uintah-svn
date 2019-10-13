@@ -27,8 +27,8 @@ VARs=(CC NC)
 STNs=(P5 P7)
 DIMs=(2 3)
 PPPs=(
-  "PureMetalProblem;HeatProblem"
-  "PureMetalProblem;HeatProblem"
+  "PureMetalProblem;ScalarProblem"
+  "PureMetalProblem;ScalarProblem"
 )
 NFFs=(
   "4;1"
