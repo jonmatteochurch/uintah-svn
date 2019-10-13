@@ -14,20 +14,20 @@ for VAR in ${VARs[@]}; do
     for ((r=0; r<${#Rs[@]}; r++)); do
       R=${Rs[r]}
       N=$(( 16 * R ))
-      M=$(( 2 * Pe * DIM * R * R ))1
+      M=$(( 2 * Pe * DIM * R * R ))
       H=$(bc <<< "scale=4;  ( 1 / $R )");
       K=$(bc <<< "scale=12; ( 1 / $M )");
 
       if [[ $DIM -eq 3 ]]; then
         ONE="[1,1,1]"
         TWO="[2,2,2]"
-        SXT="[ 16, 16, 16]"
+        SXT="[16,16,16]"
         DST="[ 16., 16., 16.]"
         SPA="[$H,$H,$H]"
       else
         ONE="[1,1,0]"
         TWO="[2,2,1]"
-        SXT="[ 16, 16, 1]"
+        SXT="[16,16,1]"
         DST="[ 16., 16.,  1.]"
         SPA="[$H,$H,1.]"
       fi
@@ -122,7 +122,7 @@ SLV_END0
             <adaptive>true</adaptive>\n
             <max_levels>$L</max_levels>\n
             <cell_refinement_ratio>[$TWO]</cell_refinement_ratio>\n
-            <cell_stability_dilation>[0,0,0]</cell_stability_dilation>\n
+            <cell_stability_dilation>$ONE</cell_stability_dilation>\n
             <min_boundary_cells>$ONE</min_boundary_cells>\n
             <min_patch_size>[$SXT]</min_patch_size>\n
         </Regridder>\n
@@ -189,7 +189,7 @@ SLV_END1
             <adaptive>true</adaptive>\n
             <max_levels>$L</max_levels>\n
             <cell_refinement_ratio>[$TWO]</cell_refinement_ratio>\n
-            <cell_stability_dilation>[0,0,0]</cell_stability_dilation>\n
+            <cell_stability_dilation>$ONE</cell_stability_dilation>\n
             <min_boundary_cells>$ONE</min_boundary_cells>\n
             <min_patch_size>[$SXT]</min_patch_size>\n
         </Regridder>\n
@@ -259,7 +259,7 @@ SLV_END2
             <adaptive>true</adaptive>\n
             <max_levels>$L</max_levels>\n
             <cell_refinement_ratio>[$TWO]</cell_refinement_ratio>\n
-            <cell_stability_dilation>[0,0,0]</cell_stability_dilation>\n
+            <cell_stability_dilation>$ONE</cell_stability_dilation>\n
             <min_boundary_cells>$ONE</min_boundary_cells>\n
             <min_patch_size>[$SXT]</min_patch_size>\n
         </Regridder>\n

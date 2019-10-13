@@ -61,9 +61,9 @@
             <adaptive>true</adaptive>
             <max_levels>4</max_levels>
             <cell_refinement_ratio>[[2,2,2]]</cell_refinement_ratio>
-            <cell_stability_dilation>[0,0,0]</cell_stability_dilation>
+            <cell_stability_dilation>[1,1,1]</cell_stability_dilation>
             <min_boundary_cells>[1,1,1]</min_boundary_cells>
-            <min_patch_size>[[ 16, 16, 16]]</min_patch_size>
+            <min_patch_size>[[16,16,16]]</min_patch_size>
         </Regridder>
         <FineCoarseInterfaces>
             <FCIType id="0" label="u" var="FC1" />

@@ -7,7 +7,7 @@
     <PhaseField type="heat">
         <var>nc</var>
         <dim>2</dim>
-        <delt>.000195274360</delt>
+        <delt>.001953125000</delt>
         <scheme>forward_euler</scheme>
         <refine_threshold>0.05</refine_threshold>
         <alpha>1.</alpha>
@@ -58,7 +58,7 @@
 <!--__________________________________-->
     <DataArchiver>
         <filebase>heat_amr_nc_2d_fe_n128_l1.uda</filebase>
-        <outputTimestepInterval>5121</outputTimestepInterval>
+        <outputTimestepInterval>512</outputTimestepInterval>
         <checkpoint cycle="2" timestepInterval="100"/>
         <save label="u" />
         <save label="u_normL2" />
