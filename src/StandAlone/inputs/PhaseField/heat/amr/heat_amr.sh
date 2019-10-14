@@ -24,13 +24,28 @@ for VAR in ${VARs[@]}; do
         SXT="[16,16,16]"
         DST="[ 16., 16., 16.]"
         RES="[$N,$N,$N]"
+        BCZ=$(cat << BCZ_END
+            <Face side="z-">
+                <BCType id="0" label="u" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+            </Face>
+            <Face side="z+">
+                <BCType id="0" label="u" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+            </Face>
+BCZ_END
+        )
       else
         ONE="[1,1,0]"
         TWO="[2,2,1]"
         SXT="[16,16,1]"
         DST="[ 16., 16.,  1.]"
         RES="[$N,$N,1]"
+        BCZ=""
       fi
+      BCZ=$(tr -d '\n' <<< "$BCZ")
 
 # explicit no amr
 
@@ -45,6 +60,7 @@ for VAR in ${VARs[@]}; do
            s|<!--resolution-->|<resolution>$RES</resolution>|g;
            s|<!--patches-->|<patches>$TWO</patches>|g;
            s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+           s|<!--BC Z Faces-->|$BCZ|g;
            /<!--AMR-->/d;
            /<!--Solver-->/d" heat_amr.template > $TIT.ups
 
@@ -92,6 +108,7 @@ SLV_END0
                s|<!--resolution-->|<resolution>$RES</resolution>|g;
                s|<!--patches-->|<patches>$TWO</patches>|g;
                s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+               s|<!--BC Z Faces-->|$BCZ|g;
                s|<!--Solver-->|$SLV|g;
                /<!--AMR-->/d" heat_amr.template > $TIT.ups
 
@@ -141,6 +158,7 @@ AMR_END0
                s|<!--resolution-->|<resolution>$RES</resolution>|g;
                s|<!--patches-->|<patches>$TWO</patches>|g;
                s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+               s|<!--BC Z Faces-->|$BCZ|g;
                s|<!--AMR-->|$AMR|g; 
                /<!--Solver-->/d" heat_amr.template > $TIT.ups
 
@@ -214,6 +232,7 @@ AMR_END1
                    s|<!--resolution-->|<resolution>$RES</resolution>|g;
                    s|<!--patches-->|<patches>$TWO</patches>|g;
                    s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+                   s|<!--BC Z Faces-->|$BCZ|g;
                    s|<!--AMR-->|$AMR|g;
                    s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
 
@@ -283,6 +302,7 @@ AMR_END2
                    s|<!--resolution-->|<resolution>$RES</resolution>|g;
                    s|<!--patches-->|<patches>$TWO</patches>|g;
                    s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+                   s|<!--BC Z Faces-->|$BCZ|g;
                    s|<!--AMR-->|$AMR|g;
                    s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
 

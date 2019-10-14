@@ -53,6 +53,7 @@
                     <value>0.</value>
                 </BCType>
             </Face>
+                        <Face side="z-">                <BCType id="0" label="u" var="Neumann">                    <value>0.</value>                </BCType>            </Face>            <Face side="z+">                <BCType id="0" label="u" var="Dirichlet">                    <value>0.</value>                </BCType>            </Face>
         </BoundaryConditions>
     </Grid>
 <!--__________________________________-->

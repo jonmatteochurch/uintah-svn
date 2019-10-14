@@ -22,13 +22,28 @@ for VAR in ${VARs[@]}; do
           SXT="[16,16,16]"
           DST="[ 16., 16., 16.]"
           RES="[$N,$N,$N]"
+          BCZ=$(cat << BCZ_END
+            <Face side="z-">\n
+                <BCType id="0" label="u" var="Neumann">\n
+                    <value>0.</value>\n
+                </BCType>\n
+            </Face>\n
+            <Face side="z+">\n
+                <BCType id="0" label="u" var="Dirichlet">\n
+                    <value>0.</value>\n
+                </BCType>\n
+            </Face>\n
+BCZ_END
+          );
         else
           ONE="[1,1,0]"
           TWO="[2,2,1]"
           SXT="[16,16,1]"
           DST="[ 16., 16.,  1.]"
           RES="[$N,$N,1]"
+          BCZ=""
         fi
+        BCZ=$(tr -d '\n' <<< "$BCZ")
 
 # explicit no amr
 
@@ -43,6 +58,7 @@ for VAR in ${VARs[@]}; do
               s|<!--resolution-->|<resolution>$RES</resolution>|g;
               s|<!--patches-->|<patches>$TWO</patches>|g;
               s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+              s|<!--BC Z Faces-->|$BCZ|g;
               /<!--Solver-->/d" heat_err.template > $TIT.ups
 
         if [ "$VAR" == "cc" ]; then
@@ -89,6 +105,7 @@ SLV_END0
                s|<!--resolution-->|<resolution>$RES</resolution>|g;
                s|<!--patches-->|<patches>$TWO</patches>|g;
                s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+               s|<!--BC Z Faces-->|$BCZ|g;
                s|<!--Solver-->|$SLV|g" heat_err.template > $TIT.ups
 
         done

@@ -53,6 +53,7 @@
                     <value>0.</value>
                 </BCType>
             </Face>
+            <!--BC Z Faces-->
         </BoundaryConditions>
     </Grid>
 <!--AMR-->
