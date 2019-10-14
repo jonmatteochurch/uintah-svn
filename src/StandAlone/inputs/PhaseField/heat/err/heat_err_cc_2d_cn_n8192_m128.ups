@@ -7,7 +7,7 @@
     <PhaseField type="heat">
         <var>cc</var>
         <dim>2</dim>
-        <delt>.007812500000.</delt>
+        <delt>.007812500000</delt>
         <scheme>crank_nicolson</scheme>
         <alpha>1.</alpha>
         <verbosity>0</verbosity>

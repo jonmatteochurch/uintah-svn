@@ -83,7 +83,7 @@ SLV_END0
           sed "s|<!--title-->|<title>$TIT</title>|g;
                s|<!--var-->|<var>$VAR</var>|g;
                s|<!--dim-->|<dim>$DIM</dim>|g;
-               s|<!--delt-->|<delt>$K.</delt>|g;
+               s|<!--delt-->|<delt>$K</delt>|g;
                s|<!--scheme-->|<scheme>$SCH</scheme>|g;
                s|<!--upper-->|<upper>$DST</upper>|g;
                s|<!--resolution-->|<resolution>$RES</resolution>|g;

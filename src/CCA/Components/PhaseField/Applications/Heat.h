@@ -916,10 +916,12 @@ protected: // TASKS
      * Puts into the new DataWarehouse the constant value specified in input (delt)
      * of the timestep
      *
+     * When test is set to true it also checks that the solution norm is stable
+     *
      * @param myworld data structure to manage mpi processes
      * @param patches list of patches to be initialized
      * @param matls unused
-     * @param dw_old unused
+     * @param dw_old DataWarehouse for previous timestep
      * @param dw_new DataWarehouse to be initialized
      */
     void
@@ -1875,6 +1877,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleComputeStableTimeStep (
 )
 {
     Task * task = scinew Task ( "Heat::task_compute_stable_timestep ", this, &Heat::task_compute_stable_timestep );
+    if (test) task->requires ( Task::OldDW, u_norm2_discrete_label );
     task->computes ( this->getDelTLabel(), level.get_rep() );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
@@ -2074,7 +2077,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_forward_euler (
 {
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_forward_euler " );
 
-    if ( !level->hasCoarserLevel() ) 
+    if ( !level->hasCoarserLevel() )
         scheduleTimeAdvance_solution_forward_euler < !MG > ( level, sched );
     else
     {
@@ -2131,7 +2134,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble
         GridP grid = level->getGrid();
 
         // all assemble task must be sent to the scheduler before the solve task
-        scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac < !MG >  ( level, sched );
+        scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac < !MG > ( level, sched );
         for ( int l = 1; l < grid->numLevels(); ++l )
             scheduleTimeAdvance_solution_backward_euler_assemble_hyprefac < MG > ( grid->getLevel ( l ), sched );
     }
@@ -2269,7 +2272,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble
 
         GridP grid = level->getGrid();
         // all assemble task must be sent to the scheduler before the solve task
-        scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac < !MG >  ( level, sched );
+        scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac < !MG > ( level, sched );
         for ( int l = 1; l < grid->numLevels(); ++l )
             scheduleTimeAdvance_solution_crank_nicolson_assemble_hyprefac < MG > ( grid->getLevel ( l ), sched );
     }
@@ -2563,7 +2566,7 @@ Heat<VAR, DIM, STN, AMR>::scheduleErrorEstimate_solution (
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void 
+void
 Heat<VAR, DIM, STN, AMR>::scheduleInitialErrorEstimate
 (
     const LevelP & level,
@@ -2619,13 +2622,31 @@ Heat<VAR, DIM, STN, AMR>::task_compute_stable_timestep (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset *,
-    DataWarehouse *,
+    DataWarehouse * dw_old,
     DataWarehouse * dw_new
 )
 {
     int myrank = myworld->myRank();
-
     DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_compute_stable_timestep ====" );
+
+    if ( test && dw_old && dw_old->exists( u_norm2_discrete_label ) )
+    {
+        sum_vartype u_norm2_discrete;
+        dw_old->get ( u_norm2_discrete, u_norm2_discrete_label );
+
+        BBox box;
+        getLevel ( patches )->getGrid()->getSpatialRange ( box );
+        Vector L = box.max() - box.min();
+        if ( L != box.max().asVector() ) L /= 2;
+
+        double u0_norm2 = 1.;
+        for ( size_t d = 0; d < DIM; ++d )
+            u0_norm2 *= L[d];
+
+        if ( u_norm2_discrete > 2 * u0_norm2 )
+            SCI_THROW ( AssertionFailed ( "\n ERROR: Unstable simulation\n", __FILE__, __LINE__ ) );
+    }
+
     dw_new->put ( delt_vartype ( delt ), this->getDelTLabel(), getLevel ( patches ) );
     DOUT ( this->m_dbg_lvl2, myrank );
 }

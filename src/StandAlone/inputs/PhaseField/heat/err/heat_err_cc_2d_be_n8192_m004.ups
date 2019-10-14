@@ -7,7 +7,7 @@
     <PhaseField type="heat">
         <var>cc</var>
         <dim>2</dim>
-        <delt>.250000000000.</delt>
+        <delt>.250000000000</delt>
         <scheme>backward_euler</scheme>
         <alpha>1.</alpha>
         <verbosity>0</verbosity>

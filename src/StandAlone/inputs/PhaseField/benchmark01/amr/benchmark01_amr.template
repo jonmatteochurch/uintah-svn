@@ -1,0 +1,46 @@
+<Uintah_specification>
+    <Meta>
+        <!--title-->
+    </Meta>
+    <SimulationComponent type="phasefield" />
+<!--__________________________________-->
+    <PhaseField type="heat">
+        <!--var-->
+        <!--delt-->
+        <!--epsilon-->
+        <!--scheme-->
+        <refine_threshold>1.</refine_threshold>
+        <verbosity>0</verbosity>
+    </PhaseField>
+<!--__________________________________-->
+    <Time>
+        <!--maxTime-->
+        <initTime>0.0</initTime>
+        <delt_min>0.0</delt_min>
+        <delt_max>1.</delt_max>
+        <timestep_multiplier>1.</timestep_multiplier>
+    </Time>
+<!--__________________________________-->
+    <Grid>
+        <Level>
+            <Box label="1">
+                <lower>[0.,0.,0.]</lower>
+                <upper>[6.28318530717959,6.28318530717959,1.]</upper>
+                <!--resolution-->
+                <!--patches-->
+            </Box>
+            <periodic>[1,1,0]</periodic>
+        </Level>
+    </Grid>
+<!--AMR-->
+<!--Solver-->
+<!--__________________________________-->
+    <DataArchiver>
+        <!--filebase-->
+        <outputInterval>1</outputInterval>
+        <checkpoint cycle="2" timestepInterval="100"/>
+        <save label="u" />
+        <save label="u0"/>
+        <save label="energy"/>
+    </DataArchiver>
+</Uintah_specification>
