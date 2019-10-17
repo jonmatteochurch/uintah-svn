@@ -49,7 +49,7 @@ BCZ_END
 
 # explicit no amr
 
-      TIT=$(printf "heat_amr_%s_%1dd_fe_n%03d_l1" $VAR $DIM $N)
+      TIT=$(printf "heat_amr_%s_%1dd_fe_n%04d_l1" $VAR $DIM $N)
 
       sed "s|<!--title-->|<title>$TIT</title>|g;
            s|<!--var-->|<var>$VAR</var>|g;
@@ -97,7 +97,7 @@ SLV_END0
           TS=${TSs[t]}
           SCH=${SCHs[t]}
 
-          TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_n%03d_l1" $VAR $DIM $TS $N)
+          TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_n%04d_l1" $VAR $DIM $TS $N)
 
           sed "s|<!--title-->|<title>$TIT</title>|g;
                s|<!--var-->|<var>$VAR</var>|g;
@@ -128,7 +128,7 @@ SLV_END0
         fi
 
         for FCI in "${Fs[@]}"; do
-          TIT=$(printf "heat_amr_%s_%1dd_fe_n%03d_l%1d_%s" $VAR $DIM $N $L ${FCI,,})
+          TIT=$(printf "heat_amr_%s_%1dd_fe_n%04d_l%1d_%s" $VAR $DIM $N $L ${FCI,,})
 
           AMR=$(cat << AMR_END0
 <!--__________________________________-->\n
@@ -221,7 +221,7 @@ AMR_END1
               TS=${TSs[t]}
               SCH=${SCHs[t]}
 
-              TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_n%03d_l%1d_%snew" $VAR $DIM $TS $N $L ${FCI,,})
+              TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_n%04d_l%1d_%snew" $VAR $DIM $TS $N $L ${FCI,,})
 
               sed "s|<!--title-->|<title>$TIT</title>|g;
                    s|<!--var-->|<var>$VAR</var>|g;
@@ -291,7 +291,7 @@ AMR_END2
               TS=${TSs[t]}
               SCH=${SCHs[t]}
 
-              TIT=$(printf "heat_amr_%s_%1dd_%s_hyprefac_n%03d_l%1d_%s" $VAR $DIM $TS $N $L ${FCI,,})
+              TIT=$(printf "heat_amr_%s_%1dd_%s_hyprefac_n%04d_l%1d_%s" $VAR $DIM $TS $N $L ${FCI,,})
 
               sed "s|<!--title-->|<title>$TIT</title>|g;
                    s|<!--var-->|<var>$VAR</var>|g;
@@ -307,8 +307,8 @@ AMR_END2
                    s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
 
             done
-        done
-      fi
+          done
+        fi
       done
     done
   done

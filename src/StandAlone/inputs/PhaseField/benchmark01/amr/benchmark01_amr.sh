@@ -7,8 +7,8 @@ MXTs=(50 220 850)
 C2Fs=(FC0 FC1 FCSimple FCLinear FCBilinear)
 Rs=(64 128 256 512)
 Pe=4
-TSs=(be cn)
-SCHs=(backward_euler crank_nicolson)
+TSs=(si0)
+SCHs=(semi_implicit_0)
 
 for VAR in ${VARs[@]}; do
   for ((e=0; e<${#EPSs[@]}; e++)); do
@@ -16,28 +16,29 @@ for VAR in ${VARs[@]}; do
     MXT=${MXTs[e]}
     for ((r=0; r<${#Rs[@]}; r++)); do
       R=${Rs[r]}
+      N=$(( 16 * R )) 
       M=$(( 2 * Pe * R ))
       K=$(bc <<< "scale=12; ( 1 / $M )");
 
       ONE="[1,1,0]"
       TWO="[2,2,1]"
       SXT="[16,16,1]"
-      RES="[$R,$R,1.]"
+      RES="[$N,$N,1.]"
 
 # explicit no amr
 
-      TIT=$(printf "benchmark01_amr_eps_%1.2f_%s_fe_n%03d_l1" $EPS $VAR $N)
+      TIT=$(printf "benchmark01_amr_eps_%1.2f_%s_fe_n%04d_l1" $EPS $VAR $N)
 
       sed "s|<!--title-->|<title>$TIT</title>|g;
            s|<!--var-->|<var>$VAR</var>|g;
            s|<!--delt-->|<delt>$K</delt>|g;
            s|<!--epsilon-->|<epsilon>$EPS</epsilon>|g;
            s|<!--scheme-->|<scheme>forward_euler</scheme>|g;
-           s|<!--maxTime-->|<maxTime>$MXT</maxTime>|g;
+           s|<!--maxTime-->|<maxTime>$(bc <<< "scale=12; ( $MXT + $K )")</maxTime>|g;
            s|<!--resolution-->|<resolution>$RES</resolution>|g;
            s|<!--patches-->|<patches>$TWO</patches>|g;
            s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-           s|<!--outputTimestepInterval-->|<outputTimestepInterval>$M</outputTimestepInterval>|g;
+           s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
            /<!--AMR-->/d;
            /<!--Solver-->/d" benchmark01_amr.template > $TIT.ups
 
@@ -52,7 +53,7 @@ for VAR in ${VARs[@]}; do
           <solver>smg</solver>\n
           <preconditioner>diagonal</preconditioner>\n
           <tolerance>1.e-6</tolerance>\n
-          <maxiterations>1000</maxiterations>\n
+          <maxiterations>1000000</maxiterations>\n
           <precond_maxiters>1</precond_maxiters>\n
           <precond_tolerance>0</precond_tolerance>\n
           <npre>1</npre>\n
@@ -74,18 +75,18 @@ SLV_END0
           TS=${TSs[t]}
           SCH=${SCHs[t]}
 
-          TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hypre_n%03d_l1" $EPS $VAR $TS $N)
+          TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hypre_n%04d_l1" $EPS $VAR $TS $N)
 
           sed "s|<!--title-->|<title>$TIT</title>|g;
                s|<!--var-->|<var>$VAR</var>|g;
                s|<!--delt-->|<delt>1.</delt>|g;
                s|<!--epsilon-->|<epsilon>$EPS</epsilon>|g;
                s|<!--scheme-->|<scheme>$SCH</scheme>|g;
-               s|<!--maxTime-->|<maxTime>$MXT</maxTime>|g;
+               s|<!--maxTime-->|<maxTime>$(bc <<< "scale=12; ( $MXT + 1 )")</maxTime>|g;
                s|<!--resolution-->|<resolution>$RES</resolution>|g;
                s|<!--patches-->|<patches>$TWO</patches>|g;
                s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-               s|<!--outputTimestepInterval-->|<outputTimestepInterval>1</outputTimestepInterval>|g;
+               s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
                s|<!--Solver-->|$SLV|g;
                /<!--AMR-->/d" benchmark01_amr.template > $TIT.ups
 
@@ -99,7 +100,7 @@ SLV_END0
         K=$(bc <<< "scale=12; ( $K / 2 )");
 
         for FCI in "${C2Fs[@]}"; do
-          TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%1dd_fe_n%03d_l%1d_%s" $EPS $VAR $N $L ${FCI,,})
+          TIT=$(printf "benchmark01_amr_eps%1.2f_%s_fe_n%04d_l%1d_%s" $EPS $VAR $N $L ${FCI,,})
 
           AMR=$(cat << AMR_END0
 <!--__________________________________-->\n
@@ -125,11 +126,11 @@ AMR_END0
                s|<!--delt-->|<delt>$K</delt>|g;
                s|<!--epsilon-->|<epsilon>$EPS</epsilon>|g;
                s|<!--scheme-->|<scheme>forward_euler</scheme>|g;
-               s|<!--maxTime-->|<maxTime>$MXT</maxTime>|g;
+               s|<!--maxTime-->|<maxTime>$(bc <<< "scale=12; ( $MXT + $K )")</maxTime>|g;
                s|<!--resolution-->|<resolution>$RES</resolution>|g;
                s|<!--patches-->|<patches>$TWO</patches>|g;
                s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-               s|<!--outputTimestepInterval-->|<outputTimestepInterval>$M</outputTimestepInterval>|g;
+               s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
                s|<!--AMR-->|$AMR|g; 
                /<!--Solver-->/d" benchmark01_amr.template > $TIT.ups
 
@@ -175,7 +176,7 @@ SLV_END1
             <adaptive>true</adaptive>\n
             <max_levels>$L</max_levels>\n
             <cell_refinement_ratio>[$TWO]</cell_refinement_ratio>\n
-            <cell_stability_dilation>[0,0,0]</cell_stability_dilation>\n
+            <cell_stability_dilation>$ONE</cell_stability_dilation>\n
             <min_boundary_cells>$ONE</min_boundary_cells>\n
             <min_patch_size>[$SXT]</min_patch_size>\n
         </Regridder>\n
@@ -192,20 +193,20 @@ AMR_END1
               TS=${TSs[t]}
               SCH=${SCHs[t]}
 
-              TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%1dd_%s_hypre_n%03d_l%1d_%snew" $EPS $VAR $TS $N $L ${FCI,,})
+              TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hypre_n%04d_l%1d_%snew" $EPS $VAR $TS $N $L ${FCI,,})
 
               sed "s|<!--title-->|<title>$TIT</title>|g;
-                  s|<!--var-->|<var>$VAR</var>|g;
-                  s|<!--delt-->|<delt>1.</delt>|g;
-                  s|<!--epsilon-->|<epsilon>$EPS</epsilon>|g;
-                  s|<!--scheme-->|<scheme>$SCH</scheme>|g;
-                  s|<!--maxTime-->|<maxTime>$MXT</maxTime>|g;
-                  s|<!--resolution-->|<resolution>$RES</resolution>|g;
-                  s|<!--patches-->|<patches>$TWO</patches>|g;
-                  s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-                  s|<!--outputTimestepInterval-->|<outputTimestepInterval>1</outputTimestepInterval>|g;
-                  s|<!--AMR-->|$AMR|g;
-                  s|<!--Solver-->|$SLV|g" benchmark01_amr.template > $TIT.ups
+                   s|<!--var-->|<var>$VAR</var>|g;
+                   s|<!--delt-->|<delt>1.</delt>|g;
+                   s|<!--epsilon-->|<epsilon>$EPS</epsilon>|g;
+                   s|<!--scheme-->|<scheme>$SCH</scheme>|g;
+                   s|<!--maxTime-->|<maxTime>$(bc <<< "scale=12; ( $MXT + 1 )")</maxTime>|g;
+                   s|<!--resolution-->|<resolution>$RES</resolution>|g;
+                   s|<!--patches-->|<patches>$TWO</patches>|g;
+                   s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+                   s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
+                   s|<!--AMR-->|$AMR|g;
+                   s|<!--Solver-->|$SLV|g" benchmark01_amr.template > $TIT.ups
 
             done
           done
@@ -245,7 +246,7 @@ SLV_END2
             <adaptive>true</adaptive>\n
             <max_levels>$L</max_levels>\n
             <cell_refinement_ratio>[$TWO]</cell_refinement_ratio>\n
-            <cell_stability_dilation>[0,0,0]</cell_stability_dilation>\n
+            <cell_stability_dilation>$ONE</cell_stability_dilation>\n
             <min_boundary_cells>$ONE</min_boundary_cells>\n
             <min_patch_size>[$SXT]</min_patch_size>\n
         </Regridder>\n
@@ -262,25 +263,24 @@ AMR_END2
               TS=${TSs[t]}
               SCH=${SCHs[t]}
 
-              TIT=$(printf "benchmark01_amr_eps%1.2_%s_%1dd_%s_hyprefac_n%03d_l%1d_%s" $EPS $VAR $TS $N $L ${FCI,,})
+              TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hyprefac_n%04d_l%1d_%s" $EPS $VAR $TS $N $L ${FCI,,})
 
               sed "s|<!--title-->|<title>$TIT</title>|g;
-                  s|<!--var-->|<var>$VAR</var>|g;
-                  s|<!--delt-->|<delt>1.</delt>|g;
-                  s|<!--epsilon-->|<epsilon>$EPS</epsilon>|g;
-                  s|<!--scheme-->|<scheme>$SCH</scheme>|g;
-                  s|<!--maxTime-->|<maxTime>$MXT</maxTime>|g;
-                  s|<!--resolution-->|<resolution>$RES</resolution>|g;
-                  s|<!--patches-->|<patches>$TWO</patches>|g;
-                  s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-                  s|<!--outputTimestepInterval-->|<outputTimestepInterval>1</outputTimestepInterval>|g;
-                  s|<!--AMR-->|$AMR|g;
-                  s|<!--Solver-->|$SLV|g" benchmark01_amr.template > $TIT.ups
+                   s|<!--var-->|<var>$VAR</var>|g;
+                   s|<!--delt-->|<delt>1.</delt>|g;
+                   s|<!--epsilon-->|<epsilon>$EPS</epsilon>|g;
+                   s|<!--scheme-->|<scheme>$SCH</scheme>|g;
+                   s|<!--maxTime-->|<maxTime>$(bc <<< "scale=12; ( $MXT + 1 )")</maxTime>|g;
+                   s|<!--resolution-->|<resolution>$RES</resolution>|g;
+                   s|<!--patches-->|<patches>$TWO</patches>|g;
+                   s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+                   s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
+                   s|<!--AMR-->|$AMR|g;
+                   s|<!--Solver-->|$SLV|g" benchmark01_amr.template > $TIT.ups
 
             done
           done
         fi
-
       done
     done
   done

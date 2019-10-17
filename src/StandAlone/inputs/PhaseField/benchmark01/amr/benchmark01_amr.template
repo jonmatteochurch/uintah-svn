@@ -4,7 +4,7 @@
     </Meta>
     <SimulationComponent type="phasefield" />
 <!--__________________________________-->
-    <PhaseField type="heat">
+    <PhaseField type="benchmark01">
         <!--var-->
         <!--delt-->
         <!--epsilon-->
@@ -37,7 +37,7 @@
 <!--__________________________________-->
     <DataArchiver>
         <!--filebase-->
-        <outputInterval>1</outputInterval>
+        <!--outputInterval-->
         <checkpoint cycle="2" timestepInterval="100"/>
         <save label="u" />
         <save label="u0"/>

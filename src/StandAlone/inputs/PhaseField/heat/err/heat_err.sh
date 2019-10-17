@@ -47,25 +47,25 @@ BCZ_END
 
 # explicit no amr
 
-        TIT=$(printf "heat_err_%s_%1dd_fe_n%03d_m%03d" $VAR $DIM $N $M)
+        TIT=$(printf "heat_err_%s_%1dd_fe_n%04d_m%04d" $VAR $DIM $N $M)
 
         sed "s|<!--title-->|<title>$TIT</title>|g;
-              s|<!--var-->|<var>$VAR</var>|g;
-              s|<!--dim-->|<dim>$DIM</dim>|g;
-              s|<!--delt-->|<delt>$K</delt>|g;
-              s|<!--scheme-->|<scheme>forward_euler</scheme>|g;
-              s|<!--upper-->|<upper>$DST</upper>|g;
-              s|<!--resolution-->|<resolution>$RES</resolution>|g;
-              s|<!--patches-->|<patches>$TWO</patches>|g;
-              s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-              s|<!--BC Z Faces-->|$BCZ|g;
-              /<!--Solver-->/d" heat_err.template > $TIT.ups
+             s|<!--var-->|<var>$VAR</var>|g;
+             s|<!--dim-->|<dim>$DIM</dim>|g;
+             s|<!--delt-->|<delt>$K</delt>|g;
+             s|<!--scheme-->|<scheme>forward_euler</scheme>|g;
+             s|<!--upper-->|<upper>$DST</upper>|g;
+             s|<!--resolution-->|<resolution>$RES</resolution>|g;
+             s|<!--patches-->|<patches>$TWO</patches>|g;
+             s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+             s|<!--BC Z Faces-->|$BCZ|g;
+             /<!--Solver-->/d" heat_err.template > $TIT.ups
 
         if [ "$VAR" == "cc" ]; then
 
 # hypre no amr
 
-        SLV=$(cat << SLV_END0
+          SLV=$(cat << SLV_END0
 <!--__________________________________-->\n
     <Solver type="hypre">\n
        <Parameters variable="u">\n
@@ -87,29 +87,29 @@ BCZ_END
        </Parameters>\n
     </Solver>
 SLV_END0
-        )
-        SLV=$(tr -d '\n' <<< "$SLV")
+          )
+          SLV=$(tr -d '\n' <<< "$SLV")
 
-        for ((t=0; t<${#TSs[@]}; t++)); do
-          TS=${TSs[t]}
-          SCH=${SCHs[t]}
+          for ((t=0; t<${#TSs[@]}; t++)); do
+            TS=${TSs[t]}
+            SCH=${SCHs[t]}
 
-          TIT=$(printf "heat_err_%s_%1dd_%s_n%03d_m%03d" $VAR $DIM $TS $N $M)
+            TIT=$(printf "heat_err_%s_%1dd_%s_n%04d_m%04d" $VAR $DIM $TS $N $M)
 
-          sed "s|<!--title-->|<title>$TIT</title>|g;
-               s|<!--var-->|<var>$VAR</var>|g;
-               s|<!--dim-->|<dim>$DIM</dim>|g;
-               s|<!--delt-->|<delt>$K</delt>|g;
-               s|<!--scheme-->|<scheme>$SCH</scheme>|g;
-               s|<!--upper-->|<upper>$DST</upper>|g;
-               s|<!--resolution-->|<resolution>$RES</resolution>|g;
-               s|<!--patches-->|<patches>$TWO</patches>|g;
-               s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
-               s|<!--BC Z Faces-->|$BCZ|g;
-               s|<!--Solver-->|$SLV|g" heat_err.template > $TIT.ups
+            sed "s|<!--title-->|<title>$TIT</title>|g;
+                 s|<!--var-->|<var>$VAR</var>|g;
+                 s|<!--dim-->|<dim>$DIM</dim>|g;
+                 s|<!--delt-->|<delt>$K</delt>|g;
+                 s|<!--scheme-->|<scheme>$SCH</scheme>|g;
+                 s|<!--upper-->|<upper>$DST</upper>|g;
+                 s|<!--resolution-->|<resolution>$RES</resolution>|g;
+                 s|<!--patches-->|<patches>$TWO</patches>|g;
+                 s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
+                 s|<!--BC Z Faces-->|$BCZ|g;
+                 s|<!--Solver-->|$SLV|g" heat_err.template > $TIT.ups
 
-        done
-      fi
+          done
+        fi
       done
     done
   done
