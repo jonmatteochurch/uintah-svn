@@ -80,7 +80,7 @@ private: // TYPES
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
 
-    using A = HypreFAC::AdditionalEntries;
+    using A = HypreSStruct::AdditionalEntries;
 #endif
 
 private:  // MEMBERS
@@ -383,7 +383,7 @@ public: // DW FD MEMBERS
 
     template <DirType DIR>
     inline void
-    add_d2_sys_hyprefac (
+    add_d2_sys_hypresstruct (
         const IntVector & _DOXYARG ( id ),
         S & stencil_entries,
         A & _DOXYARG ( extra_entries ),
@@ -398,7 +398,7 @@ public: // DW FD MEMBERS
 
     template <DirType DIR>
     inline void
-    add_d2_rhs_hyprefac (
+    add_d2_rhs_hypresstruct (
         const IntVector & _DOXYARG ( id ),
         V & _DOXYARG ( rhs )
     ) const

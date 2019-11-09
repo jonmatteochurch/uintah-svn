@@ -23,20 +23,18 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/Factory/Factory.h
+ * @file CCA/Components/Util/Factory/Factory.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2018/12
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_Factory_Factory_h
-#define Packages_Uintah_CCA_Components_PhaseField_Factory_Factory_h
+#ifndef Packages_Uintah_CCA_Components_Util_Factory_Factory_h
+#define Packages_Uintah_CCA_Components_Util_Factory_Factory_h
 
 #include <functional>
 #include <map>
 
 namespace Uintah
-{
-namespace PhaseField
 {
 
 /**
@@ -51,13 +49,14 @@ namespace PhaseField
 template<typename B, typename ... Args>
 class Factory
 {
-protected:
+public:
     /// Pointer type of the derived classes constructors
     using FactoryMethod = std::function< Base<B> * ( Args... ) >;
 
     /// Type of the map between strings and derived classes constructors
     using FactoryMap = std::map<std::string, FactoryMethod>;
 
+// protected:
     /// Mapping between strings and derived classes constructors
     static FactoryMap RegisteredNames;
 
@@ -107,9 +106,30 @@ public:
         return registeredPair->second ( args... );
     }
 
+    /**
+     * @brief Factory creator
+     *
+     * Get the creator for a derived class given a string
+     *
+     * @param name string identifying a registered derived class
+     * @param args parameters forwarded to the constructor
+     * @return creator method for derived class
+     */
+    static FactoryMethod
+    Creator (
+        std::string name
+    )
+    {
+        // attempt to get the pair from the map
+        auto registeredPair = Factory::RegisteredNames.find ( name );
+        // did we find one?
+        if ( registeredPair == Factory::RegisteredNames.end() )
+            return FactoryMethod(); // return empty function
+        // return registered creator of derived class
+        return registeredPair->second;
+    }
 }; // class typename
 
-} // namespace PhaseField
 } // namespace Uintah
 
 #endif

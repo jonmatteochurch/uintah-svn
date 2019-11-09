@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 #  The MIT License
 #
@@ -21,18 +22,6 @@
 #  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 #  IN THE SOFTWARE.
 #
-#
-#
-#
-#
-# Makefile fragment for this subdirectory
 
-SRCDIR   := CCA/Components/Solvers/HypreFAC
-
-ifeq ($(HAVE_HYPRE),yes)
-
-  SRCS += $(SRCDIR)/Solver.cc         \
-
-  LIBS := $(HYPRE_LIBRARY)
-
-endif # if $(HAVE_HYPRE)
+SCRIPT="`dirname \"$0\"`"/AMRFDView-bld.sh
+${SCRIPT} -p HeatTestProblem -v CC -s P5 -c FC0

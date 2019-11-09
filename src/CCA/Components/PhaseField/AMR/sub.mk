@@ -44,6 +44,7 @@ SRCS += \
   $(SRCDIR)/AMRFDViewScalarProblemNCP5FCBilinear-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FC0-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FC0-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \
@@ -76,6 +77,7 @@ BLDSRCS += \
   $(BLDDIR)/AMRFDViewScalarProblemNCP5FCBilinear-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FC0-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FC0-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \

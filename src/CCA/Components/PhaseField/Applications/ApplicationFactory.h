@@ -31,11 +31,11 @@
 #ifndef Packages_Uintah_CCA_Components_PhaseField_Applications_ApplicationFactory_h
 #define Packages_Uintah_CCA_Components_PhaseField_Applications_ApplicationFactory_h
 
-#include <CCA/Components/PhaseField/Factory/Base.h>
-#include <CCA/Components/PhaseField/Factory/Factory.h>
-
 #include <Core/Grid/MaterialManagerP.h>
 #include <Core/ProblemSpec/ProblemSpecP.h>
+
+#include <Core/Util/Factory/Base.h>
+#include <Core/Util/Factory/Factory.h>
 
 namespace Uintah
 {

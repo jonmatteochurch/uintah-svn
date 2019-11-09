@@ -100,7 +100,7 @@ private: // TYPES
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
 
-    using A = HypreFAC::AdditionalEntries;
+    using A = HypreSStruct::AdditionalEntries;
 #endif
 
     /// Type of rhs for the given BC
@@ -446,63 +446,63 @@ public: // BASIC FD VIEW METHODS
     }
 
     virtual void
-    add_dxx_sys_hyprefac (
+    add_dxx_sys_hypresstruct (
         const IntVector & id,
         S & stencil_entries,
         A & additional_entries,
         V & rhs
     ) const override
     {
-        this->template add_d2_sys_hyprefac < X > ( id, stencil_entries, additional_entries, rhs );
+        this->template add_d2_sys_hypresstruct < X > ( id, stencil_entries, additional_entries, rhs );
     }
 
     virtual void
-    add_dxx_rhs_hyprefac (
+    add_dxx_rhs_hypresstruct (
         const IntVector & id,
         V & rhs
     ) const override
     {
-        this->template add_d2_rhs_hyprefac < X > ( id, rhs );
+        this->template add_d2_rhs_hypresstruct < X > ( id, rhs );
     }
 
     virtual void
-    add_dyy_sys_hyprefac (
-        const IntVector & id,
-        S & stencil_entries,
-        A & additional_entries,
-        V & rhs
-    ) const override
-    {
-        this->template add_d2_sys_hyprefac < Y > ( id, stencil_entries, additional_entries, rhs );
-    }
-
-    virtual void
-    add_dyy_rhs_hyprefac (
-        const IntVector & id,
-        V & rhs
-    ) const override
-    {
-        this->template add_d2_rhs_hyprefac < Y > ( id, rhs );
-    }
-
-    virtual void
-    add_dzz_sys_hyprefac (
+    add_dyy_sys_hypresstruct (
         const IntVector & id,
         S & stencil_entries,
         A & additional_entries,
         V & rhs
     ) const override
     {
-        this->template add_d2_sys_hyprefac < Z > ( id, stencil_entries, additional_entries, rhs );
+        this->template add_d2_sys_hypresstruct < Y > ( id, stencil_entries, additional_entries, rhs );
     }
 
     virtual void
-    add_dzz_rhs_hyprefac (
+    add_dyy_rhs_hypresstruct (
         const IntVector & id,
         V & rhs
     ) const override
     {
-        this->template add_d2_rhs_hyprefac < Z > ( id, rhs );
+        this->template add_d2_rhs_hypresstruct < Y > ( id, rhs );
+    }
+
+    virtual void
+    add_dzz_sys_hypresstruct (
+        const IntVector & id,
+        S & stencil_entries,
+        A & additional_entries,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_sys_hypresstruct < Z > ( id, stencil_entries, additional_entries, rhs );
+    }
+
+    virtual void
+    add_dzz_rhs_hypresstruct (
+        const IntVector & id,
+        V & rhs
+    ) const override
+    {
+        this->template add_d2_rhs_hypresstruct < Z > ( id, rhs );
     }
 #endif
 

@@ -22,34 +22,29 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_SolverStructP_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreFAC_SolverStructP_h
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_AdditionalEntries_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_AdditionalEntries_h
 
-#include <Core/Util/Handle.h>
-#include <Core/Exceptions/InternalError.h>
+#include <CCA/Components/Solvers/HypreSStruct/MatrixEntry.h>
+#include <Core/Util/RefCounted.h>
+
+#include <map>
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace HypreSStruct
 {
 
-struct SolverStruct;
-typedef Handle<SolverStruct> SolverStructP;
-
-} // namespace HypreFAC
-
-inline
-void
-swapbytes
-(
-    HypreFAC::SolverStructP &
-)
+class AdditionalEntries
+    : public RefCounted
+    , public std::map<MatrixEntry::first_type, MatrixEntry::second_type>
 {
-    SCI_THROW ( InternalError ( "Swap bytes for HypreFAC::SolverStructP is not implemented", __FILE__, __LINE__ ) );
+public:
+    using std::map<MatrixEntry::first_type, MatrixEntry::second_type>::map;
 };
 
+} // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_SolverStructP_h
-
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_AdditionalEntries_h
 

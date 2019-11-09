@@ -32,10 +32,10 @@
 #define Packages_Uintah_CCA_Components_PhaseField_Benchmark02_h
 
 #include <CCA/Components/PhaseField/Applications/Application.h>
-#include <CCA/Components/PhaseField/Factory/Implementation.h>
 #include <CCA/Components/PhaseField/Views/View.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
 
+#include <Core/Util/Factory/Implementation.h>
 #include <Core/Grid/SimpleMaterial.h>
 
 namespace Uintah

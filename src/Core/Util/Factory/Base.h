@@ -23,87 +23,83 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/Factory/Implementation.h
+ * @file CCA/Components/Util/Factory/Base.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2018/12
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_Factory_Implementation_h
-#define Packages_Uintah_CCA_Components_PhaseField_Factory_Implementation_h
+#ifndef Packages_Uintah_CCA_Components_Util_Factory_Base_h
+#define Packages_Uintah_CCA_Components_Util_Factory_Base_h
 
-#include <Core/Malloc/Allocator.h>
-#include <CCA/Components/PhaseField/Factory/Base.h>
-#include <CCA/Components/PhaseField/Factory/Factory.h>
+#include <string>
 
 namespace Uintah
 {
-namespace PhaseField
-{
 
 /**
- * @brief Generic factory implementation class
+ * @brief Generic factory base class
  *
  * Make possible to create a new instance of a virtual class choosing which
  * derived class implementation to create according to a string
  *
- * @tparam I derived class type
  * @tparam B virtual base class type
- * @tparam Args types of the arguments for the derived classes constructors
  */
-template<typename I, typename B, typename ... Args>
-class Implementation : public Base<B>
+template<typename B>
+class Base
 {
-protected:
+private:
     /// Determine if the class definition is registered
-    static const bool m_isRegistered;
+    const bool m_isRegistered;
 
 protected:
     /**
-     * @brief Factory create
-     *
-     * Give derived classes the ability to create themselves
-     *
-     * @param args parameters forwarded to the constructor
-     * @return new instance of derived class
+    * @brief Default constructor
+    *
+    * Virtual class is not registered
+    */
+    Base() :
+        m_isRegistered ( false )
+    { };
+
+    /**
+    * @brief Constructor for Implementation
+    *
+    * This constructor is called by the constructor of any Implementation of B
+    *
+    * @param isRegistered whether the Implementation is registered
+    */
+    Base ( bool isRegistered ) :
+        m_isRegistered ( isRegistered )
+    { };
+
+    /**
+     * @brief Default destructor
      */
-    static Base<B> *
-    Create (
-        Args ... args
-    )
+    virtual ~Base() = default;
+
+    /**
+     * @brief Get registered status
+     *
+     * Determine if this is an instance of an Implementation registered to the
+     * factory.
+     *
+     * @return whether the Implementation is registered
+     */
+    bool isRegistered() const
     {
-        return scinew I ( args... );
-    }
+        return m_isRegistered;
+    };
 
     /**
      * @brief Get Implementation name
      *
-     * Get the identifier of the derived class
+     * Provide a way for derived classes to identify themselves
      *
      * @return string identifying a derived class
      */
-    virtual std::string
-    getName()
-    override
-    {
-        return I::Name;
-    }
-
-    /**
-    * @brief Default constructor
-    *
-    * Initialize derived class and register it to the factory
-    */
-    Implementation()
-        : Base<B> ( m_isRegistered )
-    {}
+    virtual std::string getName() = 0;
 };
 
-// attempt to initialize the IsRegistered variable of derived classes
-// whilst registering them to the factory
-template<typename I, typename B, typename ... Args>
-const bool Implementation<I, B, Args ...>::m_isRegistered = Factory<B, Args ...>::Register ( I::Name, &Implementation<I, B, Args ... >::Create );
-
-} // namespace PhaseField
 } // namespace Uintah
 
 #endif

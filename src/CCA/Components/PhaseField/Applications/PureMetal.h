@@ -38,17 +38,18 @@
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 #include <CCA/Components/PhaseField/Applications/Application.h>
-#include <CCA/Components/PhaseField/Factory/Implementation.h>
 #include <CCA/Components/PhaseField/Views/View.h>
 #include <CCA/Components/PhaseField/Views/FDView.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
 #include <CCA/Components/PhaseField/AMR/AMRInterpolator.h>
 #include <CCA/Components/PhaseField/AMR/AMRRestrictor.h>
 
+#include <CCA/Ports/Regridder.h>
+
 #include <Core/Util/DebugStream.h>
+#include <Core/Util/Factory/Implementation.h>
 #include <Core/Grid/SimpleMaterial.h>
 #include <Core/Parallel/UintahParallelComponent.h>
-#include <CCA/Ports/Regridder.h>
 #include <Core/Grid/Variables/PerPatchVars.h>
 
 namespace Uintah

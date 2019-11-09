@@ -73,19 +73,99 @@ template<typename Field, typename Problem, typename Index, FCIType FCI, DimType 
  * @tparam FCI order of interpolation
  * @tparam DIM problem dimension
  */
-template<typename T, size_t N, typename Problem, typename Index, FCIType FCI, DimType DIM>
-class amr_interpolator < VectorField<T, N>, Problem, Index, FCI, DIM >
-    : public view_array < amr_interpolator < ScalarField<T>, Problem, Index, FCI, DIM >, ScalarField<T>, N >
+template<typename T, size_t N, typename Problem, size_t... I, FCIType FCI, DimType DIM>
+class amr_interpolator < VectorField<T, N>, Problem, index_sequence<I...>, FCI, DIM >
+    : virtual public view < VectorField<T, N> >
+    , virtual public view_array < view < ScalarField<T> >, ScalarField<T>, N >
 {
 private: // TYPES
 
     /// Type of field
     using Field = VectorField<T, N>;
 
-    /// Type of View of each component
-    using View = amr_interpolator < ScalarField<T>, Problem, Index, FCI, DIM >;
+    template <size_t J>
+    using SubIndex = index_sequence<I..., J>;
 
-public:
+    /// Type of View of each component
+    template <size_t J>
+    using View = amr_interpolator < ScalarField<T>, Problem, SubIndex<J>, FCI, DIM >;
+
+private: // SINGLE INDEX METHODS
+
+    template<size_t J>
+    void * create_element (
+        const typename Field::label_type & label,
+        const VarLabel * subproblems_label,
+        int material
+    )
+    {
+        return this->m_view_ptr[J] = scinew View<J> ( label[J], subproblems_label, material );
+    }
+
+    template<size_t J>
+    void * create_element (
+        DataWarehouse * dw,
+        const typename Field::label_type & label,
+        const VarLabel * subproblems_label,
+        int material,
+        const Patch * patch,
+        bool use_ghosts
+    )
+    {
+        return this->m_view_ptr[J] = scinew View<J> ( dw, label[J], subproblems_label, material, patch, use_ghosts );
+    }
+
+private: // INDEXED CONSTRUCTOR
+
+    template<size_t... J>
+    amr_interpolator (
+        index_sequence<J...> _DOXYARG ( unused ),
+        const typename Field::label_type & label,
+        const VarLabel * subproblems_label,
+        int material
+    )
+    {
+        std::array<void *, N> {{ create_element<J> ( label, subproblems_label, material )... }};
+    }
+
+    template<size_t... J>
+    amr_interpolator (
+        index_sequence<J...> _DOXYARG ( unused ),
+        DataWarehouse * dw,
+        const typename Field::label_type & label,
+        const VarLabel * subproblems_label,
+        int material,
+        const Patch * patch,
+        bool use_ghosts
+    )
+    {
+        std::array<void *, N> {{ create_element<J> ( dw, label, subproblems_label, material, patch, use_ghosts )... }};
+    }
+
+private: // COPY CONSTRUCTOR
+
+    /**
+     * @brief Constructor
+     *
+     * Instantiate a copy of a given view
+     *
+     * @param copy source view for copying
+     * @param deep if true inner grid variable is copied as well otherwise the
+     * same grid variable is referenced
+     */
+    amr_interpolator (
+        const amr_interpolator * copy,
+        bool deep
+    )
+    {
+        for ( size_t i = 0; i < N; ++i )
+        {
+            const auto & v = ( *copy ) [i];
+            this->m_view_ptr[i] = v.clone ( deep );
+        }
+    }
+
+public: // CONSTRUCTORS/DESTRUCTOR
 
     /**
      * @brief Constructor
@@ -100,11 +180,8 @@ public:
         const typename Field::label_type & label,
         const VarLabel * subproblems_label,
         int material
-    )
-    {
-        for ( size_t i = 0; i < N; ++i )
-            this->m_view_ptr[i] = scinew View ( label[i], subproblems_label, material );
-    }
+    ) : amr_interpolator ( make_index_sequence<N> {}, label, subproblems_label, material )
+    {}
 
     /**
      * @brief Constructor
@@ -124,12 +201,9 @@ public:
         const VarLabel * subproblems_label,
         int material,
         const Patch * patch,
-        bool use_ghosts = View::use_ghosts_dflt
-    )
-    {
-        for ( size_t i = 0; i < N; ++i )
-            this->m_view_ptr[i] = scinew View ( dw, label[i], material, subproblems_label, patch, use_ghosts );
-    }
+        bool use_ghosts = View<0>::use_ghosts_dflt
+    ) : amr_interpolator ( make_index_sequence<N> {}, dw, label, subproblems_label, material, patch, use_ghosts )
+    {}
 
     /// Destructor
     virtual ~amr_interpolator()
@@ -144,6 +218,25 @@ public:
     /// Prevent copy (and move) assignment
     /// @return deleted
     amr_interpolator & operator= ( const amr_interpolator & ) = delete;
+
+public: // VIEW METHODS
+
+    /**
+     * @brief Get a copy of the view
+     *
+     * @param deep if true inner grid variable is copied as well otherwise the
+     * same grid variable is referenced
+     *
+     * @return new view instance
+     */
+    virtual view<Field> *
+    clone (
+        bool deep
+    )
+    const override
+    {
+        return scinew amr_interpolator ( this, deep );
+    };
 };
 
 } // namespace detail

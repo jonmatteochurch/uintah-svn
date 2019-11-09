@@ -32,8 +32,9 @@
 #define Packages_Uintah_CCA_Components_PhaseField_DataWarehouse_DWViewFactory_h
 
 #include <CCA/Components/PhaseField/Util/Definitions.h>
-#include <CCA/Components/PhaseField/Factory/Factory.h>
 #include <CCA/Components/PhaseField/Views/View.h>
+
+#include <Core/Util/Factory/Factory.h>
 
 namespace Uintah
 {

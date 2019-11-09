@@ -31,22 +31,25 @@
 #ifndef Packages_Uintah_CCA_Components_PhaseField_Benchmark01_h
 #define Packages_Uintah_CCA_Components_PhaseField_Benchmark01_h
 
-#include <CCA/Components/Solvers/HypreFAC/AdditionalEntriesP.h>
+#include <sci_defs/hypre_defs.h>
+
+#ifdef HAVE_HYPRE
+#   include <CCA/Components/Solvers/HypreSStruct/AdditionalEntriesP.h>
+#   include <CCA/Components/Solvers/HypreSStruct/Solver.h>
+#endif
+
 #include <CCA/Components/PhaseField/DataTypes/ScalarProblem.h>
 #include <CCA/Components/PhaseField/Applications/Application.h>
-#include <CCA/Components/PhaseField/Factory/Implementation.h>
 #include <CCA/Components/PhaseField/Views/View.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
 #include <CCA/Components/PhaseField/AMR/AMRInterpolator.h>
 #include <CCA/Components/PhaseField/AMR/AMRRestrictor.h>
 
-#ifdef HAVE_HYPRE
-#   include <CCA/Components/Solvers/HypreFAC/Solver.h>
-#endif
+#include <CCA/Ports/Regridder.h>
 
+#include <Core/Util/Factory/Implementation.h>
 #include <Core/Grid/SimpleMaterial.h>
 #include <Core/Grid/Variables/PerPatchVars.h>
-#include <CCA/Ports/Regridder.h>
 
 namespace Uintah
 {
@@ -183,7 +186,7 @@ private: // STATIC MEMBERS
     using Application< ScalarProblem<VAR, STN> >::F2C;
 
 #ifdef HAVE_HYPRE
-    using _AdditionalEntries = PerPatch<HypreFAC::AdditionalEntriesP>;
+    using _AdditionalEntries = PerPatch<HypreSStruct::AdditionalEntriesP>;
 #endif
 
 public: // STATIC MEMBERS
@@ -412,14 +415,14 @@ protected: // SCHEDULINGS
 
     template < bool MG, TS SI >
     typename std::enable_if < !MG, void >::type
-    scheduleTimeAdvance_solution_semi_implicit_assemble_hyprefac (
+    scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct (
         const LevelP & level,
         SchedulerP & sched
     );
 
     template < bool MG, TS SI >
     typename std::enable_if < MG, void >::type
-    scheduleTimeAdvance_solution_semi_implicit_assemble_hyprefac (
+    scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct (
         const LevelP & level,
         SchedulerP & sched
     );
@@ -610,7 +613,7 @@ protected: // TASKS
 
     template<TS SI>
     void
-    task_time_advance_solution_semi_implicit_assemble_hyprefac (
+    task_time_advance_solution_semi_implicit_assemble_hypresstruct (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -620,7 +623,7 @@ protected: // TASKS
 
     template<TS SI>
     void
-    task_time_advance_solution_semi_implicit_assemble_hyprefac_all (
+    task_time_advance_solution_semi_implicit_assemble_hypresstruct_all (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -630,7 +633,7 @@ protected: // TASKS
 
     template<TS SI>
     void
-    task_time_advance_solution_semi_implicit_assemble_hyprefac_rhs (
+    task_time_advance_solution_semi_implicit_assemble_hypresstruct_rhs (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -740,17 +743,17 @@ protected: // IMPLEMENTATIONS
 
     template<TS SI>
     typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-    time_advance_solution_semi_implicit_assemble_hyprefac_all (
+    time_advance_solution_semi_implicit_assemble_hypresstruct_all (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<Stencil7> > & A,
-        HypreFAC::AdditionalEntries * A_additional,
+        HypreSStruct::AdditionalEntries * A_additional,
         View < ScalarField<double> > & b
     );
 
     template<TS SI>
     typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-    time_advance_solution_semi_implicit_assemble_hyprefac_rhs (
+    time_advance_solution_semi_implicit_assemble_hypresstruct_rhs (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<double> > & b
@@ -823,7 +826,7 @@ Benchmark01<VAR, STN, AMR>::Benchmark01 (
     energy_label = VarLabel::create ( "energy", sum_vartype::getTypeDescription() );
 #ifdef HAVE_HYPRE
     matrix_label = VarLabel::create ( "A", Variable<VAR, Stencil7>::getTypeDescription() );
-    additional_entries_label = VarLabel::create ( "A" + HypreFAC::Solver<DIM>::AdditionalEntriesSuffix, _AdditionalEntries::getTypeDescription() );
+    additional_entries_label = VarLabel::create ( "A" + HypreSStruct::Solver<DIM>::AdditionalEntriesSuffix, _AdditionalEntries::getTypeDescription() );
     rhs_label = VarLabel::create ( "b", Variable<VAR, double>::getTypeDescription() );
 #endif
 }
@@ -1144,16 +1147,16 @@ Benchmark01<VAR, STN, AMR>::scheduleTimeAdvance_solution_semi_implicit_assemble
         else
             scheduleTimeAdvance_solution_semi_implicit_assemble_hypre < MG, SI > ( level, sched );
     }
-    else if ( this->m_solver->getName() == "hyprefac" )
+    else if ( this->m_solver->getName() == "hypre_sstruct" )
     {
         if ( level->hasCoarserLevel() ) return;
 
         GridP grid = level->getGrid();
 
         // all assemble task must be sent to the scheduler before the solve task
-        scheduleTimeAdvance_solution_semi_implicit_assemble_hyprefac < !MG, SI > ( level, sched );
+        scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct < !MG, SI > ( level, sched );
         for ( int l = 1; l < grid->numLevels(); ++l )
-            scheduleTimeAdvance_solution_semi_implicit_assemble_hyprefac < MG, SI > ( grid->getLevel ( l ), sched );
+            scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct < MG, SI > ( grid->getLevel ( l ), sched );
     }
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
@@ -1200,13 +1203,13 @@ Benchmark01<VAR, STN, AMR>::scheduleTimeAdvance_solution_semi_implicit_assemble_
 template<VarType VAR, StnType STN, bool AMR>
 template < bool MG, TS SI >
 typename std::enable_if < !MG, void >::type
-Benchmark01<VAR, STN, AMR>::scheduleTimeAdvance_solution_semi_implicit_assemble_hyprefac
+Benchmark01<VAR, STN, AMR>::scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct
 (
     const LevelP & level,
     SchedulerP & sched
 )
 {
-    Task * task = scinew Task ( "Benchmark01::task_time_advance_solution_semi_implicit_assemble_hyprefac", this, &Benchmark01::task_time_advance_solution_semi_implicit_assemble_hyprefac<SI> );
+    Task * task = scinew Task ( "Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct", this, &Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct<SI> );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
     task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
@@ -1220,13 +1223,13 @@ Benchmark01<VAR, STN, AMR>::scheduleTimeAdvance_solution_semi_implicit_assemble_
 template<VarType VAR, StnType STN, bool AMR>
 template < bool MG, TS SI >
 typename std::enable_if < MG, void >::type
-Benchmark01<VAR, STN, AMR>::scheduleTimeAdvance_solution_semi_implicit_assemble_hyprefac
+Benchmark01<VAR, STN, AMR>::scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct
 (
     const LevelP & level,
     SchedulerP & sched
 )
 {
-    Task * task = scinew Task ( "Benchmark01::task_time_advance_solution_semi_implicit_assemble_hyprefac", this, &Benchmark01::task_time_advance_solution_semi_implicit_assemble_hyprefac<SI> );
+    Task * task = scinew Task ( "Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct", this, &Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct<SI> );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), 0, Task::CoarseLevel, 0, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
@@ -1610,7 +1613,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
 template<VarType VAR, StnType STN, bool AMR>
 template<TS SI>
 void
-Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hyprefac
+Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hypresstruct
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -1624,15 +1627,15 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
     double timeStep = timeStepVar;
 
     if ( timeStep == 1 || this->isRegridTimeStep() )
-        task_time_advance_solution_semi_implicit_assemble_hyprefac_all<SI> ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_semi_implicit_assemble_hypresstruct_all<SI> ( myworld, patches, matls, dw_old, dw_new );
     else
-        task_time_advance_solution_semi_implicit_assemble_hyprefac_rhs<SI> ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_semi_implicit_assemble_hypresstruct_rhs<SI> ( myworld, patches, matls, dw_old, dw_new );
 }
 
 template<VarType VAR, StnType STN, bool AMR>
 template<TS SI>
 void
-Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hyprefac_all
+Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hypresstruct_all
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -1643,7 +1646,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hyprefac_all ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct_all ====" );
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -1651,7 +1654,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
-        HypreFAC::AdditionalEntries * A_additional = scinew HypreFAC::AdditionalEntries;
+        HypreSStruct::AdditionalEntries * A_additional = scinew HypreSStruct::AdditionalEntries;
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
         SubProblems < ScalarProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
 
@@ -1660,7 +1663,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hyprefac_all<SI> ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hypresstruct_all<SI> ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
         }
 
         _AdditionalEntries additional_entries;
@@ -1674,7 +1677,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
 template<VarType VAR, StnType STN, bool AMR>
 template<TS SI>
 void
-Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hyprefac_rhs
+Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hypresstruct_rhs
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -1685,7 +1688,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hyprefac_rhs ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct_rhs ====" );
 
     dw_new->transferFrom ( dw_old, matrix_label, patches, matls );
     dw_new->transferFrom ( dw_old, additional_entries_label, patches, matls );
@@ -1703,7 +1706,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hyprefac_rhs<SI> ( {i, j, k}, u_old, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hypresstruct_rhs<SI> ( {i, j, k}, u_old, b ); } );
         }
     }
 
@@ -2025,18 +2028,18 @@ Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypre_r
 template < VarType VAR, StnType STN, bool AMR >
 template<TS SI>
 typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hyprefac_all (
+Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypresstruct_all (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,
     View < ScalarField<Stencil7> > & A_stencil,
-    HypreFAC::AdditionalEntries * A_additional,
+    HypreSStruct::AdditionalEntries * A_additional,
     View < ScalarField<double> > & b
 )
 {
-    std::tuple<Stencil7, HypreFAC::AdditionalEntries, double> sys = u_old.laplacian_sys_hyprefac ( id );
+    std::tuple<Stencil7, HypreSStruct::AdditionalEntries, double> sys = u_old.laplacian_sys_hypresstruct ( id );
 
     const Stencil7 & lap_stn = std::get<0> ( sys );
-    HypreFAC::AdditionalEntries & lap_extra = std::get<1> ( sys );
+    HypreSStruct::AdditionalEntries & lap_extra = std::get<1> ( sys );
     const double & rhs = std::get<2> ( sys );
     const double & u = u_old[id];
     const double a = epsilon * epsilon * delt;
@@ -2057,13 +2060,13 @@ Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hyprefa
 template < VarType VAR, StnType STN, bool AMR >
 template<TS SI>
 typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hyprefac_rhs (
+Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypresstruct_rhs (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,
     View < ScalarField<double> > & b
 )
 {
-    double rhs = u_old.laplacian_rhs_hyprefac ( id );
+    double rhs = u_old.laplacian_rhs_hypresstruct ( id );
     const double & u = u_old[id];
     const double a = epsilon * epsilon * delt;
     const double s = ( 1 + delt - delt * u * u );

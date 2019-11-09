@@ -29,10 +29,9 @@
   <solver              spec="OPTIONAL STRING 'SMG,smg,PFMG,pfmg,SparseMSG,sparsemsg,CG,cg,PCG,pcg,conjugategradient,Hybrid,hybrid,GMRES,gmres,AMG,amg,BoomerAMG,boomeramg,FAC,fac'" />
   <tolerance           spec="OPTIONAL DOUBLE 'positive'" />
   <updateCoefFrequency spec="OPTIONAL INTEGER" />
-
-      <rel_change             spec="OPTIONAL INTEGER" />                             
-      <csolver_type           spec="OPTIONAL INTEGER '1,2'"/> 
-      <outputEquations        spec="OPTIONAL BOOLEAN" />     
-  </Parameters>
+  <rel_change          spec="OPTIONAL INTEGER" />
+  <csolver_type        spec="OPTIONAL INTEGER '1,2'"/>
+  <outputEquations     spec="OPTIONAL BOOLEAN" />
+</Parameters>
 
 </Uintah_Include>

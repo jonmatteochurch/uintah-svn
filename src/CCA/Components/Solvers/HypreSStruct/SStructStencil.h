@@ -22,42 +22,24 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_GlobalData_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreFAC_GlobalData_h
-
-#include <Core/Util/RefCounted.h>
-#include <vector>
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace HypreSStruct
 {
 
-struct GlobalData : public RefCounted
+template <int DIM>
+struct SStructStencil
 {
-    int nparts; // # of total parts/levels
-    std::vector<std::vector<int>> nboxes; // # of boxes/patches per part/level per mpi rank
-
-    int                                 nvars;    // tot # of variables on this part/level
-    std::vector<HYPRE_SStructVariable>  vartypes; // variable types on this part/level
-
-    GlobalData ()
-        : RefCounted()
-        , nparts ( 0 )
-        , nboxes ( 0 )
-        , nvars ( 0 )
-        , vartypes ( 0 )
-    {
-    };
-
-    virtual ~GlobalData()
-    {
-    };
+    static constexpr int size = 2 * DIM + 1;
+    static int offsets[size][DIM];
+    static const int entry[size];
 };
 
-} // namespace HypreFAC
+} // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_GlobalData_h
-
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
 

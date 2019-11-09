@@ -211,7 +211,7 @@ private: // INDEXED CONSTRUCTOR
         const std::vector< BCInfo<Field> > & bcs
     )
     {
-        std::array<bool, N> {{ create_element<J> ( label, subproblems_label, material, level, bcs )... }};
+        std::array<void *, N> {{ create_element<J> ( label, subproblems_label, material, level, bcs )... }};
     }
 
     /**
@@ -241,7 +241,7 @@ private: // INDEXED CONSTRUCTOR
         bool use_ghosts
     )
     {
-        std::array<bool, N> {{ create_element<J> ( dw, label, subproblems_label, material, patch, bcs, use_ghosts )... }};
+        std::array<void *, N> {{ create_element<J> ( dw, label, subproblems_label, material, patch, bcs, use_ghosts )... }};
     }
 
 public: // CONSTRUCTORS/DESTRUCTOR

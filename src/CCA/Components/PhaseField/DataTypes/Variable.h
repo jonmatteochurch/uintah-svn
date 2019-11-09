@@ -31,11 +31,11 @@
 #ifndef Packages_Uintah_CCA_Components_PhaseField_DataTypes_Variable_h
 #define Packages_Uintah_CCA_Components_PhaseField_DataTypes_Variable_h
 
+#include <CCA/Components/PhaseField/Util/Definitions.h>
+
 #include <Core/Grid/Variables/CCVariable.h>
 #include <Core/Grid/Variables/NCVariable.h>
 #include <Core/Grid/Variables/PerPatch.h>
-
-#include <CCA/Components/PhaseField/Util/Definitions.h>
 
 namespace Uintah
 {

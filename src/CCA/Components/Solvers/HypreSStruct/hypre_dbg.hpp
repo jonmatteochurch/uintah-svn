@@ -42,8 +42,8 @@ HYPREDBG_SStructGridSetVariables ( HYPRE_SStructGrid       grid,
 {
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructGridSetVariables ( grid, " << part << ", " << nvars << ", [";
     for ( int v = 0; v < nvars - 1; ++v )
-        std::cout << vartypes[v] << ",";
-    std::cout << vartypes[nvars - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << vartypes[v] << ",";
+    ss << vartypes[nvars - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return HYPRE_SStructGridSetVariables ( grid, part, nvars, vartypes );
 }
 
@@ -211,11 +211,11 @@ HYPREDBG_SStructMatrixSetValues ( HYPRE_SStructMatrix  matrix,
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructMatrixSetValues ( matrix, " << part << ", [" << index[0] << ","  << index[1] << ","  << index[2] << "], " << var << ", " << nentries << ", [";
 #endif
     for ( int e = 0; e < nentries - 1; ++e )
-        std::cout << entries[e] << ",";
-    std::cout << entries[nentries - 1] << "], [";
+        ss << entries[e] << ",";
+    ss << entries[nentries - 1] << "], [";
     for ( int s = 0; s < nentries - 1; ++s )
-        std::cout << values[s] << ",";
-    std::cout << values[nentries - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << values[s] << ",";
+    ss << values[nentries - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return HYPRE_SStructMatrixSetValues ( matrix, part, index, var, nentries, entries, values );
 }
 
@@ -237,11 +237,11 @@ HYPREDBG_SStructMatrixGetValues ( HYPRE_SStructMatrix  matrix,
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructMatrixGetValues ( matrix, " << part << ", [" << index[0] << ","  << index[1] << ","  << index[2] << "], " << var << ", " << nentries << ", [";
 #endif
     for ( int e = 0; e < nentries - 1; ++e )
-        std::cout << entries[e] << ",";
-    std::cout << entries[nentries - 1] << "], [";
+        ss << entries[e] << ",";
+    ss << entries[nentries - 1] << "], [";
     for ( int s = 0; s < nentries - 1; ++s )
-        std::cout << values[s] << ",";
-    std::cout << values[nentries - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << values[s] << ",";
+    ss << values[nentries - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return res;
 }
 
@@ -266,11 +266,11 @@ HYPREDBG_SStructMatrixSetBoxValues ( HYPRE_SStructMatrix  matrix,
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructMatrixSetBoxValues ( matrix, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "], [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "], " << var << ", " << nentries << ", [";
 #endif
     for ( int e = 0; e < nentries - 1; ++e )
-        std::cout << entries[e] << ",";
-    std::cout << entries[nentries - 1] << "], [";
+        ss << entries[e] << ",";
+    ss << entries[nentries - 1] << "], [";
     for ( int s = 0; s < size - 1; ++s )
-        std::cout << values[s] << ",";
-    std::cout << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << values[s] << ",";
+    ss << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return HYPRE_SStructMatrixSetBoxValues ( matrix, part, ilower, iupper, var, nentries, entries, values );
 }
 
@@ -296,11 +296,11 @@ HYPREDBG_SStructMatrixGetBoxValues ( HYPRE_SStructMatrix  matrix,
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructMatrixGetBoxValues ( matrix, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "] , [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "], " << var << ", " << nentries << ", [";
 #endif
     for ( int e = 0; e < nentries - 1; ++e )
-        std::cout << entries[e] << ",";
-    std::cout << entries[nentries - 1] << "], [";
+        ss << entries[e] << ",";
+    ss << entries[nentries - 1] << "], [";
     for ( int s = 0; s < size - 1; ++s )
-        std::cout << values[s] << ",";
-    std::cout << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << values[s] << ",";
+    ss << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return res;
 }
 
@@ -386,8 +386,8 @@ HYPREDBG_SStructVectorSetBoxValues ( HYPRE_SStructVector  vector,
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructVectorSetBoxValues ( vector, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "], [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "], " << var << ", [" ;
 #endif
     for ( int s = 0; s < size - 1; ++s )
-        std::cout << values[s] << ",";
-    std::cout << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << values[s] << ",";
+    ss << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return HYPRE_SStructVectorSetBoxValues ( vector, part, ilower, iupper, var, values );
 }
 
@@ -411,8 +411,8 @@ HYPREDBG_SStructVectorGetBoxValues ( HYPRE_SStructVector  vector,
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructVectorGetBoxValues ( vector, " << part << ", [" << ilower[0] << "," << ilower[1] << "," << ilower[2] << "] , [" << iupper[0] << "," << iupper[1] << "," << iupper[2] << "] , " << 0 << ", [";
 #endif
     for ( int s = 0; s < size - 1; ++s )
-        std::cout << values[s] << ",";
-    std::cout << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << values[s] << ",";
+    ss << values[size - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return res;
 }
 
@@ -484,8 +484,8 @@ HYPREDBG_SStructFACSetPLevels ( HYPRE_SStructSolver solver,
 {
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructFACSetPLevels ( solver, " << nparts << ", [";
     for ( int s = 0; s < nparts - 1; ++s )
-        std::cout << plevels[s] << ",";
-    std::cout << plevels[nparts - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
+        ss << plevels[s] << ",";
+    ss << plevels[nparts - 1] << "] )" << std::endl; printf("%s",ss.str().c_str());
     return HYPRE_SStructFACSetPLevels ( solver, nparts, plevels );
 }
 
@@ -496,8 +496,8 @@ HYPREDBG_SStructFACSetPRefinements ( HYPRE_SStructSolver  solver,
 {
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructFACSetPRefinements ( solver, " << nparts << ", [";
     for ( int s = 0; s < nparts - 1; ++s )
-        std::cout << "[" << rfactors[s][0] << "," << rfactors[s][1] << "," << rfactors[s][2] << "],";
-    std::cout << "[" << rfactors[nparts - 1][0] << "," << rfactors[nparts - 1][1] << "," << rfactors[nparts - 1][2] << "]] ) " << std::endl; printf("%s",ss.str().c_str());
+        ss << "[" << rfactors[s][0] << "," << rfactors[s][1] << "," << rfactors[s][2] << "],";
+    ss << "[" << rfactors[nparts - 1][0] << "," << rfactors[nparts - 1][1] << "," << rfactors[nparts - 1][2] << "]] ) " << std::endl; printf("%s",ss.str().c_str());
     return HYPRE_SStructFACSetPRefinements ( solver, nparts, rfactors );
 }
 
@@ -529,7 +529,7 @@ HYPREDBG_SStructFACZeroAMRMatrixData ( HYPRE_SStructMatrix  A,
     return HYPRE_SStructFACZeroAMRMatrixData ( A, part_crse, rfactors );
 }
 
-#define HYPREDBG_SStructFACZeroAMRVectorData(_1,_2,_3) hypredbg_SStructFACZeroAMRVectorData (_1, nparts, _2, _3)
+#define HYPREDBG_SStructFACZeroAMRVectorData(_1,_2,_3) hypredbg_SStructFACZeroAMRVectorData (_1, gdata->nParts(), _2, _3)
 
 inline HYPRE_Int
 hypredbg_SStructFACZeroAMRVectorData ( HYPRE_SStructVector  b,
@@ -539,11 +539,11 @@ hypredbg_SStructFACZeroAMRVectorData ( HYPRE_SStructVector  b,
 {
     int world_rank; MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); std::stringstream ss; ss << world_rank << "HYPRE_SStructFACZeroAMRVectorData ( b, [";
     for ( int s = 0; s < nparts - 1; ++s )
-        std::cout << plevels[s] << ",";
-    std::cout << plevels[nparts - 1] << "], [";
+        ss << plevels[s] << ",";
+    ss << plevels[nparts - 1] << "], [";
     for ( int s = 0; s < nparts - 1; ++s )
-        std::cout << "[" << rfactors[s][0] << "," << rfactors[s][1] << "," << rfactors[s][2] << "],";
-    std::cout << "[" << rfactors[nparts - 1][0] << "," << rfactors[nparts - 1][1] << "," << rfactors[nparts - 1][2] << "]] ) " << std::endl; printf("%s",ss.str().c_str());
+        ss << "[" << rfactors[s][0] << "," << rfactors[s][1] << "," << rfactors[s][2] << "],";
+    ss << "[" << rfactors[nparts - 1][0] << "," << rfactors[nparts - 1][1] << "," << rfactors[nparts - 1][2] << "]] ) " << std::endl; printf("%s",ss.str().c_str());
     return HYPRE_SStructFACZeroAMRVectorData ( b, plevels, rfactors );
 
 }

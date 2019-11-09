@@ -4,14 +4,13 @@
     </Meta>
     <SimulationComponent type="phasefield" />
 <!--__________________________________-->
-    <PhaseField type="heat">
+    <PhaseField type="heat_test">
         <var>cc</var>
         <dim>2</dim>
         <delt>1.</delt>
         <alpha>1.</alpha>
-        <test>true</test>
         <scheme>backward_euler</scheme>
-        <verbosity>0</verbosity>
+        <verbosity>4</verbosity>
         <refine_threshold>0.0475</refine_threshold>
     </PhaseField>
 <!--__________________________________-->
@@ -38,9 +37,33 @@
                 <BCType id="0" label="u" var="Neumann">
                     <value>0.</value>
                 </BCType>
+                <BCType id="0" label="ux" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uy" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uxx" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uyy" var="Neumann">
+                    <value>0.</value>
+                </BCType>
             </Face>
             <Face side="x+">
                 <BCType id="0" label="u" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="ux" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uy" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uxx" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uyy" var="Dirichlet">
                     <value>0.</value>
                 </BCType>
             </Face>
@@ -48,9 +71,33 @@
                 <BCType id="0" label="u" var="Neumann">
                     <value>0.</value>
                 </BCType>
+                <BCType id="0" label="ux" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uy" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uxx" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uyy" var="Neumann">
+                    <value>0.</value>
+                </BCType>
             </Face>
             <Face side="y+">
                 <BCType id="0" label="u" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="ux" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uy" var="Neumann">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uxx" var="Dirichlet">
+                    <value>0.</value>
+                </BCType>
+                <BCType id="0" label="uyy" var="Dirichlet">
                     <value>0.</value>
                 </BCType>
             </Face>
@@ -68,10 +115,14 @@
         </Regridder>
         <FineCoarseInterfaces>
             <FCIType id="0" label="u" var="FC0" />
+            <FCIType id="0" label="ux" var="FC0" />
+            <FCIType id="0" label="uy" var="FC0" />
+            <FCIType id="0" label="uxx" var="FC0" />
+            <FCIType id="0" label="uyy" var="FC0" />
         </FineCoarseInterfaces>
     </AMR>
 <!--__________________________________-->
-    <Solver type="hyprefac" ndim="2" >
+    <Solver type="hypre_sstruct" ndim="2" c2f="1" >
        <Parameters variable="u">
           <solveFrequency>1</solveFrequency>
           <setupFrequency>0</setupFrequency> <!-- leave to 0 to skip HYPRE_StructMatrixDestroy+Create -->
@@ -86,7 +137,6 @@
           <npost>1</npost>
           <csolver_type>2</csolver_type>
           <logging>1</logging>
-          <!--C2F>1</C2F-->
        </Parameters>
     </Solver>
 <!--__________________________________-->

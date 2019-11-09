@@ -546,7 +546,7 @@ protected: // SCHEDULINGS
             {
                 scheduler->setRestartInitTimestep(true);
             }
-            else if ( this->m_solver->getName() == "hyprefac" )
+            else if ( this->m_solver->getName() == "hypre_sstruct" )
             {
                 for ( int idx = 0; idx < grid->numLevels(); ++idx )
                 {

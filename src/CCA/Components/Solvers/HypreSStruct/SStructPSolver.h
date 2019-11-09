@@ -22,24 +22,25 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_MatrixEntry_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreFAC_MatrixEntry_h
-
-#include <CCA/Components/Solvers/HypreFAC/MatrixIndex.h>
-
-#include <utility>
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructPSolver_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructPSolver_h
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace HypreSStruct
 {
 
-using MatrixEntry = std::pair < MatrixIndex, double>;
+class SStructPSolver
+{
+protected:
+    virtual void precondInitialize(const MPI_Comm & comm, const SolverParams * params) = 0;
+    virtual void precondFinalize() = 0;
+};
 
-} // namespace HypreFAC
+} // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_MatrixEntry_h
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SencilIndex_h
 
 
 

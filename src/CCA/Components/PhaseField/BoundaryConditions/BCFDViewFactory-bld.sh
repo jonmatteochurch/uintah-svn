@@ -27,12 +27,12 @@ VARs=(CC NC)
 STNs=(P5 P7)
 DIMs=(2 3)
 PPPs=(
-  "PureMetalProblem;ScalarProblem"
-  "PureMetalProblem;ScalarProblem"
+  "PureMetalProblem;HeatTestProblem;ScalarProblem"
+  "PureMetalProblem;HeatTestProblem;ScalarProblem"
 )
 NFFs=(
-  "4;1"
-  "4;1"
+  "4;3;1"
+  "4;3;1"
 )
 DIRs=(x y z)
 SIGNs=(minus plus)
@@ -165,10 +165,12 @@ echo '' >> $SRC
 Fs=(
   "ScalarField<const double>"
   "VectorField<const double, 1>"
+  "VectorField<const double, 2>"
   "VectorField<const double, 3>"
 )
 STNs=(
   "P3 P5 P7"
+  "P5"
   "P5"
   "P7"
 )

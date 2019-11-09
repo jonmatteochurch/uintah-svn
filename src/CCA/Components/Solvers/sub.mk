@@ -35,7 +35,7 @@ SRCDIR := CCA/Components/Solvers
 SRCS += \
 	$(SRCDIR)/SolverCommon.cc  \
 	$(SRCDIR)/CGSolver.cc      \
-	$(SRCDIR)/SolverFactory.cc
+	$(SRCDIR)/SolverFactory.cc \
 
 PSELIBS := \
 	CCA/Ports         \
@@ -59,7 +59,7 @@ ifeq ($(HAVE_HYPRE),yes)
   SRCS += $(SRCDIR)/HypreSolver.cc
 
   SUBDIRS := $(SRCDIR)/AMR \
-             $(SRCDIR)/HypreFAC \
+             $(SRCDIR)/HypreSStruct \
 
   include $(SCIRUN_SCRIPTS)/recurse.mk
 

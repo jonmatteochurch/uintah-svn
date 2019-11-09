@@ -33,7 +33,8 @@
 
 #include <CCA/Components/PhaseField/DataWarehouse/detail/dw_view.h>
 #include <CCA/Components/PhaseField/Views/View.h>
-#include <CCA/Components/PhaseField/Factory/Implementation.h>
+
+#include <Core/Util/Factory/Implementation.h>
 
 namespace Uintah
 {

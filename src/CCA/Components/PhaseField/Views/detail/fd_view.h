@@ -34,7 +34,7 @@
 #include <CCA/Components/PhaseField/Views/detail/basic_fd_view.h>
 
 #ifdef HAVE_HYPRE
-#  include <CCA/Components/Solvers/HypreFAC/AdditionalEntries.h>
+#  include <CCA/Components/Solvers/HypreSStruct/AdditionalEntries.h>
 #endif
 namespace Uintah
 {
@@ -82,7 +82,7 @@ private: // TYPES
     /// Type for stencil entries
     using S = typename get_stn<STN>::template type<T>;
 
-    using A = HypreFAC::AdditionalEntries;
+    using A = HypreSStruct::AdditionalEntries;
 #endif
 
 public: // DESTRUCTOR
@@ -111,8 +111,8 @@ public: // FD VIEW METHODS
 #ifdef HAVE_HYPRE
     virtual std::tuple<S, V> laplacian_sys_hypre ( const IntVector & id ) const = 0;
     virtual V laplacian_rhs_hypre ( const IntVector & id ) const = 0;
-    virtual std::tuple<S, A, V> laplacian_sys_hyprefac ( const IntVector & id ) const = 0;
-    virtual V laplacian_rhs_hyprefac ( const IntVector & id ) const = 0;
+    virtual std::tuple<S, A, V> laplacian_sys_hypresstruct ( const IntVector & id ) const = 0;
+    virtual V laplacian_rhs_hypresstruct ( const IntVector & id ) const = 0;
 #endif
 
 };

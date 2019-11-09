@@ -33,13 +33,13 @@
 
 #include <CCA/Components/PhaseField/Util/Definitions.h>
 #include <CCA/Components/PhaseField/Util/Expressions.h>
-#include <CCA/Components/PhaseField/Factory/Base.h>
-#include <CCA/Components/PhaseField/Factory/Factory.h>
 #include <CCA/Components/PhaseField/DataTypes/BCInfo.h>
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 #include <CCA/Components/PhaseField/Views/FDView.h>
 
+#include <Core/Util/Factory/Base.h>
+#include <Core/Util/Factory/Factory.h>
 #include <Core/Exceptions/ProblemSetupException.h>
 
 namespace Uintah

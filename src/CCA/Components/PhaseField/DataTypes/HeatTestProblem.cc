@@ -22,29 +22,28 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_AdditionalEntries_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreFAC_AdditionalEntries_h
+/**
+ * @file CCA/Components/PhaseField/Applications/HeatTestProblem.cc
+ * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
+ * @date 2018/12
+ *
+ * In this the names used by ApplicationFactory for the differnt implementations
+ * of the Heat application are defined as well as their explicit instantiation.
+ */
 
-#include <CCA/Components/Solvers/HypreFAC/MatrixEntry.h>
-#include <Core/Util/RefCounted.h>
-
-#include <map>
+#include <CCA/Components/PhaseField/DataTypes/HeatProblem.h>
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace PhaseField
 {
 
-class AdditionalEntries
-    : public RefCounted
-    , public std::map<MatrixEntry::first_type, MatrixEntry::second_type>
-{
-public:
-    using std::map<MatrixEntry::first_type, MatrixEntry::second_type>::map;
-};
+/// @cond DOXYIGNORE
+template<> const std::string HeatProblem<CC, P5, TST>::Name = "HeatTestProblem";
+template<> const std::string HeatProblem<NC, P5, TST>::Name = "HeatTestProblem";
+template<> const std::string HeatProblem<CC, P7, TST>::Name = "HeatTestProblem";
+template<> const std::string HeatProblem<NC, P7, TST>::Name = "HeatTestProblem";
+/// @endcond
 
-} // namespace HypreFAC
 } // namespace Uintah
-
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_AdditionalEntries_h
-
+} // namespace PhaseField

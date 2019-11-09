@@ -22,18 +22,14 @@
  * IN THE SOFTWARE.
  */
 
-#include <CCA/Components/Solvers/HypreFAC/Solver.h>
+#include <CCA/Components/Solvers/HypreSStruct/SStructStencil.h>
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace HypreSStruct
 {
 
-DebugStream cout_doing ( "SOLVER_DOING_COUT", dbg_doing );
-
-template<> std::string Solver<2>::AdditionalEntriesSuffix = "_extra";
-
-template<> int Solver<2>::offsets[5][2] = {
+template<> int SStructStencil<2>::offsets[5][2] = {
     {0,0},
     {-1,0},
     {1,0},
@@ -41,35 +37,21 @@ template<> int Solver<2>::offsets[5][2] = {
     {0,1}
 };
 
-template<> int Solver<2>::stn0 = 0;
-template<> int Solver<2>::stnW = 1;
-template<> int Solver<2>::stnE = 2;
-template<> int Solver<2>::stnS = 3;
-template<> int Solver<2>::stnN = 4;
-template<> int Solver<2>::stnB = -1;
-template<> int Solver<2>::stnT = -1;
+template<> const int SStructStencil<2>::entry[5] = { 6, 0, 1, 2, 3 };
 
-template<> std::string Solver<3>::AdditionalEntriesSuffix = "_extra";
-
-template<> int Solver<3>::offsets[7][3] = {
+template<> int SStructStencil<3>::offsets[7][3] = {
     {0,0,0},
     {-1,0,0},
     {1,0,0},
     {0,-1,0},
     {0,1,0},
     {0,0,-1},
-    {0,0,1}
+    {0,0,1},
 };
 
-template<> int Solver<3>::stn0 = 0;
-template<> int Solver<3>::stnW = 1;
-template<> int Solver<3>::stnE = 2;
-template<> int Solver<3>::stnS = 3;
-template<> int Solver<3>::stnN = 4;
-template<> int Solver<3>::stnB = 5;
-template<> int Solver<3>::stnT = 6;
+template<> const int SStructStencil<3>::entry[7] = { 6, 0, 1, 2, 3, 4, 5 };
 
-} // namespace HypreFAC
+} // namespace HypreSStruct
 } // namespace Uintah
 
 

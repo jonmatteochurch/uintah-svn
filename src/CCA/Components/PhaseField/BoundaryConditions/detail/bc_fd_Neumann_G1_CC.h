@@ -80,7 +80,7 @@ private: // TYPES
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
 
-    using A = HypreFAC::AdditionalEntries;
+    using A = HypreSStruct::AdditionalEntries;
 #endif
 
 private: // MEMBERS
@@ -481,7 +481,7 @@ public: // BC FD MEMBERS
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
-    add_d2_sys_hyprefac (
+    add_d2_sys_hypresstruct (
         const IntVector & id,
         S & stencil_entries,
         A & additional_entries,
@@ -490,7 +490,7 @@ public: // BC FD MEMBERS
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
-    add_d2_sys_hyprefac (
+    add_d2_sys_hypresstruct (
         const IntVector & id,
         S & stencil_entries,
         A & additional_entries,
@@ -505,14 +505,14 @@ public: // BC FD MEMBERS
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
-    add_d2_rhs_hyprefac (
+    add_d2_rhs_hypresstruct (
         const IntVector & id,
         V & rhs
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
-    add_d2_rhs_hyprefac (
+    add_d2_rhs_hypresstruct (
         const IntVector & id,
         V & rhs
     ) const

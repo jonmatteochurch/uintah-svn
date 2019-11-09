@@ -60,10 +60,12 @@ echo '' >> $SRC
 Fs=(
   "ScalarField<const double>"
   "VectorField<const double, 1>"
+  "VectorField<const double, 2>"
   "VectorField<const double, 3>"
 )
 STNs=(
   "P3 P5 P7"
+  "P5"
   "P5"
   "P7"
 )

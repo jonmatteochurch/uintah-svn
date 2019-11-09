@@ -22,34 +22,39 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_PartDataP_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreFAC_PartDataP_h
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverOutput_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverOutput_h
 
-#include <Core/Util/Handle.h>
-#include <Core/Exceptions/InternalError.h>
+#include <HYPRE_utilities.h>
+#include <HYPRE_krylov.h>
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace HypreSStruct
 {
 
-struct PartData;
-typedef Handle<PartData> PartDataP;
-
-} // namespace HypreFAC
-
-inline
-void
-swapbytes
-(
-    HypreFAC::PartDataP &
-)
+class SolverOutput
 {
-    SCI_THROW ( InternalError ( "Swap bytes for HypreFAC::PartDataP is not implemented", __FILE__, __LINE__ ) );
+public:
+    int          num_iterations; // number of iterations taken
+    HYPRE_Real   res_norm;       // norm of the final relative residual
+    int          converged;
+    HYPRE_Vector residual;
+
+    SolverOutput()
+        : num_iterations ( -1 )
+        , res_norm ( -1. )
+        , converged ( -1 )
+        , residual ( nullptr )
+    {}
+
+    ~SolverOutput()
+    {}
 };
 
+} // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_PartDataP_h
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverOutput_h
 
 

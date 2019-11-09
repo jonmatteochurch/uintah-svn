@@ -92,7 +92,7 @@ private: // TYPES
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
 
-    using A = HypreFAC::AdditionalEntries;
+    using A = HypreSStruct::AdditionalEntries;
 #endif
 
 private: // STATIC ASSERTIONS
@@ -607,7 +607,7 @@ public: // BC FD MEMBERS
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
-    add_d2_sys_hyprefac (
+    add_d2_sys_hypresstruct (
         const IntVector & id,
         S & stencil_entries,
         A & additional_entries,
@@ -616,7 +616,7 @@ public: // BC FD MEMBERS
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
-    add_d2_sys_hyprefac (
+    add_d2_sys_hypresstruct (
         const IntVector & id,
         S & stencil_entries,
         A & additional_entries,
@@ -651,7 +651,7 @@ public: // BC FD MEMBERS
                     next_entry: continue;
                 }
 
-                HypreFAC::MatrixIndex index { id, entry.level, entry.index };
+                HypreSStruct::MatrixIndex index { id, entry.level, entry.index };
                 auto it = additional_entries.find ( index );
                 if ( it != additional_entries.end() ) it->second += entry.weight / h2;
                 else additional_entries.emplace ( index, entry.weight / h2 );
@@ -663,14 +663,14 @@ public: // BC FD MEMBERS
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
-    add_d2_rhs_hyprefac (
+    add_d2_rhs_hypresstruct (
         const IntVector & id,
         V & rhs
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
-    add_d2_rhs_hyprefac (
+    add_d2_rhs_hypresstruct (
         const IntVector & id,
         V & rhs
     ) const

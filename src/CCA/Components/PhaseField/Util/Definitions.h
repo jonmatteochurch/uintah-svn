@@ -124,6 +124,9 @@ enum FCIType : size_t
 /// Constant to be used as template parameter to enable adaptive mesh refinement
 static constexpr bool AMR { true };
 
+/// Constant to be used as template parameter to enable test application
+static constexpr bool TST { true };
+
 /**
  * @brief Boundary Conditions
  *
@@ -166,8 +169,8 @@ enum class BC : size_t
 enum class FC : size_t
 {
     None        = 0x00000000,       ///< Continuity across interfaces is not enforced
-    FC0         = I0 * 0x00100000,  ///< Piece-wise interpolation is used to compute the value on fine levels ghosts from the old solution at coarser levels @remark to be used with HypreFACSolver @remark should be used with NC variables since no interpolation is required
-    FC1         = I1 * 0x00100000,  ///< Linear interpolation in each direction is used to compute the value on fine levels ghosts from the old solution at coarser levels @remark to be used with HypreFACSolver @remark should be used with CC variables since interpolation reduces the approximation error of solution derivatives
+    FC0         = I0 * 0x00100000,  ///< Piece-wise interpolation is used to compute the value on fine levels ghosts from the old solution at coarser levels @remark to be used with HypreSStructSolver @remark should be used with NC variables since no interpolation is required
+    FC1         = I1 * 0x00100000,  ///< Linear interpolation in each direction is used to compute the value on fine levels ghosts from the old solution at coarser levels @remark to be used with HypreSStructSolver @remark should be used with CC variables since interpolation reduces the approximation error of solution derivatives
 #ifdef HAVE_HYPRE
     FCNew       = 0x00010000,       ///< Continuity on fine levels is enforced using the new solution computed at coarser levels
     FC0New      = FC0 + FCNew,      ///< Piece-wise interpolation is used to compute the value on fine levels ghosts from the new solution computed at coarser levels @remark to be used with HypreSolver @remark should be used with NC variables since no interpolation is required

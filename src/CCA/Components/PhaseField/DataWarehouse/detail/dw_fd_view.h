@@ -88,7 +88,7 @@ private: // TYPES
     /// Stencil entries type
     using S = typename get_stn<STN>::template type<T>;
 
-    using A = HypreFAC::AdditionalEntries;
+    using A = HypreSStruct::AdditionalEntries;
 #endif
 
 public: // CONSTRUCTORS/DESTRUCTOR
@@ -170,28 +170,28 @@ public: // FD VIEW METHODS
     }
 
     inline virtual std::tuple<S, A, V >
-    laplacian_sys_hyprefac (
+    laplacian_sys_hypresstruct (
         const IntVector & id
     ) const override
     {
         S stencil_entries ( 0 );
         A additional_entries;
         V rhs ( 0 );
-        this->add_dxx_sys_hyprefac ( id, stencil_entries, additional_entries, rhs );
-        if ( DIM > D1 ) this->add_dyy_sys_hyprefac ( id, stencil_entries, additional_entries, rhs );
-        if ( DIM > D2 ) this->add_dzz_sys_hyprefac ( id, stencil_entries, additional_entries, rhs );
+        this->add_dxx_sys_hypresstruct ( id, stencil_entries, additional_entries, rhs );
+        if ( DIM > D1 ) this->add_dyy_sys_hypresstruct ( id, stencil_entries, additional_entries, rhs );
+        if ( DIM > D2 ) this->add_dzz_sys_hypresstruct ( id, stencil_entries, additional_entries, rhs );
         return std::make_tuple ( stencil_entries, additional_entries, rhs );
     }
 
     inline virtual V
-    laplacian_rhs_hyprefac (
+    laplacian_rhs_hypresstruct (
         const IntVector & id
     ) const override
     {
         V rhs ( 0 );
-        this->add_dxx_rhs_hyprefac ( id, rhs );
-        if ( DIM > D1 ) this->add_dyy_rhs_hyprefac ( id, rhs );
-        if ( DIM > D2 ) this->add_dzz_rhs_hyprefac ( id, rhs );
+        this->add_dxx_rhs_hypresstruct ( id, rhs );
+        if ( DIM > D1 ) this->add_dyy_rhs_hypresstruct ( id, rhs );
+        if ( DIM > D2 ) this->add_dzz_rhs_hypresstruct ( id, rhs );
         return rhs;
     }
 #endif

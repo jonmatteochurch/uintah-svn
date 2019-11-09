@@ -22,30 +22,21 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_AdditionalEntriesP_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreFAC_AdditionalEntriesP_h
-
-#include <Core/Util/Handle.h>
-#include <Core/Exceptions/InternalError.h>
+#include <CCA/Components/Solvers/HypreSStruct/Solver.h>
+#include <CCA/Components/Solvers/HypreSStruct/Solver.h>
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace HypreSStruct
 {
 
-class AdditionalEntries;
-using AdditionalEntriesP = Handle<AdditionalEntries>;
+DebugStream cout_doing ( "SOLVER_DOING_COUT", dbg_doing );
 
-} // namespace HypreFAC
+template<> std::string Solver<2>::AdditionalEntriesSuffix = "_extra";
+template<> std::string Solver<3>::AdditionalEntriesSuffix = "_extra";
 
-inline void
-swapbytes (
-    HypreFAC::AdditionalEntriesP &
-)
-{
-    SCI_THROW ( InternalError ( "Swap bytes for AdditionalEntriesP is not implemented", __FILE__, __LINE__ ) );
-};
-
+} // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_AdditionalEntriesP_h
+
+

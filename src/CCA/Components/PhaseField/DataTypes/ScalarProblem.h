@@ -23,7 +23,7 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/DataTypes/HeatProblem.h
+ * @file CCA/Components/PhaseField/DataTypes/ScalarProblem.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2018/12
  */

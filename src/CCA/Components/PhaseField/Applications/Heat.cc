@@ -49,6 +49,8 @@ template<> const std::string Heat<NC, D2, P5, AMR>::Name = "amr|heat|nc|d2|p5";
 template<> const std::string Heat<CC, D3, P7, AMR>::Name = "amr|heat|cc|d3|p7";
 template<> const std::string Heat<NC, D3, P7, AMR>::Name = "amr|heat|nc|d3|p7";
 
+template<> const std::string Heat<CC, D2, P5, AMR, TST>::Name = "amr|heat_test|cc|d2|p5";
+
 template class Heat<CC, D2, P5>;
 template class Heat<NC, D2, P5>;
 template class Heat<CC, D3, P7>;
@@ -58,6 +60,9 @@ template class Heat<CC, D2, P5, AMR>;
 template class Heat<NC, D2, P5, AMR>;
 template class Heat<CC, D3, P7, AMR>;
 template class Heat<NC, D3, P7, AMR>;
+
+template class Heat<CC, D2, P5, AMR, TST>;
+
 /// @endcond
 
 } // namespace Uintah

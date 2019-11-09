@@ -22,34 +22,33 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreFAC_GlobalDataP_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreFAC_GlobalDataP_h
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_GlobalDataP_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_GlobalDataP_h
 
 #include <Core/Util/Handle.h>
 #include <Core/Exceptions/InternalError.h>
 
 namespace Uintah
 {
-namespace HypreFAC
+namespace HypreSStruct
 {
 
 struct GlobalData;
 typedef Handle<GlobalData> GlobalDataP;
 
-} // namespace HypreFAC
+} // namespace HypreSStruct
 
 inline
 void
-swapbytes
-(
-    HypreFAC::GlobalDataP &
+swapbytes (
+    HypreSStruct::GlobalDataP &
 )
 {
-    SCI_THROW ( InternalError ( "Swap bytes for HypreFAC::GlobalDataP is not implemented", __FILE__, __LINE__ ) );
+    SCI_THROW ( InternalError ( "Swap bytes for HypreSStruct::GlobalDataP is not implemented", __FILE__, __LINE__ ) );
 };
 
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreFAC_GlobalDataP_h
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_GlobalDataP_h
 
 
