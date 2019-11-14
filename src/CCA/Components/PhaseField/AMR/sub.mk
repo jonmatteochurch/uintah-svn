@@ -45,6 +45,19 @@ SRCS += \
   $(SRCDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FCSimple-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FCLinear-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FCBilinear-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FC1-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FCSimple-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FCLinear-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FCBilinear-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP7FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FC0-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \
@@ -78,6 +91,19 @@ BLDSRCS += \
   $(BLDDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FCSimple-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FCLinear-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FCBilinear-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FC1-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FCSimple-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FCLinear-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FCBilinear-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP7FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FC0-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \

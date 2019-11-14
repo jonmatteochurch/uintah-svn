@@ -1,12 +1,10 @@
 #!/bin/bash
 set -e
-
 VARs=(cc nc)
 DIMs=(2 3)
 Rs=(1 2 4 8 16 32 64 128 256 512)
 TSs=(be cn)
 SCHs=(backward_euler crank_nicolson)
-
 for VAR in ${VARs[@]}; do
   for DIM in ${DIMs[@]}; do
     for ((n=0; n<${#Rs[@]}; n++)); do
@@ -15,7 +13,6 @@ for VAR in ${VARs[@]}; do
         N=$(( 16 * R )) 
         M=${Rs[m]}
         K=$(bc <<< "scale=12; ( 1 / $M )");
-
         if [[ $DIM -eq 3 ]]; then
           ONE="[1,1,1]"
           TWO="[2,2,2]"
@@ -44,11 +41,8 @@ BCZ_END
           BCZ=""
         fi
         BCZ=$(tr -d '\n' <<< "$BCZ")
-
 # explicit no amr
-
         TIT=$(printf "heat_err_%s_%1dd_fe_n%04d_m%04d" $VAR $DIM $N $M)
-
         sed "s|<!--title-->|<title>$TIT</title>|g;
              s|<!--var-->|<var>$VAR</var>|g;
              s|<!--dim-->|<dim>$DIM</dim>|g;
@@ -60,11 +54,8 @@ BCZ_END
              s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
              s|<!--BC Z Faces-->|$BCZ|g;
              /<!--Solver-->/d" heat_err.template > $TIT.ups
-
         if [ "$VAR" == "cc" ]; then
-
 # hypre no amr
-
           SLV=$(cat << SLV_END0
 <!--__________________________________-->\n
     <Solver type="hypre">\n
@@ -89,13 +80,10 @@ BCZ_END
 SLV_END0
           )
           SLV=$(tr -d '\n' <<< "$SLV")
-
           for ((t=0; t<${#TSs[@]}; t++)); do
             TS=${TSs[t]}
             SCH=${SCHs[t]}
-
             TIT=$(printf "heat_err_%s_%1dd_%s_n%04d_m%04d" $VAR $DIM $TS $N $M)
-
             sed "s|<!--title-->|<title>$TIT</title>|g;
                  s|<!--var-->|<var>$VAR</var>|g;
                  s|<!--dim-->|<dim>$DIM</dim>|g;
@@ -107,7 +95,6 @@ SLV_END0
                  s|<!--filebase-->|<filebase>$TIT.uda</filebase>|g;
                  s|<!--BC Z Faces-->|$BCZ|g;
                  s|<!--Solver-->|$SLV|g" heat_err.template > $TIT.ups
-
           done
         fi
       done

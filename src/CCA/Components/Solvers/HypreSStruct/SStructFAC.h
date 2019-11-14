@@ -30,7 +30,7 @@
 
 #include <HYPRE_sstruct_mv.h>
 
-#if PRINTSYSTEM
+#ifdef PRINTSYSTEM
 #   include "/home/jonmatteochurch/Developer/hypre/fork/src/sstruct_ls/fac.h"
 #endif
 
@@ -71,12 +71,10 @@ public: // STATIC MEMBERS
         const GlobalDataP & gdata
     ) : SStruct ( gdata )
     {
-        std::cout << "construct" << __FILE__ << ":" << __LINE__ << std::endl;
     }
 
     virtual ~SStructSolver()
     {
-        std::cout << "destruct" << __FILE__ << ":" << __LINE__ << std::endl;
         solverFinalize();
     }
 
@@ -86,7 +84,6 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        std::cout << "solverInitialize" << __FILE__ << ":" << __LINE__ << std::endl;
         ASSERT ( !solver_initialized );
 
         const auto & nparts = gdata->nParts();
@@ -127,7 +124,6 @@ public: // STATIC MEMBERS
     solverUpdate (
     ) override
     {
-        std::cout << "solverUpdate" << __FILE__ << ":" << __LINE__ << std::endl;
         HYPRE ( SStructFACSetup2 ) ( solver, A, b, x );
     }
 
@@ -136,14 +132,13 @@ public: // STATIC MEMBERS
         SolverOutput * out
     ) override
     {
-        std::cout << "solve" << __FILE__ << ":" << __LINE__ << std::endl;
         HYPRE ( SStructFACSolve3 ) ( solver, A, b, x );
         HYPRE ( SStructFACGetNumIterations ) ( solver, &out->num_iterations );
         HYPRE ( SStructFACGetFinalRelativeResidualNorm ) ( solver, &out->res_norm );
         guess_updated = false;
     }
 
-#if PRINTSYSTEM
+#ifdef PRINTSYSTEM
     virtual void
     printSystem (
         std::string * fname
@@ -163,7 +158,6 @@ public: // exposing this for when used as precond
     solverFinalize()
     override
     {
-        std::cout << "solverFinalize" << __FILE__ << ":" << __LINE__ << std::endl;
         if ( solver_initialized ) HYPRE ( SStructFACDestroy2 ) ( solver );
     }
 

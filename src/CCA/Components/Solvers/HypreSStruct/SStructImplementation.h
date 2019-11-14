@@ -30,12 +30,13 @@
 #include <CCA/Components/Solvers/HypreSStruct/GlobalData.h>
 #include <CCA/Components/Solvers/HypreSStruct/PartData.h>
 #include <CCA/Components/Solvers/HypreSStruct/ExtraEntries.h>
+#include <CCA/Components/Solvers/HypreSStruct/SStructInterface.h>
 
 #include <HYPRE_sstruct_ls.h>
 
 #include <numeric>
 
-#if 0
+#if 1
 #define HYPRE(fn) HYPRE_##fn
 #else
 #define HYPREDBG_NDIM 2
@@ -161,7 +162,6 @@ protected:
         int & to_part  = std::get<2> ( ind );
         int * to_index = std::get<3> ( ind ).get_pointer();
 
-        std::cout << "add_c2f_refinement_entry: extra_add_entries[" << var << "][" << coarse_part << "].emplace_back ( " << ind << ", " << stn << ", 0. )" << std::endl;
         if ( extra_add_entries[var][coarse_part].emplace_back ( ind, stn, 0. ) )
             HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
     }
@@ -187,11 +187,9 @@ protected:
         int & to_part  = std::get<2> ( ind );
         int * to_index = std::get<3> ( ind ).get_pointer();
 
-        std::cout << "add_c2f_interface_entry: extra_add_entries[" << var << "][" << coarse_part << "].emplace_back ( " << ind << ", " << stn << ", 1. )" << std::endl;
         if ( extra_add_entries[var][coarse_part].emplace_back ( ind, stn, 1. ) )
             HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
 
-        std::cout << "add_c2f_interface_entry: extra_stn_entries[" << var << "][" << coarse_part << "].emplace_back ( " << stn << ", " << stn << ", 0 )" << std::endl;
         extra_stn_entries[var][coarse_part].emplace_back ( stn, stn, 0 );
     }
 
@@ -227,11 +225,9 @@ protected:
             for ( to_index[1] = lower[1]; to_index[1] < upper[1]; ++to_index[1] )
                 for ( to_index[0] = lower[0]; to_index[0] < upper[0]; ++to_index[0] )
                 {
-                    std::cout << "add_c2f_interface_entry: extra_add_entries[" << var << "][" << coarse_part << "].emplace_back ( " << ind << ", " << stn << ", " << weight << " )" << std::endl;
                     if ( extra_add_entries[var][coarse_part].emplace_back ( ind, stn, weight ) )
                         HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
                 }
-        std::cout << "add_c2f_interface_entry: extra_stn_entries[" << var << "][" << coarse_part << "].emplace_back ( " << stn << ", " << stn << ", 0 )" << std::endl;
         extra_stn_entries[var][coarse_part].emplace_back ( stn, stn, 0 );
     }
 
@@ -244,7 +240,7 @@ protected:
         const double & weight
     )
     {
-        AddIndex ind { -1, std::get<1> ( add ), std::get<2> ( add ) - 1, refined_index };
+        AddIndex ind { -1, std::get<1> ( add ), std::get<2> ( add ), refined_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
         int & part     = std::get<2> ( ind );
@@ -255,26 +251,25 @@ protected:
         {
             bool is_stencil = true;
             for ( int d = 0; d < DIM; ++d )
+            {
                 if ( to_index[d] - index[d] != SStructStencil<DIM>::offsets[rank][d] )
                 {
                     is_stencil = false;
                     break;
                 }
+            }
 
             if ( is_stencil )
             {
-                StnIndex stn { -1, refined_index, rank };
+                StnIndex stn { std::get<0> (add), refined_index, rank };
                 // add entry to existing stencil
-                std::cout << "add_f2f_interface_entry: extra_stn_entries[" << var << "][" << part << "].emplace_back ( " << stn << ", " << stn << ", 1. )" << std::endl;
                 extra_stn_entries[var][part].emplace_back ( stn, stn, 1. );
-                std::cout << "add_f2f_interface_entry: extra_stn_entries[" << var << "][" << part << "].emplace_back ( " << stn << ", " << add << ", " << weight << " )" << std::endl;
                 extra_stn_entries[var][part].emplace_back ( stn, add, weight );
                 return;
             }
         }
 
         // otherwise is additional entry
-        std::cout << "add_f2f_interface_entry: extra_add_entries[" << var << "][" << part << "].emplace_back ( " << ind << ", " << add << ", " << weight << " )" << std::endl;
         if ( extra_add_entries[var][part].emplace_back ( ind, add, weight ) )
             HYPRE ( SStructGraphAddEntries ) ( graph, part, index, var, part, to_index, var );
     }
@@ -338,7 +333,6 @@ protected:
         int & to_part  = std::get<2> ( add );
         int * to_index = std::get<3> ( add ).get_pointer();
 
-        std::cout << "add_f2c_interface_entry: extra_add_entries[" << var << "][" << fine_part << "].emplace_back ( " << add << ", " << add << ", 1. )" << std::endl;
         if ( extra_add_entries[var][fine_part].emplace_back ( add, add, 1. ) )
             HYPRE ( SStructGraphAddEntries ) ( graph, fine_part, index, var, to_part, to_index, var );
     };
@@ -656,7 +650,6 @@ public:
         HYPRE ( SStructMatrixCreate ) ( comm, graph, &A );
         HYPRE ( SStructMatrixSetObjectType ) ( A, HYPRE_SSTRUCT );
         HYPRE ( SStructMatrixInitialize ) ( A );
-        HYPRE ( SStructMatrixAssemble ) ( A );
         A_initialized = true;
     }
 
@@ -669,7 +662,6 @@ public:
         HYPRE ( SStructVectorCreate ) ( comm, grid, &b );
         HYPRE ( SStructVectorSetObjectType ) ( b, HYPRE_SSTRUCT );
         HYPRE ( SStructVectorInitialize ) ( b );
-        HYPRE ( SStructVectorAssemble ) ( b );
         b_initialized = true;
     }
 
@@ -682,7 +674,6 @@ public:
         HYPRE ( SStructVectorCreate ) ( comm, grid, &x );
         HYPRE ( SStructVectorSetObjectType ) ( x, HYPRE_SSTRUCT );
         HYPRE ( SStructVectorInitialize ) ( x );
-        HYPRE ( SStructVectorAssemble ) ( x );
         x_initialized = true;
     }
 
@@ -712,12 +703,10 @@ public:
             }
         }
 
-        if ( additional_entries )
+        if ( extra_stn_entries && extra_add_entries )
         {
             for ( int var = 0; var < gdata->nVars(); ++var )
             {
-//                 for ( const auto & extra : extra_stn_entries[var][0] ( stencil_entries[var][0], nullptr ) )
-//                     HYPRE ( SStructMatrixSetValues ) ( A, 0, extra.index(), var, extra.nValues(), extra.entries(), extra.values() );
                 for ( int part = 0; part < gdata->nParts(); ++part )
                 {
                     for ( const auto & extra : extra_stn_entries[var][part] ( stencil_entries[var][part], additional_entries[var][part] ) )
@@ -795,7 +784,16 @@ public:
             HYPRE ( SStructFACZeroAMRVectorData ) ( x, plevels, prefinements );
     }
 
-// #ifdef PRINTSYSTEM
+    virtual void
+    assemble (
+    ) override
+    {
+        HYPRE ( SStructMatrixAssemble ) ( A );
+        HYPRE ( SStructVectorAssemble ) ( b );
+        HYPRE ( SStructVectorAssemble ) ( x );
+    }
+
+#ifdef PRINTSYSTEM
     virtual void
     printSystem (
         std::string * fname
@@ -805,7 +803,7 @@ public:
         HYPRE_SStructVectorPrint ( fname[1].c_str(), b, 0 );
         HYPRE_SStructVectorPrint ( fname[2].c_str(), x, 0 );
     }
-// #endif
+#endif
 
     virtual void
     getSolution (

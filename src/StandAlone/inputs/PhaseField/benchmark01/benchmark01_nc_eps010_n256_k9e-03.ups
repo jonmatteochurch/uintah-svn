@@ -20,7 +20,8 @@
     <Level>
       <Box label="1">
         <lower>[0,0,0.]</lower>
-        <upper>[6.28318530717959,6.28318530717959,1.]</upper> <!-- [2*pi,2*pi,1] -->
+        <upper>[6.28318530717959,6.28318530717959,1.]</upper>
+        <!-- [2*pi,2*pi,1] -->
         <resolution>[256,256,1]</resolution>
         <patches>[8,8,1]</patches>
       </Box>
@@ -30,7 +31,7 @@
   <DataArchiver>
     <filebase>benchmark01_nc_eps010_n256_k9e-03.uda</filebase>
     <outputInterval>1</outputInterval>
-    <checkpoint cycle="2" timestepInterval = "100"/>
+    <checkpoint cycle="2" timestepInterval="100"/>
     <save label="u"/>
     <save label="u0"/>
     <save label="energy"/>

@@ -63,12 +63,10 @@ public: // STATIC MEMBERS
         const GlobalDataP & gdata
     ) : SStruct ( gdata )
     {
-        std::cout << "construct" << __FILE__ << ":" << __LINE__ << std::endl;
     }
 
     virtual ~SStructSolver()
     {
-        std::cout << "destruct" << __FILE__ << ":" << __LINE__ << std::endl;
         solverFinalize();
     }
 
@@ -78,7 +76,6 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        std::cout << "solverInitialize" << __FILE__ << ":" << __LINE__ << std::endl;
         ASSERT ( !solver_initialized );
 
         HYPRE_SStructSysPFMGCreate ( comm, &solver );
@@ -113,7 +110,6 @@ public: // STATIC MEMBERS
     solverUpdate (
     ) override
     {
-        std::cout << "solverUpdate" << __FILE__ << ":" << __LINE__ << std::endl;
         HYPRE_SStructSysPFMGSetup ( solver, A, b, x );
     }
 
@@ -122,7 +118,6 @@ public: // STATIC MEMBERS
         SolverOutput * out
     ) override
     {
-        std::cout << "solve" << __FILE__ << ":" << __LINE__ << std::endl;
         HYPRE_SStructSysPFMGSolve ( solver, A, b, x );
         HYPRE_SStructSysPFMGGetNumIterations ( solver, &out->num_iterations );
         HYPRE_SStructSysPFMGGetFinalRelativeResidualNorm ( solver, &out->res_norm );
@@ -135,7 +130,6 @@ public: // exposing this for when used as precond
     solverFinalize()
     override
     {
-        std::cout << "solverFinalize" << __FILE__ << ":" << __LINE__ << std::endl;
         if ( solver_initialized ) HYPRE_SStructSysPFMGDestroy ( solver );
         solver_initialized = false;
     }

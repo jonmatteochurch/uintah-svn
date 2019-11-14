@@ -1,44 +1,44 @@
 <Uintah_specification>
-    <Meta>
-        <title>benchmark01_err_eps0.05_cc_fe_n0128_m0128</title>
-    </Meta>
-    <SimulationComponent type="phasefield" />
-<!--__________________________________-->
-    <PhaseField type="benchmark01">
-        <var>cc</var>
-        <delt>.007812500000</delt>
-        <epsilon>0.05</epsilon>
-        <scheme>forward_euler</scheme>
-        <refine_threshold>1.</refine_threshold>
-        <verbosity>0</verbosity>
-    </PhaseField>
-<!--__________________________________-->
-    <Time>
-        <maxTime>850.007812500000</maxTime>
-        <initTime>0.0</initTime>
-        <delt_min>0.0</delt_min>
-        <delt_max>1.</delt_max>
-        <timestep_multiplier>1.</timestep_multiplier>
-    </Time>
-<!--__________________________________-->
-    <Grid>
-        <Level>
-            <Box label="1">
-                <lower>[0.,0.,0.]</lower>
-                <upper>[6.28318530717959,6.28318530717959,1.]</upper>
-                <resolution>[128,128,1]</resolution>
-                <patches>[2,2,1]</patches>
-            </Box>
-            <periodic>[1,1,0]</periodic>
-        </Level>
-    </Grid>
-<!--__________________________________-->
-    <DataArchiver>
-        <filebase>benchmark01_err_eps0.05_cc_fe_n0128_m0128.uda</filebase>
-        <outputInterval>850</outputInterval>
-        <checkpoint cycle="2" timestepInterval="100"/>
-        <save label="u" />
-        <save label="u0"/>
-        <save label="energy"/>
-    </DataArchiver>
+  <Meta>
+    <title>benchmark01_err_eps0.05_cc_fe_n0128_m0128</title>
+  </Meta>
+  <SimulationComponent type="phasefield"/>
+  <!--__________________________________-->
+  <PhaseField type="benchmark01">
+    <var>cc</var>
+    <delt>.007812500000</delt>
+    <epsilon>0.05</epsilon>
+    <scheme>forward_euler</scheme>
+    <refine_threshold>1.</refine_threshold>
+    <verbosity>0</verbosity>
+  </PhaseField>
+  <!--__________________________________-->
+  <Time>
+    <maxTime>850.007812500000</maxTime>
+    <initTime>0.0</initTime>
+    <delt_min>0.0</delt_min>
+    <delt_max>1.</delt_max>
+    <timestep_multiplier>1.</timestep_multiplier>
+  </Time>
+  <!--__________________________________-->
+  <Grid>
+    <Level>
+      <Box label="1">
+        <lower>[0.,0.,0.]</lower>
+        <upper>[6.28318530717959,6.28318530717959,1.]</upper>
+        <resolution>[128,128,1]</resolution>
+        <patches>[2,2,1]</patches>
+      </Box>
+      <periodic>[1,1,0]</periodic>
+    </Level>
+  </Grid>
+  <!--__________________________________-->
+  <DataArchiver>
+    <filebase>benchmark01_err_eps0.05_cc_fe_n0128_m0128.uda</filebase>
+    <outputInterval>850</outputInterval>
+    <checkpoint cycle="2" timestepInterval="100"/>
+    <save label="u"/>
+    <save label="u0"/>
+    <save label="energy"/>
+  </DataArchiver>
 </Uintah_specification>

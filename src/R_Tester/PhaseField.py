@@ -199,12 +199,12 @@ for dim in DIM:
     for var in CC:
       for im in IM:
         for f2c in F2C[dim]:
-          ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_%s_amr_hyprefac_%s.ups" % (var,dim,im,f2c), [ \
+          ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s.ups" % (var,dim,im,f2c), [ \
             ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
-          HEATHYPREFACTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hyprefac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREFACMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hyprefac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          HEATHYPREFACTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
+          HEATHYPREFACMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
 
 HEATHYPREFACBCTEST    = []
 HEATHYPREFACBCMPITEST = []
@@ -215,12 +215,12 @@ for dim in DIM:
     for var in CC:
       for im in IM:
         for f2c in F2C[dim]:
-          ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_%s_amr_hyprefac_%s.ups" % (var,dim,im,f2c), [ \
+          ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s.ups" % (var,dim,im,f2c), [ \
             ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
-          HEATHYPREFACBCTEST   .append( ( "heat_test_%s_%s_%s_amr_hyprefac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREFACBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hyprefac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          HEATHYPREFACBCTEST   .append( ( "heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
+          HEATHYPREFACBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
 
 PUREMETALTEST    = []
 PUREMETALMPITEST = []

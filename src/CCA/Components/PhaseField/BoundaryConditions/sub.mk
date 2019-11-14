@@ -36,6 +36,9 @@ SRCS += \
   $(SRCDIR)/BCFDViewScalarProblemNCP5-bld.cc \
   $(SRCDIR)/BCFDViewScalarProblemNCP7-bld.cc \
   $(SRCDIR)/BCFDViewHeatTestProblemCCP5-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemNCP5-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-bld.cc \
 
 BLDDIR := $(SRCTOP)/$(SRCDIR)
 
@@ -46,3 +49,6 @@ BLDSRCS += \
   $(BLDDIR)/BCFDViewScalarProblemNCP5-bld.cc \
   $(BLDDIR)/BCFDViewScalarProblemNCP7-bld.cc \
   $(BLDDIR)/BCFDViewHeatTestProblemCCP5-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemNCP5-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-bld.cc \

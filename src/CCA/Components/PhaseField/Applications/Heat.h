@@ -44,6 +44,7 @@
 #include <CCA/Components/PhaseField/DataTypes/SubProblems.h>
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
+#include <CCA/Components/PhaseField/DataTypes/ReferenceGrid.h>
 #include <CCA/Components/PhaseField/Applications/Application.h>
 #include <CCA/Components/PhaseField/Views/View.h>
 #include <CCA/Components/PhaseField/Views/FDView.h>
@@ -56,7 +57,6 @@
 #include <Core/Util/Factory/Implementation.h>
 #include <Core/Util/DebugStream.h>
 #include <Core/Grid/SimpleMaterial.h>
-// #include <Core/Grid/Box.h>
 #include <Core/Grid/Variables/PerPatchVars.h>
 
 /**
@@ -103,49 +103,7 @@ namespace PhaseField
 {
 
 /// Debugging stream for component schedulings
-static constexpr bool dbg_heat_scheduling = true;
-
-
-template<DimType DIM>
-class TempGrid
-    : public Grid
-{
-public:
-    TempGrid ( const Grid * grid, const int & index )
-        : Grid()
-    {
-        d_levels.reserve ( index + 2 );
-        for ( int i = 0; i <= index; ++i )
-            d_levels.emplace_back ( grid->getLevel ( i ) );
-    }
-
-    virtual ~TempGrid ()
-    {
-        std::cout << "Deleting TempGrid " << __FILE__ << ":" << __LINE__ << std::endl;
-    }
-
-    Level *
-    addFinestLevel ( int k )
-    {
-        Point anchor ( d_levels.back()->getAnchor() );
-        Vector dcell ( d_levels.back()->dCell() );
-
-        int r = 1 << k;
-        for ( size_t D = 0; D < DIM; ++D )
-            dcell[D] /= r;
-        return addLevel ( anchor, dcell );
-    }
-
-    Patch *
-    addFinestPatch (
-        const Patch * patch
-    )
-    {
-        IntVector low ( patch->getLevel()->mapCellToFinest ( patch->getCellLowIndex() ) );
-        IntVector high ( patch->getLevel()->mapCellToFinest ( patch->getCellHighIndex() ) );
-        return d_levels.back()->addPatch ( low, high, low, high, this, -999 );
-    }
-};
+static constexpr bool dbg_heat_scheduling = false;
 
 /**
  * @brief Heat PhaseField applications
@@ -2006,7 +1964,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance (
 
 #ifdef PhaseField_Heat_DBG_DERIVATIVES
     scheduleTimeAdvance_dbg_derivatives<AMR> ( level, sched );
-    scheduleTimeAdvance_dbg_derivatives_error<AMR,TST> ( level, sched );
+    scheduleTimeAdvance_dbg_derivatives_error<AMR, TST> ( level, sched );
 #endif
 
     scheduleTimeAdvance_solution ( level, sched );
@@ -2070,7 +2028,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives (
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG, bool T >
-typename std::enable_if <T && !MG, void >::type
+typename std::enable_if < T && !MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
     const LevelP & level,
     SchedulerP & sched
@@ -2098,7 +2056,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG, bool T >
-typename std::enable_if <T && MG, void >::type
+typename std::enable_if < T && MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
     const LevelP & level,
     SchedulerP & sched
@@ -2837,19 +2795,19 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
-    int k = this->m_regridder->maxLevels() - index - 1;
-    if ( AMR && k > 0 )
+    int k = 0;
+    if ( AMR && ( k = this->m_regridder->maxLevels() - index - 1 ) > 0 )
     {
-        TempGrid<DIM> grid_finest ( grid, index );
+        ReferenceGrid<DIM> grid_finest ( grid, index );
         grid_finest.addFinestLevel ( k );
         grid_finest.addReference();
 
         for ( int p = 0; p < patches->size(); ++p )
         {
             const Patch * patch = patches->get ( p );
-            Patch * patch_finest = grid_finest.addFinestPatch ( patch );
+            Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
 
-            DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
+            DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " (ReferenceGrid Patch: " << *patch_finest << " )" );
 
             DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
             DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
@@ -2857,8 +2815,8 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
             AMRInterpolator < HeatProblem<VAR, STN, TST>, DU, C2F > du_finest ( dw_new, du_label, this->getSubProblemsLabel(), material, patch_finest );
             AMRInterpolator < HeatProblem<VAR, STN, TST>, DDU, C2F > ddu_finest ( dw_new, ddu_label, this->getSubProblemsLabel(), material, patch_finest );
 
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, error_du_label, material, patch );
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, error_ddu_label, material, patch );
+            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
+            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
 
             DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
             DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
@@ -2885,8 +2843,8 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
             DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
             DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
 
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, error_du_label, material, patch );
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, error_ddu_label, material, patch );
+            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
+            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
 
             DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
             DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
@@ -3408,17 +3366,17 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
-    int k = this->m_regridder->maxLevels() - index - 1;
-    if ( AMR && k > 0 )
+    int k = 0;
+    if ( AMR && ( k = this->m_regridder->maxLevels() - index - 1 ) > 0 )
     {
-        TempGrid<DIM> grid_finest ( grid, index );
+        ReferenceGrid<DIM> grid_finest ( grid, index );
         grid_finest.addFinestLevel ( k );
         grid_finest.addReference();
 
         for ( int p = 0; p < patches->size(); ++p )
         {
             const Patch * patch = patches->get ( p );
-            Patch * patch_finest = grid_finest.addFinestPatch ( patch );
+            Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
 
             DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
 
@@ -3455,8 +3413,6 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
         }
     }
 
-    DOUT ( 1, "u_norm2_L2: " << norms[0] );
-    DOUT ( 1, "err_norm2_L2: " << norms[1] );
     dw_new->put ( sum_vartype ( norms[0] ), u_norm2_L2_label );
     dw_new->put ( sum_vartype ( norms[1] ), error_norm2_L2_label );
 
@@ -3770,8 +3726,8 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
         area = level->cellVolume();
         for ( size_t i = 0; i < DIM; ++i )
         {
-            error_du[i][id] = sqrt ( du_err2[i] ) / area;
-            error_ddu[i][id] = sqrt ( ddu_err2[i] ) / area;
+            error_du[i][id] = sqrt ( du_err2[i] );
+            error_ddu[i][id] = sqrt ( ddu_err2[i] );
             u_norm2_H10 += du2[i];
             error_norm2_H10 += du_err2[i];
         }
@@ -4072,7 +4028,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
                 }
 
         area = level->cellVolume();
-        error_u[id] = sqrt ( u_err2 ) / area;
+        error_u[id] = sqrt ( u_err2 / area );
 
         u_norm2_L2 += u2;
         error_norm2_L2 += u_err2;

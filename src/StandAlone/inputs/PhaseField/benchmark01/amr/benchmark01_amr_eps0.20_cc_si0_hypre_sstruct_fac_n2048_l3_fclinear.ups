@@ -1,0 +1,75 @@
+<Uintah_specification>
+  <Meta>
+    <title>benchmark01_amr_eps0.20_cc_si0_hypre_sstruct_n2048_l3_fclinear</title>
+  </Meta>
+  <SimulationComponent type="phasefield"/>
+  <!--__________________________________-->
+  <PhaseField type="benchmark01">
+    <var>cc</var>
+    <delt>1.</delt>
+    <epsilon>0.2</epsilon>
+    <scheme>semi_implicit_0</scheme>
+    <refine_threshold>1.</refine_threshold>
+    <verbosity>0</verbosity>
+  </PhaseField>
+  <!--__________________________________-->
+  <Time>
+    <maxTime>51</maxTime>
+    <initTime>0.0</initTime>
+    <delt_min>0.0</delt_min>
+    <delt_max>1.</delt_max>
+    <timestep_multiplier>1.</timestep_multiplier>
+  </Time>
+  <!--__________________________________-->
+  <Grid>
+    <Level>
+      <Box label="1">
+        <lower>[0.,0.,0.]</lower>
+        <upper>[6.28318530717959,6.28318530717959,1.]</upper>
+        <resolution>[2048,2048,1.]</resolution>
+        <patches>[2,2,1]</patches>
+      </Box>
+      <periodic>[1,1,0]</periodic>
+    </Level>
+  </Grid>
+  <!--__________________________________-->
+  <AMR>
+    <Regridder type="Tiled">
+      <adaptive>true</adaptive>
+      <max_levels>3</max_levels>
+      <cell_refinement_ratio>[[2,2,1]]</cell_refinement_ratio>
+      <cell_stability_dilation>[1,1,0]</cell_stability_dilation>
+      <min_boundary_cells>[1,1,0]</min_boundary_cells>
+      <min_patch_size>[[16,16,1]]</min_patch_size>
+    </Regridder>
+    <FineCoarseInterfaces>
+      <FCIType id="0" label="u" var="FCLinear"/>
+    </FineCoarseInterfaces>
+  </AMR>
+  <!--__________________________________-->
+  <Solver type="hypre_sstruct" ndim="2">
+    <Parameters variable="u">
+      <solveFrequency>1</solveFrequency>
+      <setupFrequency>0</setupFrequency>
+      <updateCoefFrequency>0</updateCoefFrequency>
+      <max_levels>3</max_levels>
+      <maxiterations>1000</maxiterations>
+      <tolerance>1.e-6</tolerance>
+      <rel_change>0</rel_change>
+      <relax_type>2</relax_type>
+      <npre>1</npre>
+      <npost>1</npost>
+      <csolver_type>2</csolver_type>
+      <logging>1</logging>
+    </Parameters>
+  </Solver>
+  <!--__________________________________-->
+  <DataArchiver>
+    <filebase>benchmark01_amr_eps0.20_cc_si0_hypre_sstruct_n2048_l3_fclinear.uda</filebase>
+    <outputInterval>50</outputInterval>
+    <checkpoint cycle="2" timestepInterval="100"/>
+    <save label="u"/>
+    <save label="u0"/>
+    <save label="energy"/>
+  </DataArchiver>
+</Uintah_specification>

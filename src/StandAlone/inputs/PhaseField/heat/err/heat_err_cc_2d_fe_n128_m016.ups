@@ -1,75 +1,74 @@
 <Uintah_specification>
-    <Meta>
-        <title>heat_err_cc_2d_fe_n128_m016</title>
-    </Meta>
-    <SimulationComponent type="phasefield" />
-<!--__________________________________-->
-    <PhaseField type="heat">
-        <var>cc</var>
-        <dim>2</dim>
-        <delt>.062500000000</delt>
-        <scheme>forward_euler</scheme>
-        <alpha>1.</alpha>
-        <verbosity>0</verbosity>
-        <test>true</test>
-    </PhaseField>
-<!--__________________________________-->
-    <Time>
-        <maxTime>101.</maxTime>
-        <initTime>0.0</initTime>
-        <delt_min>0.0</delt_min>
-        <delt_max>1.</delt_max>
-        <timestep_multiplier>1.</timestep_multiplier>
-    </Time>
-<!--__________________________________-->
-    <Grid>
-        <Level>
-            <Box label="1">
-                <lower>[  0.,  0.,  0.]</lower>
-                <upper>[ 16., 16.,  1.]</upper>
-                <resolution>[128,128,1]</resolution>
-                <patches>[2,2,1]</patches>
-            </Box>
-        </Level>
-        <BoundaryConditions>
-            <Face side="x-">
-                <BCType id="0" label="u" var="Neumann">
-                    <value>0.</value>
-                </BCType>
-            </Face>
-            <Face side="x+">
-                <BCType id="0" label="u" var="Dirichlet">
-                    <value>0.</value>
-                </BCType>
-            </Face>
-            <Face side="y-">
-                <BCType id="0" label="u" var="Neumann">
-                    <value>0.</value>
-                </BCType>
-            </Face>
-            <Face side="y+">
-                <BCType id="0" label="u" var="Dirichlet">
-                    <value>0.</value>
-                </BCType>
-            </Face>
-            
-        </BoundaryConditions>
-    </Grid>
-<!--__________________________________-->
-    <DataArchiver>
-        <filebase>heat_err_cc_2d_fe_n128_m016.uda</filebase>
-        <outputInterval>100.</outputInterval>
-        <checkpoint cycle="2" timestepInterval="100"/>
-        <save label="u" />
-        <save label="epsilon_u" />
-        <save label="error_u" />
-        <save label="u_norm2_discrete" />
-        <save label="u_norm2_L2" />
-        <save label="u_norm2_H10" />
-        <save label="u_norm2_H20" />
-        <save label="error_norm2_discrete" />
-        <save label="error_norm2_L2" />
-        <save label="error_norm2_H10" />
-        <save label="error_norm2_H20" />
-    </DataArchiver>
+  <Meta>
+    <title>heat_err_cc_2d_fe_n128_m016</title>
+  </Meta>
+  <SimulationComponent type="phasefield"/>
+  <!--__________________________________-->
+  <PhaseField type="heat">
+    <var>cc</var>
+    <dim>2</dim>
+    <delt>.062500000000</delt>
+    <scheme>forward_euler</scheme>
+    <alpha>1.</alpha>
+    <verbosity>0</verbosity>
+    <test>true</test>
+  </PhaseField>
+  <!--__________________________________-->
+  <Time>
+    <maxTime>101.</maxTime>
+    <initTime>0.0</initTime>
+    <delt_min>0.0</delt_min>
+    <delt_max>1.</delt_max>
+    <timestep_multiplier>1.</timestep_multiplier>
+  </Time>
+  <!--__________________________________-->
+  <Grid>
+    <Level>
+      <Box label="1">
+        <lower>[  0.,  0.,  0.]</lower>
+        <upper>[ 16., 16.,  1.]</upper>
+        <resolution>[128,128,1]</resolution>
+        <patches>[2,2,1]</patches>
+      </Box>
+    </Level>
+    <BoundaryConditions>
+      <Face side="x-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="x+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="y-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="y+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+      </Face>
+    </BoundaryConditions>
+  </Grid>
+  <!--__________________________________-->
+  <DataArchiver>
+    <filebase>heat_err_cc_2d_fe_n128_m016.uda</filebase>
+    <outputInterval>100.</outputInterval>
+    <checkpoint cycle="2" timestepInterval="100"/>
+    <save label="u"/>
+    <save label="epsilon_u"/>
+    <save label="error_u"/>
+    <save label="u_norm2_discrete"/>
+    <save label="u_norm2_L2"/>
+    <save label="u_norm2_H10"/>
+    <save label="u_norm2_H20"/>
+    <save label="error_norm2_discrete"/>
+    <save label="error_norm2_L2"/>
+    <save label="error_norm2_H10"/>
+    <save label="error_norm2_H20"/>
+  </DataArchiver>
 </Uintah_specification>

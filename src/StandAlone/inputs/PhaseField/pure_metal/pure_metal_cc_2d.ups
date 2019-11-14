@@ -2,7 +2,7 @@
   <Meta>
     <title>pure_metal_cc_2d</title>
   </Meta>
-  <SimulationComponent type="phasefield" />
+  <SimulationComponent type="phasefield"/>
   <PhaseField type="pure_metal">
     <var>cc</var>
     <dim>2</dim>
@@ -35,13 +35,13 @@
     <filebase>pure_metal_cc_2d.uda</filebase>
     <outputTimestepInterval>1</outputTimestepInterval>
     <checkpoint cycle="2" timestepInterval="100"/>
-    <save label="psi" />
-    <save label="u" />
-    <save label="psi_x" />
-    <save label="psi_y" />
-    <save label="grad_psi_norm2" />
-    <save label="A" />
-    <save label="A2" />
-    <save label="Bxy" />
+    <save label="psi"/>
+    <save label="u"/>
+    <save label="psi_x"/>
+    <save label="psi_y"/>
+    <save label="grad_psi_norm2"/>
+    <save label="A"/>
+    <save label="A2"/>
+    <save label="Bxy"/>
   </DataArchiver>
 </Uintah_specification>

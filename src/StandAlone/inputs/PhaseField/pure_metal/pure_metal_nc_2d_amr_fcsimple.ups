@@ -2,7 +2,7 @@
   <Meta>
     <title>pure_metal_nc_2d_amr_fcsimple</title>
   </Meta>
-  <SimulationComponent type="phasefield" />
+  <SimulationComponent type="phasefield"/>
   <PhaseField type="pure_metal">
     <var>nc</var>
     <dim>2</dim>
@@ -32,32 +32,32 @@
       <periodic>[1,1,0]</periodic>
     </Level>
   </Grid>
-    <AMR>
-        <Regridder type="Tiled">
-            <adaptive>true</adaptive>
-            <max_levels>2</max_levels>
-            <cell_refinement_ratio>[[2,2,1]]</cell_refinement_ratio>
-            <cell_stability_dilation>[0,0,0]</cell_stability_dilation>
-            <min_boundary_cells>[1,1,0]</min_boundary_cells>
-            <min_patch_size>[[8,8,1]]</min_patch_size>
-        </Regridder>
-        <FineCoarseInterfaces>
-            <FCIType id="0" label="psi" var="FCSimple" />
-            <FCIType id="1" label="u"   var="FCSimple" />
-            <FCIType id="2" label="A2"  var="FCSimple" />
-            <FCIType id="3" label="Bxy" var="FCSimple" />
-        </FineCoarseInterfaces>
-    </AMR>
+  <AMR>
+    <Regridder type="Tiled">
+      <adaptive>true</adaptive>
+      <max_levels>2</max_levels>
+      <cell_refinement_ratio>[[2,2,1]]</cell_refinement_ratio>
+      <cell_stability_dilation>[0,0,0]</cell_stability_dilation>
+      <min_boundary_cells>[1,1,0]</min_boundary_cells>
+      <min_patch_size>[[8,8,1]]</min_patch_size>
+    </Regridder>
+    <FineCoarseInterfaces>
+      <FCIType id="0" label="psi" var="FCSimple"/>
+      <FCIType id="1" label="u" var="FCSimple"/>
+      <FCIType id="2" label="A2" var="FCSimple"/>
+      <FCIType id="3" label="Bxy" var="FCSimple"/>
+    </FineCoarseInterfaces>
+  </AMR>
   <DataArchiver>
     <filebase>pure_metal_nc_2d_amr_fcsimple.uda</filebase>
     <outputTimestepInterval>1</outputTimestepInterval>
-    <save label="psi" />
-    <save label="u" />
-    <save label="psi_x" />
-    <save label="psi_y" />
-    <save label="grad_psi_norm2" />
-    <save label="A" />
-    <save label="A2" />
-    <save label="Bxy" />
+    <save label="psi"/>
+    <save label="u"/>
+    <save label="psi_x"/>
+    <save label="psi_y"/>
+    <save label="grad_psi_norm2"/>
+    <save label="A"/>
+    <save label="A2"/>
+    <save label="Bxy"/>
   </DataArchiver>
 </Uintah_specification>

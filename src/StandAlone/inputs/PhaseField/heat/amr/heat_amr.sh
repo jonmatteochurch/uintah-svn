@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-
 VARs=(cc nc)
 DIMs=(2 3)
 C2Fs=(FC0 FC1 FCSimple FCLinear FCBilinear)
@@ -8,7 +7,6 @@ Rs=(1 2 4 8 16)
 Pe=2
 TSs=(be cn)
 SCHs=(backward_euler crank_nicolson)
-
 for VAR in ${VARs[@]}; do
   for DIM in ${DIMs[@]}; do
     for ((r=0; r<${#Rs[@]}; r++)); do
@@ -17,7 +15,6 @@ for VAR in ${VARs[@]}; do
       M=$(( 2 * Pe * DIM * R * R ))
       H=$(bc <<< "scale=4;  ( 1 / $R )");
       K=$(bc <<< "scale=12; ( 1 / $M )");
-
       if [[ $DIM -eq 3 ]]; then
         ONE="[1,1,1]"
         TWO="[2,2,2]"
@@ -46,11 +43,8 @@ BCZ_END
         BCZ=""
       fi
       BCZ=$(tr -d '\n' <<< "$BCZ")
-
 # explicit no amr
-
       TIT=$(printf "heat_amr_%s_%1dd_fe_n%04d_l1" $VAR $DIM $N)
-
       sed "s|<!--title-->|<title>$TIT</title>|g;
            s|<!--var-->|<var>$VAR</var>|g;
            s|<!--dim-->|<dim>$DIM</dim>|g;
@@ -63,11 +57,8 @@ BCZ_END
            s|<!--BC Z Faces-->|$BCZ|g;
            /<!--AMR-->/d;
            /<!--Solver-->/d" heat_amr.template > $TIT.ups
-
       if [ "$VAR" == "cc" ]; then
-
 # hypre no amr
-
         SLV=$(cat << SLV_END0
 <!--__________________________________-->\n
     <Solver type="hypre">\n
@@ -92,13 +83,10 @@ BCZ_END
 SLV_END0
         )
         SLV=$(tr -d '\n' <<< "$SLV")
-
         for ((t=0; t<${#TSs[@]}; t++)); do
           TS=${TSs[t]}
           SCH=${SCHs[t]}
-
           TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_n%04d_l1" $VAR $DIM $TS $N)
-
           sed "s|<!--title-->|<title>$TIT</title>|g;
                s|<!--var-->|<var>$VAR</var>|g;
                s|<!--dim-->|<dim>$DIM</dim>|g;
@@ -111,25 +99,18 @@ SLV_END0
                s|<!--BC Z Faces-->|$BCZ|g;
                s|<!--Solver-->|$SLV|g;
                /<!--AMR-->/d" heat_amr.template > $TIT.ups
-
         done
       fi
-
       for ((L=2; L<5-r; L++)); do
-
 # explicit with amr
-
         K=$(bc <<< "scale=12; ( $K / 4 )");
-
         if [[ $DIM -eq 3 ]]; then
           Fs=("${C2Fs[@]:0:2}")
         else
           Fs=("${C2Fs[@]}")
         fi
-
         for FCI in "${Fs[@]}"; do
           TIT=$(printf "heat_amr_%s_%1dd_fe_n%04d_l%1d_%s" $VAR $DIM $N $L ${FCI,,})
-
           AMR=$(cat << AMR_END0
 <!--__________________________________-->\n
     <AMR>\n
@@ -148,7 +129,6 @@ SLV_END0
 AMR_END0
           )
           AMR=$(tr -d '\n' <<< "$AMR")
-
           sed "s|<!--title-->|<title>$TIT</title>|g;
                s|<!--var-->|<var>$VAR</var>|g;
                s|<!--dim-->|<dim>$DIM</dim>|g;
@@ -161,15 +141,10 @@ AMR_END0
                s|<!--BC Z Faces-->|$BCZ|g;
                s|<!--AMR-->|$AMR|g; 
                /<!--Solver-->/d" heat_amr.template > $TIT.ups
-
         done
-
         if [ "$VAR" == "cc" ]; then
-
 # hypre with amr
-
           Fs=("${C2Fs[@]:0:2}")
-
           SLV=$(cat << SLV_END1
 <!--__________________________________-->\n
     <Solver type="hypre">\n
@@ -194,9 +169,7 @@ AMR_END0
 SLV_END1
           )
           SLV=$(tr -d '\n' <<< "$SLV")
-
           for FCI in "${Fs[@]}"; do
-
             AMR=$(cat << AMR_END1
 <!--__________________________________-->\n
     <AMR>\n
@@ -215,14 +188,10 @@ SLV_END1
 AMR_END1
             )
             AMR=$(tr -d '\n' <<< "$AMR")
-
             for ((t=0; t<${#TSs[@]}; t++)); do
-
               TS=${TSs[t]}
               SCH=${SCHs[t]}
-
               TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_n%04d_l%1d_%snew" $VAR $DIM $TS $N $L ${FCI,,})
-
               sed "s|<!--title-->|<title>$TIT</title>|g;
                    s|<!--var-->|<var>$VAR</var>|g;
                    s|<!--dim-->|<dim>$DIM</dim>|g;
@@ -235,17 +204,13 @@ AMR_END1
                    s|<!--BC Z Faces-->|$BCZ|g;
                    s|<!--AMR-->|$AMR|g;
                    s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
-
             done
           done
-
-# hyprefac with amr
-
+# hypre_sstruct with amr
           Fs=("${C2Fs[@]}")
-
           SLV=$(cat << SLV_END2
 <!--__________________________________-->\n
-    <Solver type="hyprefac" ndim="$DIM" >\n
+    <Solver type="hypre_sstruct" ndim="$DIM" >\n
        <Parameters variable="u">\n
           <solveFrequency>1</solveFrequency>\n
           <setupFrequency>0</setupFrequency>\n
@@ -264,9 +229,7 @@ AMR_END1
 SLV_END2
           )
           SLV=$(tr -d '\n' <<< "$SLV")
-
           for FCI in "${Fs[@]}"; do
-
             AMR=$(cat << AMR_END2
 <!--__________________________________-->\n
     <AMR>\n
@@ -285,14 +248,10 @@ SLV_END2
 AMR_END2
             )
             AMR=$(tr -d '\n' <<< "$AMR")
-
             for ((t=0; t<${#TSs[@]}; t++)); do
-
               TS=${TSs[t]}
               SCH=${SCHs[t]}
-
-              TIT=$(printf "heat_amr_%s_%1dd_%s_hyprefac_n%04d_l%1d_%s" $VAR $DIM $TS $N $L ${FCI,,})
-
+              TIT=$(printf "heat_amr_%s_%1dd_%s_hypre_sstruct_n%04d_l%1d_%s" $VAR $DIM $TS $N $L ${FCI,,})
               sed "s|<!--title-->|<title>$TIT</title>|g;
                    s|<!--var-->|<var>$VAR</var>|g;
                    s|<!--dim-->|<dim>$DIM</dim>|g;
@@ -305,7 +264,6 @@ AMR_END2
                    s|<!--BC Z Faces-->|$BCZ|g;
                    s|<!--AMR-->|$AMR|g;
                    s|<!--Solver-->|$SLV|g" heat_amr.template > $TIT.ups
-
             done
           done
         fi

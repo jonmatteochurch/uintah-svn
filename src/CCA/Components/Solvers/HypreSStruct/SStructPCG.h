@@ -48,10 +48,10 @@ protected:
 
     using SStruct = SStructImplementation<DIM, C2F>;
 
-    HYPRE_Solver solver;
-    HYPRE_Matrix A;
-    HYPRE_Vector b;
-    HYPRE_Vector x;
+    HYPRE_Solver & solver;
+    HYPRE_Matrix & A;
+    HYPRE_Vector & b; 
+    HYPRE_Vector & x;
 
     using SStruct::solver_initialized;
     using SStruct::guess_updated;
@@ -66,17 +66,15 @@ public: // STATIC MEMBERS
     SStructSolver (
         const GlobalDataP & gdata
     ) : SStruct ( gdata ),
-        solver ( ( HYPRE_Solver ) SStruct::solver ),
-        A ( ( HYPRE_Matrix ) SStruct::A ),
-        b ( ( HYPRE_Vector ) SStruct::b ),
-        x ( ( HYPRE_Vector ) SStruct::x )
+        solver ( (HYPRE_Solver &) SStruct::solver ),
+        A ( (HYPRE_Matrix &) SStruct::A ),
+        b ( (HYPRE_Vector &) SStruct::b ),
+        x ( (HYPRE_Vector &) SStruct::x )
     {
-        std::cout << "construct" << __FILE__ << ":" << __LINE__ << std::endl;
     }
 
     virtual ~SStructSolver()
     {
-        std::cout << "destruct" << __FILE__ << ":" << __LINE__ << std::endl;
         solverFinalize();
     }
 
@@ -86,7 +84,6 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        std::cout << "solverInitialize" << __FILE__ << ":" << __LINE__ << std::endl;
         ASSERT ( !solver_initialized );
 
         HYPRE_SStructPCGCreate ( comm, & ( SStruct::solver ) );
@@ -117,7 +114,6 @@ public: // STATIC MEMBERS
     solverUpdate (
     ) override
     {
-        std::cout << "solverUpdate" << __FILE__ << ":" << __LINE__ << std::endl;
         HYPRE_PCGSetup ( solver, A, b, x );
     }
 
@@ -126,7 +122,6 @@ public: // STATIC MEMBERS
         SolverOutput * out
     ) override
     {
-        std::cout << "solve" << __FILE__ << ":" << __LINE__ << std::endl;
         HYPRE_PCGSolve ( solver, A, b, x );
         HYPRE_PCGGetNumIterations ( solver, &out->num_iterations );
         HYPRE_PCGGetFinalRelativeResidualNorm ( solver, &out->res_norm );
@@ -141,7 +136,6 @@ protected:
     solverFinalize()
     override
     {
-        std::cout << "solverFinalize" << __FILE__ << ":" << __LINE__ << std::endl;
         if ( solver_initialized ) HYPRE_SStructPCGDestroy ( SStruct::solver );
         solver_initialized = false;
     }
@@ -166,12 +160,10 @@ public: // STATIC MEMBERS
     ) : SStructSolver<S::PCG, DIM, C2F> ( gdata ),
         precond_solver ( nullptr )
     {
-        std::cout << "construct" << __FILE__ << ":" << __LINE__ << std::endl;
     }
 
     virtual ~SStructSolver()
     {
-        std::cout << "destruct" << __FILE__ << ":" << __LINE__ << std::endl;
     }
 
     virtual void
@@ -180,7 +172,6 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        std::cout << "solverInitialize" << __FILE__ << ":" << __LINE__ << std::endl;
         PSolver::solverInitialize();
         precondInitialize();
     }
@@ -194,7 +185,6 @@ protected:
     ) override
 
     {
-        std::cout << "precondFinalize" << __FILE__ << ":" << __LINE__ << std::endl;
         HYPRE_PCGSetPrecond ( PSolver::solver,
                               ( HYPRE_PtrToSolverFcn ) HYPRE_SStructDiagScale,
                               ( HYPRE_PtrToSolverFcn ) HYPRE_SStructDiagScaleSetup,

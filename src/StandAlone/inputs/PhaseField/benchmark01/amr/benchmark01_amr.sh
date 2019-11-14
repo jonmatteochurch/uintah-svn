@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-
 VARs=(cc nc)
 EPSs=(0.2 0.1 0.05)
 MXTs=(50 220 850)
@@ -9,7 +8,6 @@ Rs=(64 128 256 512)
 Pe=4
 TSs=(si0)
 SCHs=(semi_implicit_0)
-
 for VAR in ${VARs[@]}; do
   for ((e=0; e<${#EPSs[@]}; e++)); do
     EPS=${EPSs[e]}
@@ -19,16 +17,12 @@ for VAR in ${VARs[@]}; do
       N=$(( 16 * R )) 
       M=$(( 2 * Pe * R ))
       K=$(bc <<< "scale=12; ( 1 / $M )");
-
       ONE="[1,1,0]"
       TWO="[2,2,1]"
       SXT="[16,16,1]"
       RES="[$N,$N,1.]"
-
 # explicit no amr
-
       TIT=$(printf "benchmark01_amr_eps_%1.2f_%s_fe_n%04d_l1" $EPS $VAR $N)
-
       sed "s|<!--title-->|<title>$TIT</title>|g;
            s|<!--var-->|<var>$VAR</var>|g;
            s|<!--delt-->|<delt>$K</delt>|g;
@@ -41,11 +35,8 @@ for VAR in ${VARs[@]}; do
            s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
            /<!--AMR-->/d;
            /<!--Solver-->/d" benchmark01_amr.template > $TIT.ups
-
       if [ "$VAR" == "cc" ]; then
-
 # hypre no amr
-
         SLV=$(cat << SLV_END0
 <!--__________________________________-->\n
     <Solver type="hypre">\n
@@ -70,13 +61,10 @@ for VAR in ${VARs[@]}; do
 SLV_END0
         )
         SLV=$(tr -d '\n' <<< "$SLV")
-
         for ((t=0; t<${#TSs[@]}; t++)); do
           TS=${TSs[t]}
           SCH=${SCHs[t]}
-
           TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hypre_n%04d_l1" $EPS $VAR $TS $N)
-
           sed "s|<!--title-->|<title>$TIT</title>|g;
                s|<!--var-->|<var>$VAR</var>|g;
                s|<!--delt-->|<delt>1.</delt>|g;
@@ -89,19 +77,13 @@ SLV_END0
                s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
                s|<!--Solver-->|$SLV|g;
                /<!--AMR-->/d" benchmark01_amr.template > $TIT.ups
-
         done
       fi
-
       for ((L=2; L<6-r; L++)); do
-
 # explicit with amr
-
         K=$(bc <<< "scale=12; ( $K / 2 )");
-
         for FCI in "${C2Fs[@]}"; do
           TIT=$(printf "benchmark01_amr_eps%1.2f_%s_fe_n%04d_l%1d_%s" $EPS $VAR $N $L ${FCI,,})
-
           AMR=$(cat << AMR_END0
 <!--__________________________________-->\n
     <AMR>\n
@@ -120,7 +102,6 @@ SLV_END0
 AMR_END0
           )
           AMR=$(tr -d '\n' <<< "$AMR")
-
           sed "s|<!--title-->|<title>$TIT</title>|g;
                s|<!--var-->|<var>$VAR</var>|g;
                s|<!--delt-->|<delt>$K</delt>|g;
@@ -133,15 +114,10 @@ AMR_END0
                s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
                s|<!--AMR-->|$AMR|g; 
                /<!--Solver-->/d" benchmark01_amr.template > $TIT.ups
-
         done
-
         if [ "$VAR" == "cc" ]; then
-
 # hypre with amr
-
           Fs=("${C2Fs[@]:0:2}")
-
           SLV=$(cat << SLV_END1
 <!--__________________________________-->\n
     <Solver type="hypre">\n
@@ -166,9 +142,7 @@ AMR_END0
 SLV_END1
           )
           SLV=$(tr -d '\n' <<< "$SLV")
-
           for FCI in "${Fs[@]}"; do
-
             AMR=$(cat << AMR_END1
 <!--__________________________________-->\n
     <AMR>\n
@@ -187,14 +161,10 @@ SLV_END1
 AMR_END1
             )
             AMR=$(tr -d '\n' <<< "$AMR")
-
             for ((t=0; t<${#TSs[@]}; t++)); do
-
               TS=${TSs[t]}
               SCH=${SCHs[t]}
-
               TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hypre_n%04d_l%1d_%snew" $EPS $VAR $TS $N $L ${FCI,,})
-
               sed "s|<!--title-->|<title>$TIT</title>|g;
                    s|<!--var-->|<var>$VAR</var>|g;
                    s|<!--delt-->|<delt>1.</delt>|g;
@@ -207,17 +177,13 @@ AMR_END1
                    s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
                    s|<!--AMR-->|$AMR|g;
                    s|<!--Solver-->|$SLV|g" benchmark01_amr.template > $TIT.ups
-
             done
           done
-
-# hyprefac with amr
-
+# hypre_sstruct with amr
           Fs=("${C2Fs[@]}")
-
           SLV=$(cat << SLV_END2
 <!--__________________________________-->\n
-    <Solver type="hyprefac" ndim="2" >\n
+    <Solver type="hypre_sstruct" ndim="2" >\n
        <Parameters variable="u">\n
           <solveFrequency>1</solveFrequency>\n
           <setupFrequency>0</setupFrequency>\n
@@ -236,9 +202,7 @@ AMR_END1
 SLV_END2
           )
           SLV=$(tr -d '\n' <<< "$SLV")
-
           for FCI in "${Fs[@]}"; do
-
             AMR=$(cat << AMR_END2
 <!--__________________________________-->\n
     <AMR>\n
@@ -257,14 +221,10 @@ SLV_END2
 AMR_END2
             )
             AMR=$(tr -d '\n' <<< "$AMR")
-
             for ((t=0; t<${#TSs[@]}; t++)); do
-
               TS=${TSs[t]}
               SCH=${SCHs[t]}
-
-              TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hyprefac_n%04d_l%1d_%s" $EPS $VAR $TS $N $L ${FCI,,})
-
+              TIT=$(printf "benchmark01_amr_eps%1.2f_%s_%s_hypre_sstruct_n%04d_l%1d_%s" $EPS $VAR $TS $N $L ${FCI,,})
               sed "s|<!--title-->|<title>$TIT</title>|g;
                    s|<!--var-->|<var>$VAR</var>|g;
                    s|<!--delt-->|<delt>1.</delt>|g;
@@ -277,7 +237,6 @@ AMR_END2
                    s|<!--outputInterval-->|<outputInterval>$MXT</outputInterval>|g;
                    s|<!--AMR-->|$AMR|g;
                    s|<!--Solver-->|$SLV|g" benchmark01_amr.template > $TIT.ups
-
             done
           done
         fi

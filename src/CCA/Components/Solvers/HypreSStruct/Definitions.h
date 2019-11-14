@@ -25,7 +25,7 @@
 #ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
 #define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
 
-#define PRINTSYSTEM 1
+// #define PRINTSYSTEM 0
 
 #include <HYPRE.h>
 

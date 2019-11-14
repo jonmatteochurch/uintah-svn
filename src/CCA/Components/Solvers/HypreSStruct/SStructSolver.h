@@ -60,12 +60,10 @@ public: // STATIC MEMBERS
     ) : PSolver ( gdata ),
         precond_solver ( gdata )
     {
-        std::cout << "construct" << __FILE__ << ":" << __LINE__ << std::endl;
     }
 
     virtual ~SStructSolver()
     {
-        std::cout << "destruct" << __FILE__ << ":" << __LINE__ << std::endl;
         precondFinalize();
     }
 
@@ -75,7 +73,6 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        std::cout << "solverInitialize" << __FILE__ << ":" << __LINE__ << std::endl;
         PSolver::solverInitialize ( comm, params );
         precondInitialize( comm, params );
     }
@@ -86,7 +83,6 @@ protected:
     solverFinalize (
     ) override
     {
-        std::cout << "solverFinalize" << __FILE__ << ":" << __LINE__ << std::endl;
         PSolver::solverFinalize();
         precondFinalize();
     }
@@ -99,7 +95,6 @@ protected:
         const SolverParams * params
     ) override
     {
-        std::cout << "precondInitialize" << __FILE__ << ":" << __LINE__ << std::endl;
         precond_solver.solverInitialize ( comm, params );
         PSolver::SetPrecond ( PSolver::solver, Precond::precond, Precond::precond_setup, precond_solver );
     }
@@ -108,7 +103,6 @@ protected:
     precondFinalize (
     ) override
     {
-        std::cout << "precondFinalize" << __FILE__ << ":" << __LINE__ << std::endl;
         precond_solver.solverFinalize();
     }
 };

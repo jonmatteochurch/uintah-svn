@@ -29,9 +29,7 @@
 
 #include <CCA/Components/Solvers/HypreSStruct/AdditionalEntriesP.h>
 #include <CCA/Components/Solvers/HypreSStruct/AdditionalEntries.h>
-// #include <CCA/Components/Solvers/HypreSStruct/GlobalDataP.h>
 #include <CCA/Components/Solvers/HypreSStruct/SStructInterfaceP.h>
-// #include <CCA/Components/Solvers/HypreSStruct/PartDataP.h>
 #include <CCA/Components/Solvers/HypreSStruct/GlobalData.h>
 #include <CCA/Components/Solvers/HypreSStruct/PartData.h>
 #include <CCA/Components/Solvers/HypreSStruct/SolverFactory.h>
@@ -41,16 +39,9 @@
 #include <CCA/Components/Solvers/SolverCommon.h>
 
 #include <Core/Grid/Variables/PerPatch.h> // must be included after GlobalDataP/SolverStructP/AdditionalEntriesP where swapbytes override is defined
-// #include <Core/Grid/Variables/SoleVariable.h> // must be included after GlobalDataP/SolverStructP/AdditionalEntriesP where swapbytes override is defined
-// #include <Core/Grid/Variables/CCVariable.h>
 #include <Core/Grid/DbgOutput.h>
-// #include <Core/Util/Factory/Base.h>
 #include <Core/Util/Timers/Timers.hpp>
 #include <Core/Exceptions/ConvergenceFailure.h>
-
-// #include <string>
-// #include <cstddef>
-// #include <functional>
 
 /**
  *  @class  HypreSStruct::Solver
@@ -65,8 +56,8 @@ namespace Uintah
 namespace HypreSStruct
 {
 
-static constexpr bool dbg_doing = true;
-static constexpr bool dbg_assembling = true;
+static constexpr bool dbg_doing = false;
+static constexpr bool dbg_assembling = false;
 extern DebugStream cout_doing;
 
 template < int DIM >
@@ -661,6 +652,11 @@ private:
                 sstruct_interface->guessUpdate ( &guess );
             }
 
+            if ( do_setup || restart )
+            {
+                sstruct_interface->assemble();
+            }
+
             if ( do_update || restart )
             {
                 DOUT ( dbg_assembling, rank << "   hypre solver update" );
@@ -684,7 +680,7 @@ private:
             DOUT ( dbg_assembling, rank << "   hypre solve" );
             sstruct_interface->solve ( &out );
 
-#if PRINTSYSTEM
+#ifdef PRINTSYSTEM
             //__________________________________
             //   Debugging
             std::ostringstream sname;

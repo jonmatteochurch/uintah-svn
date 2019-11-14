@@ -132,10 +132,14 @@ public:
     ) = 0;
 
     virtual void
+    assemble (
+    ) = 0;
+
+    virtual void
     solverUpdate (
     ) = 0;
 
-#if PRINTSYSTEM
+#ifdef PRINTSYSTEM
     virtual void
     printSystem (
         std::string * fname

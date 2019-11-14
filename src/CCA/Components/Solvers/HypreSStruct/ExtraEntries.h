@@ -27,6 +27,8 @@
 
 #include <CCA/Components/Solvers/HypreSStruct/ExtraValues.h>
 
+#include <vector>
+
 namespace Uintah
 {
 namespace HypreSStruct
@@ -211,6 +213,13 @@ class ExtraEntries
     std::map< Index, std::list<ExtraValue *> > m_extra_entries;
 
 public:
+    ~ExtraEntries()
+    {
+        for ( const std::pair< Index, std::list<ExtraValue *> > & entry: m_extra_entries )
+            for ( ExtraValue * value: entry.second )
+                delete value;
+    }
+
     bool
     emplace_back (
         const Index & ind,

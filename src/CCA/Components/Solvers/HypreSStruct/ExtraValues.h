@@ -26,6 +26,8 @@
 #define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_ExtraValues_h
 
 #include <CCA/Components/Solvers/HypreSStruct/ExtraIndices.h>
+#include <CCA/Components/Solvers/HypreSStruct/SStructStencil.h>
+#include <Core/Grid/Variables/CCVariable.h>
 
 namespace Uintah
 {
@@ -35,6 +37,8 @@ namespace HypreSStruct
 class ExtraValue
 {
 public:
+    virtual ~ExtraValue() = default;
+
     virtual double
     value (
         constCCVariable<Stencil7> * stencil_entries,
@@ -59,12 +63,13 @@ public:
         index ( index.index() ),
         entry ( SStructStencil<DIM>::entry[index.rank()] ),
         weight ( weight )
-    {}
+    {
+    }
 
     virtual double
     value (
         constCCVariable<Stencil7> * stencil_entries,
-        AdditionalEntries ** additional_entries
+        AdditionalEntries ** /*additional_entries*/
     ) const override
     {
         return weight * stencil_entries[box][index][entry];
@@ -90,7 +95,7 @@ public:
     virtual
     double
     value (
-        constCCVariable<Stencil7> * stencil_entries,
+        constCCVariable<Stencil7> * /*stencil_entries*/,
         AdditionalEntries ** additional_entries
     ) const override
     {
