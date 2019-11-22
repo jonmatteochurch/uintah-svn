@@ -157,6 +157,17 @@ struct DWInterface
     {
         return detail::dw_interface1<V, DIM>::find_point ( p, pt, id );
     }
+
+
+    template <VarType V = VAR>
+    static inline bool
+    contains (
+        const Level * l,
+        const IntVector & id
+    )
+    {
+        return detail::dw_interface1<V, DIM>::contains ( l, id );
+    }
 }; // struct DWInterface
 
 } // namespace PhaseField

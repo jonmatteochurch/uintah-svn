@@ -94,10 +94,10 @@ SolverFactory::create (
     if ( !interface_creator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + impl + "'", __FILE__, __LINE__ ) );
 
     if ( ndim == "2" )
-        return scinew Solver<2> ( myWorld, std::move ( interface_creator ) );
+        return scinew Solver<2> ( myWorld, std::stoi(c2f), std::move ( interface_creator ) );
 
     if ( ndim == "3" )
-        return scinew Solver<3> ( myWorld, std::move ( interface_creator ) );
+        return scinew Solver<3> ( myWorld, std::stoi(c2f), std::move ( interface_creator ) );
 
     SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Solver with ndim='" + ndim + "'", __FILE__, __LINE__ ) );
     return nullptr;

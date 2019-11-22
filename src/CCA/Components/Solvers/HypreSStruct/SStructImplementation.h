@@ -240,7 +240,7 @@ protected:
         const double & weight
     )
     {
-        AddIndex ind { -1, std::get<1> ( add ), std::get<2> ( add ), refined_index };
+        AddIndex ind { -1, std::get<1> ( add ), std::get<2> ( add ) + 1, refined_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
         int & part     = std::get<2> ( ind );

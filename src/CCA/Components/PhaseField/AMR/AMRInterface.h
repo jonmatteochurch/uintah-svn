@@ -32,6 +32,7 @@
 #define Packages_Uintah_CCA_Components_PhaseField_AMR_AMRInterface_h
 
 #include <CCA/Components/PhaseField/AMR/detail/amr_interface0.h>
+#include <CCA/Components/PhaseField/DataWarehouse/detail/dw_interface1.h>
 #include <CCA/Components/PhaseField/Util/Definitions.h>
 
 namespace Uintah
@@ -88,6 +89,43 @@ struct AMRInterface
     )
     {
         return detail::amr_interface0<V>::get_finer ( l, i );
+    }
+
+    template <VarType V = VAR>
+    static inline typename std::enable_if<V==CC, bool>::type
+    is_refined (
+        const Level * l,
+        const Patch * p,
+        const IntVector & i
+    )
+    {
+        return l->hasFinerLevel() && l->getFinerLevel()->containsCell ( l->mapCellToFiner ( i ) );
+    }
+
+    template <VarType V = VAR>
+    static inline typename std::enable_if<V==NC, bool>::type
+    is_refined (
+        const Level * l,
+        const Patch * p,
+        const IntVector & i
+    )
+    {
+        if ( !l->hasFinerLevel() ) return false;
+
+        IntVector cell ( i );
+        IntVector low = p->getCellLowIndex();
+        IntVector high = p->getCellHighIndex();
+
+        for ( size_t i = 0; i < DIM; ++i )
+            if ( cell[i] == low[i] )
+                cell[i] = low[i] + 1;
+            else if ( cell[i] == high[i] )
+                cell[i] = high[i] - 1;
+        for ( size_t i = DIM; i < 3; ++i )
+            if ( cell[i] == high[i] )
+                cell[i] = high[i] - 1;
+
+        return l->getFinerLevel()->containsCell ( l->mapCellToFiner ( cell ) );
     }
 
 }; // struct AMRInterface

@@ -125,11 +125,19 @@ ifeq ($(HAVE_HYPRE),yes)
     $(SRCDIR)/AMRFDViewScalarProblemCCP5FC1New-bld.cc \
     $(SRCDIR)/AMRFDViewScalarProblemCCP7FC0New-bld.cc \
     $(SRCDIR)/AMRFDViewScalarProblemCCP7FC1New-bld.cc \
+    $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FC0New-bld.cc \
+    $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FC1New-bld.cc \
+    $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC0New-bld.cc \
+    $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC1New-bld.cc \
 
   BLDSRCS += \
     $(BLDDIR)/AMRFDViewScalarProblemCCP5FC0New-bld.cc \
     $(BLDDIR)/AMRFDViewScalarProblemCCP5FC1New-bld.cc \
     $(BLDDIR)/AMRFDViewScalarProblemCCP7FC0New-bld.cc \
     $(BLDDIR)/AMRFDViewScalarProblemCCP7FC1New-bld.cc \
+    $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FC0New-bld.cc \
+    $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FC1New-bld.cc \
+    $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC0New-bld.cc \
+    $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC1New-bld.cc \
 
 endif # HAVE_HYPRE

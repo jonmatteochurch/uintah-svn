@@ -113,7 +113,12 @@
       <min_patch_size>[[16,16,1]]</min_patch_size>
     </Regridder>
     <FineCoarseInterfaces>
-        </FineCoarseInterfaces>
+      <FCIType id="0" label="u" var="FC1New"/>
+      <FCIType id="0" label="ux" var="FC1New"/>
+      <FCIType id="0" label="uy" var="FC1New"/>
+      <FCIType id="0" label="uxx" var="FC1New"/>
+      <FCIType id="0" label="uyy" var="FC1New"/>
+    </FineCoarseInterfaces>
   </AMR>
   <!--__________________________________-->
   <Solver type="hypre">

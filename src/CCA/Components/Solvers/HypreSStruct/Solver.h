@@ -97,11 +97,15 @@ private:
 
     double m_moving_average;
 
+    const Ghost::GhostType gtype;
+    const int gnum;
+
     SStructInterfaceFactory::FactoryMethod create_sstruct_interface;
 
 public:
     Solver (
         const ProcessorGroup * myworld,
+        const int & ghosts,
         SStructInterfaceFactory::FactoryMethod && sstruct_interface_creator
     )
         : SolverCommon ( myworld )
@@ -110,6 +114,8 @@ public:
         , m_hypre_sstruct_interface_label ()
         , m_params ( scinew SolverParams() )
         , m_moving_average ( 0. )
+        , gtype ( ghosts ? Ghost::AroundCells : Ghost::None )
+        , gnum ( ghosts )
         , create_sstruct_interface ( sstruct_interface_creator )
     {
     }
@@ -148,16 +154,16 @@ public:
 
                 int cSolverType;
                 int relaxType;
-                ASSERTMSG ( param_ps->get ( "max_levels",    m_params->max_levels ),   "HypreSStruct::Solver ERROR. Missing parameter: max_level" );
-                param_ps->getWithDefault ( "maxiterations", m_params->max_iter,       -1 );
+                ASSERTMSG( param_ps->get ( "max_levels",    m_params->max_levels ),   "HypreSStruct::Solver ERROR. Missing parameter: max_level" );
+                param_ps->getWithDefault ( "maxiterations", m_params->max_iter,       -1  );
                 param_ps->getWithDefault ( "tolerance",     m_params->tol,            -1. );
-                param_ps->getWithDefault ( "rel_change",    m_params->rel_change,     -1 );
-                param_ps->getWithDefault ( "relax_type",    relaxType,                -1 );
+                param_ps->getWithDefault ( "rel_change",    m_params->rel_change,     -1  );
+                param_ps->getWithDefault ( "relax_type",    relaxType,                -1  );
                 param_ps->getWithDefault ( "weight",        m_params->weight,         -1. );
-                param_ps->getWithDefault ( "npre",          m_params->num_pre_relax,  -1 );
-                param_ps->getWithDefault ( "npost",         m_params->num_post_relax, -1 );
-                param_ps->getWithDefault ( "csolver_type",  cSolverType,              -1 );
-                param_ps->getWithDefault ( "logging",       m_params->logging,        -1 );
+                param_ps->getWithDefault ( "npre",          m_params->num_pre_relax,  -1  );
+                param_ps->getWithDefault ( "npost",         m_params->num_post_relax, -1  );
+                param_ps->getWithDefault ( "csolver_type",  cSolverType,              -1  );
+                param_ps->getWithDefault ( "logging",       m_params->logging,        -1  );
                 m_params->relax_type = ( RelaxType ) relaxType;
                 m_params->csolver_type = ( CoarseSolverType ) cSolverType;
 
@@ -253,7 +259,7 @@ public:
         task->computes ( global_data_label );
         task->computes ( sstruct_interface_label );
 
-        task->requires ( matrix_dw, m_stencil_entries_label, Ghost::None, 0 );
+        task->requires ( matrix_dw, m_stencil_entries_label, gtype, gnum );
         task->requires ( matrix_dw, m_additional_entries_label, (MaterialSubset*)nullptr );
 
         task->requires ( m_rhs_dw, m_rhs_label, Ghost::None, 0 );
@@ -558,7 +564,7 @@ private:
                     for ( int box = 0; box < nboxes; ++box )
                     {
                         const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
-                        matrix_dw->get ( stencil_entries[part][box], m_stencil_entries_label, material, patch, Ghost::None, 0 );
+                        matrix_dw->get ( stencil_entries[part][box], m_stencil_entries_label, material, patch, gtype, gnum );
                         rhs_dw->get ( rhs[part][box], m_rhs_label, material, patch, Ghost::None, 0 );
 
                         PerPatch<AdditionalEntriesP> patch_additional_entries;

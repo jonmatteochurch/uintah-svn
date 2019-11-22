@@ -77,7 +77,9 @@
     <save label="u"/>
     <save label="ux"/>
     <save label="uy"/>
+    <save label="uz"/>
     <save label="uxx"/>
     <save label="uyy"/>
+    <save label="uzz"/>
   </DataArchiver>
 </Uintah_specification>

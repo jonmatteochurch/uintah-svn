@@ -87,6 +87,7 @@ public:
                   )
         return res;
     }
+
 }; // class dw_interface1
 
 } // namespace detail

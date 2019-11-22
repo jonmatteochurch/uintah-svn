@@ -97,6 +97,8 @@
  */
 #define PhaseField_Heat_DBG_DERIVATIVES 0
 
+// #define EXACT_NORM 0
+
 namespace Uintah
 {
 namespace PhaseField
@@ -171,6 +173,14 @@ private: // STATIC MEMBERS
 #ifdef HAVE_HYPRE
     using _AdditionalEntries = PerPatch<HypreSStruct::AdditionalEntriesP>;
 #endif
+
+inline static bool gt ( const IntVector & a, const IntVector & b )
+{
+    for ( size_t D=0; D<DIM; ++D)
+        if (a[D]<=b[D] )
+            return false;
+    return true;
+}
 
 public: // STATIC MEMBERS
 
@@ -761,15 +771,22 @@ protected: // SCHEDULINGS
      * @param level grid level to be updated
      * @param sched scheduler to manage the tasks
      */
-    template < bool T >
+    template < bool MG, bool T >
     typename std::enable_if < !T, void >::type
     scheduleTimeAdvance_solution_error (
         const LevelP & level,
         SchedulerP & sched
     ) {};
 
-    template < bool T >
-    typename std::enable_if < T, void >::type
+    template < bool MG, bool T >
+    typename std::enable_if < T && !MG, void >::type
+    scheduleTimeAdvance_solution_error (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    template < bool MG, bool T >
+    typename std::enable_if < T && MG, void >::type
     scheduleTimeAdvance_solution_error (
         const LevelP & level,
         SchedulerP & sched
@@ -1005,8 +1022,18 @@ protected: // TASKS
      * @param dw_old DataWarehouse for previous timestep
      * @param dw_new DataWarehouse to be initialized
      */
-    template < bool T >
-    typename std::enable_if<T, void>::type
+    template < bool MG, bool T >
+    typename std::enable_if < T && !MG, void >::type
+    task_time_advance_dbg_derivatives_error (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    template < bool MG, bool T >
+    typename std::enable_if < T && MG, void >::type
     task_time_advance_dbg_derivatives_error (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
@@ -1254,7 +1281,8 @@ protected: // TASKS
      * @param dw_old DataWarehouse for previous timestep
      * @param dw_new DataWarehouse to be initialized
      */
-    void
+    template < bool MG, bool T >
+    typename std::enable_if < T && !MG, void >::type
     task_time_advance_solution_error (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
@@ -1263,6 +1291,15 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    template < bool MG, bool T >
+    typename std::enable_if < T && MG, void >::type
+    task_time_advance_solution_error (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
     /**
      * @brief Refine solution task
      *
@@ -1387,7 +1424,27 @@ protected: // IMPLEMENTATIONS
      * @param[out] error_normH10 L2-norm of the solution 1st order derivatives error vector
      * @param[out] error_normH20 L2-norm of the solution 2nd order derivatives error vector
      */
-    void
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    time_advance_dbg_derivatives_error (
+        const IntVector & id,
+        const Patch * patch,
+        const double & L,
+        const double & t,
+        const View < VectorField<const double, DIM> > & du,
+        const View < VectorField<const double, DIM> > & ddu,
+        View < VectorField<double, DIM> > & epsilon_du,
+        View < VectorField<double, DIM> > & epsilon_ddu,
+        View < VectorField<double, DIM> > & error_du,
+        View < VectorField<double, DIM> > & error_ddu,
+        double & u_norm2_H10,
+        double & u_norm2_H20,
+        double & error_norm2_H10,
+        double & error_norm2_H20
+    );
+
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
     time_advance_dbg_derivatives_error (
         const IntVector & id,
         const Patch * patch,
@@ -1584,9 +1641,24 @@ protected: // IMPLEMENTATIONS
      * @param[out] error_norm2_L2 square of L2-norm (global) of the solution error vector
      *
      */
-    void
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
     time_advance_solution_error (
-        const IntVector & id_finest,
+        const IntVector & id,
+        const Patch * patch,
+        const double & L,
+        const double & t,
+        const View < ScalarField<const double> > & u,
+        View < ScalarField<double> > & epsilon_u,
+        View < ScalarField<double> > & error_u,
+        double & u_norm2_L2,
+        double & error_norm2_L2
+    );
+
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    time_advance_solution_error (
+        const IntVector & id,
         const Patch * patch,
         const Patch * patch_finest,
         const double & L,
@@ -1649,8 +1721,7 @@ protected: // IMPLEMENTATIONS
         const IntVector id,
         FDView < ScalarField<const double>, STN > & u,
         View < ScalarField<int> > & refine_flag,
-        bool & refine_patch// SCHEDULINGS
-
+        bool & refine_patch
     );
 
     /**
@@ -1938,6 +2009,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleRestartInitialize (
     SchedulerP & sched
 )
 {
+    DOUTR ( dbg_heat_scheduling, "scheduleRestartInitialize " );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -1947,6 +2019,8 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleComputeStableTimeStep (
     SchedulerP & sched
 )
 {
+    DOUTR ( dbg_heat_scheduling, "scheduleComputeStableTimeStep " );
+
     Task * task = scinew Task ( "Heat::task_compute_stable_timestep ", this, &Heat::task_compute_stable_timestep );
     if ( TST ) task->requires ( Task::OldDW, u_norm2_L2_label );
     task->computes ( this->getDelTLabel(), level.get_rep() );
@@ -1968,7 +2042,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance (
 #endif
 
     scheduleTimeAdvance_solution ( level, sched );
-    scheduleTimeAdvance_solution_error<TST> ( level, sched );
+    scheduleTimeAdvance_solution_error<AMR, TST> ( level, sched );
 };
 
 #ifdef PhaseField_Heat_DBG_DERIVATIVES
@@ -2001,29 +2075,29 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives (
     SchedulerP & sched
 )
 {
+    if ( !level->hasCoarserLevel() )
+        return scheduleTimeAdvance_dbg_derivatives < !MG > ( level, sched );
 
-    if ( !level->hasCoarserLevel() ) scheduleTimeAdvance_dbg_derivatives < !MG > ( level, sched );
-    else
-    {
-        Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives", this, &Heat::task_time_advance_dbg_derivatives );
-        task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
-        task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-        task->requires ( Task::OldDW, u_label, FGT, FGN );
-        task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives " );
+
+    Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives", this, &Heat::task_time_advance_dbg_derivatives );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
 #ifdef HAVE_HYPRE
-        if ( ( time_scheme & TS::Implicit ) && ( this->m_solver->getName() == "hypre" ) )
-        {
-            task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-            task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-        }
-#endif // HAVE_HYPRE
-        for ( size_t D = 0; D < DIM; ++D )
-        {
-            task->computes ( du_label[D] );
-            task->computes ( ddu_label[D] );
-        }
-        sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+    if ( ( time_scheme & TS::Implicit ) && ( this->m_solver->getName() == "hypre" ) )
+    {
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     }
+#endif // HAVE_HYPRE
+    for ( size_t D = 0; D < DIM; ++D )
+    {
+        task->computes ( du_label[D] );
+        task->computes ( ddu_label[D] );
+    }
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -2036,7 +2110,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
 {
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error " );
 
-    Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<T> );
+    Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<MG, T> );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     for ( size_t D = 0; D < DIM; ++D )
     {
@@ -2062,29 +2136,27 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
     SchedulerP & sched
 )
 {
+    if ( level->getIndex() == this->m_regridder->maxLevels() - 1 )
+        return scheduleTimeAdvance_dbg_derivatives_error < !MG, T > ( level, sched );
+
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error " );
 
-    if ( !level->hasCoarserLevel() ) scheduleTimeAdvance_dbg_derivatives_error < !MG, T > ( level, sched );
-    else
+    Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<MG, T> );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    for ( size_t D = 0; D < DIM; ++D )
     {
-        Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<T> );
-        task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
-        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-        for ( size_t D = 0; D < DIM; ++D )
-        {
-            task->requires ( Task::NewDW, du_label[D], Ghost::None, 0 );
-            task->requires ( Task::NewDW, ddu_label[D], Ghost::None, 0 );
-            task->computes ( epsilon_du_label[D] );
-            task->computes ( epsilon_ddu_label[D] );
-            task->computes ( error_du_label[D] );
-            task->computes ( error_ddu_label[D] );
-        }
-        task->computes ( u_norm2_H10_label );
-        task->computes ( u_norm2_H20_label );
-        task->computes ( error_norm2_H10_label );
-        task->computes ( error_norm2_H20_label );
-        sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+        task->requires ( Task::NewDW, du_label[D], Ghost::None, 0 );
+        task->requires ( Task::NewDW, ddu_label[D], Ghost::None, 0 );
+        task->computes ( epsilon_du_label[D] );
+        task->computes ( epsilon_ddu_label[D] );
+        task->computes ( error_du_label[D] );
+        task->computes ( error_ddu_label[D] );
     }
+    task->computes ( u_norm2_H10_label );
+    task->computes ( u_norm2_H20_label );
+    task->computes ( error_norm2_H10_label );
+    task->computes ( error_norm2_H20_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 #endif
 
@@ -2150,20 +2222,18 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_forward_euler (
     SchedulerP & sched
 )
 {
+    if ( !level->hasCoarserLevel() )
+        return scheduleTimeAdvance_solution_forward_euler < !MG > ( level, sched );
+
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_forward_euler " );
 
-    if ( !level->hasCoarserLevel() )
-        scheduleTimeAdvance_solution_forward_euler < !MG > ( level, sched );
-    else
-    {
-        Task * task = scinew Task ( "Heat::task_time_advance_solution_forward_euler", this, &Heat::task_time_advance_solution_forward_euler );
-        task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
-        task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-        task->requires ( Task::OldDW, u_label, FGT, FGN );
-        task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-        task->computes ( u_label );
-        sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
-    }
+    Task * task = scinew Task ( "Heat::task_time_advance_solution_forward_euler", this, &Heat::task_time_advance_solution_forward_euler );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->computes ( u_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
 #ifdef HAVE_HYPRE
@@ -2316,9 +2386,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assem
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble " );
 
     if ( this->m_solver->getName() == "hypre" )
-    {
         scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre<AMR> ( level, sched );
-    }
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
 }
@@ -2484,8 +2552,8 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_update_dbg_matrix
 #endif // HAVE_HYPRE
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-template < bool T >
-typename std::enable_if < T, void >::type
+template < bool MG, bool T >
+typename std::enable_if < T && !MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_error (
     const LevelP & level,
     SchedulerP & sched
@@ -2493,7 +2561,29 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_error (
 {
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error " );
 
-    Task * task = scinew Task ( "Heat::task_time_advance_solution_error", this, &Heat::task_time_advance_solution_error );
+    Task * task = scinew Task ( "Heat::task_time_advance_solution_error", this, &Heat::task_time_advance_solution_error<MG, T> );
+    task->requires ( Task::NewDW, u_label, Ghost::None, 0 );
+    task->computes ( epsilon_u_label );
+    task->computes ( error_u_label );
+    task->computes ( u_norm2_L2_label );
+    task->computes ( error_norm2_L2_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG, bool T >
+typename std::enable_if < T && MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_error (
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    if ( level->getIndex() == this->m_regridder->maxLevels() - 1 )
+        return scheduleTimeAdvance_solution_error < !MG, T > ( level, sched );
+
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error " );
+
+    Task * task = scinew Task ( "Heat::task_time_advance_solution_error", this, &Heat::task_time_advance_solution_error<MG, T> );
     task->requires ( Task::NewDW, u_label, Ghost::None, 0 );
     task->computes ( epsilon_u_label );
     task->computes ( error_u_label );
@@ -2552,7 +2642,9 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleRefineInterface (
     bool /*need_old_coarse*/,
     bool /*need_new_coarse*/
 )
-{};
+{
+    DOUTR ( dbg_heat_scheduling, "scheduleRefineInterface " );
+};
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
@@ -2762,8 +2854,8 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives (
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-template < bool T >
-typename std::enable_if < T, void >::type
+template < bool MG, bool T >
+typename std::enable_if < T && !MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
 (
     const ProcessorGroup * myworld,
@@ -2783,9 +2875,72 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
     double simTime = simTimeVar;
 
+    BBox box;
+    getLevel ( patches )->getGrid()->getSpatialRange ( box );
+    Vector L = box.max() - box.min();
+    if ( L != box.max().asVector() ) L /= 2;
+
+    ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
+    ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
+        DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
+
+        DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
+        DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
+
+        DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
+        DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
+
+        BlockRange range ( this->get_range ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+
+        parallel_reduce_sum (
+            range,
+            [patch, &simTime, &L, &du, &ddu, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, simTime, L[0], du, ddu, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); },
+            norms
+        );
+    }
+
+    dw_new->put ( sum_vartype ( norms[0] ), u_norm2_H10_label );
+    dw_new->put ( sum_vartype ( norms[1] ), u_norm2_H20_label );
+    dw_new->put ( sum_vartype ( norms[2] ), error_norm2_H10_label );
+    dw_new->put ( sum_vartype ( norms[3] ), error_norm2_H20_label );
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG, bool T >
+typename std::enable_if < T && MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * /*matls*/,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_dbg_derivatives_error ====" );
+
     const Level * level = getLevel ( patches );
     Grid * grid = level->getGrid().get_rep();
     int index = level->getIndex();
+    int k = this->m_regridder->maxLevels() - index - 1;
+
+    std::array<double, 4> norms {{ 0., 0., 0., 0. }}; // { u_norm2_H10, u_norm2_H20, error_norm2_H10, error_norm2_H20 }
+
+    simTime_vartype simTimeVar;
+    dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+    double simTime = simTimeVar;
 
     BBox box;
     grid->getSpatialRange ( box );
@@ -2795,70 +2950,40 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
-    int k = 0;
-    if ( AMR && ( k = this->m_regridder->maxLevels() - index - 1 ) > 0 )
+    ReferenceGrid<DIM> grid_finest ( grid, index );
+    grid_finest.addFinestLevel ( k );
+    grid_finest.addReference();
+
+    for ( int p = 0; p < patches->size(); ++p )
     {
-        ReferenceGrid<DIM> grid_finest ( grid, index );
-        grid_finest.addFinestLevel ( k );
-        grid_finest.addReference();
+        const Patch * patch = patches->get ( p );
+        Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
 
-        for ( int p = 0; p < patches->size(); ++p )
-        {
-            const Patch * patch = patches->get ( p );
-            Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " (ReferenceGrid Patch: " << *patch_finest << " )" );
 
-            DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " (ReferenceGrid Patch: " << *patch_finest << " )" );
+        DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
+        DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
 
-            DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
-            DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
+        AMRInterpolator < HeatProblem<VAR, STN, TST>, DU, C2F > du_finest ( dw_new, du_label, this->getSubProblemsLabel(), material, patch_finest );
+        AMRInterpolator < HeatProblem<VAR, STN, TST>, DDU, C2F > ddu_finest ( dw_new, ddu_label, this->getSubProblemsLabel(), material, patch_finest );
 
-            AMRInterpolator < HeatProblem<VAR, STN, TST>, DU, C2F > du_finest ( dw_new, du_label, this->getSubProblemsLabel(), material, patch_finest );
-            AMRInterpolator < HeatProblem<VAR, STN, TST>, DDU, C2F > ddu_finest ( dw_new, ddu_label, this->getSubProblemsLabel(), material, patch_finest );
+        DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
+        DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
 
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
+        DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
+        DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
 
-            DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
-            DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
+        BlockRange range ( this->get_range ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
 
-            BlockRange range ( this->get_range ( patch ) );
-            DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
-
-            parallel_reduce_sum (
-                range,
-                [patch, patch_finest, &simTime, &L, &du, &ddu, &du_finest, &ddu_finest, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error ( {i, j, k}, patch, patch_finest, simTime, L[0], du, ddu, du_finest, ddu_finest, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); },
-                norms
-            );
-        }
-
-        grid_finest.removeReference();
+        parallel_reduce_sum (
+            range,
+            [patch, patch_finest, &simTime, &L, &du, &ddu, &du_finest, &ddu_finest, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, patch_finest, simTime, L[0], du, ddu, du_finest, ddu_finest, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); },
+            norms
+        );
     }
-    else
-    {
-        for ( int p = 0; p < patches->size(); ++p )
-        {
-            const Patch * patch = patches->get ( p );
-            DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
 
-            DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
-            DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
-
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
-            DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
-
-            DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
-            DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
-
-            BlockRange range ( this->get_range ( patch ) );
-            DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
-
-            parallel_reduce_sum (
-                range,
-                [patch, &simTime, &L, &du, &ddu, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error ( {i, j, k}, patch, patch, simTime, L[0], du, ddu, du, ddu, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); },
-                norms
-            );
-        }
-    }
+    grid_finest.removeReference();
 
     dw_new->put ( sum_vartype ( norms[0] ), u_norm2_H10_label );
     dw_new->put ( sum_vartype ( norms[1] ), u_norm2_H20_label );
@@ -3334,7 +3459,8 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_update_dbg_matrix
 #endif // HAVE_HYPRE
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-void
+template < bool MG, bool T >
+typename std::enable_if < T && !MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
 (
     const ProcessorGroup * myworld,
@@ -3354,6 +3480,58 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
     double simTime = simTimeVar;
 
+    BBox box;
+    getLevel ( patches )->getGrid()->getSpatialRange ( box );
+    Vector L = box.max() - box.min();
+    if ( L != box.max().asVector() ) L /= 2;
+
+    ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
+    ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
+
+        DWView < ScalarField<const double>, VAR, DIM > u ( dw_new, u_label, material, patch );
+
+        DWView < ScalarField<double>, VAR, DIM > epsilon_u ( dw_new, epsilon_u_label, material, patch );
+        DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
+
+        BlockRange range ( this->get_range ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+
+        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
+    }
+
+    dw_new->put ( sum_vartype ( norms[0] ), u_norm2_L2_label );
+    dw_new->put ( sum_vartype ( norms[1] ), error_norm2_L2_label );
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG, bool T >
+typename std::enable_if < T && MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * /*matls*/,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_error ====" );
+
+    std::array<double, 2> norms {{ 0., 0. }}; // { u_norm2_L2, error_norm2_L2 }
+
+    simTime_vartype simTimeVar;
+    dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+    double simTime = simTimeVar;
+
     const Level * level = getLevel ( patches );
     Grid * grid = level->getGrid().get_rep();
     int index = level->getIndex();
@@ -3366,52 +3544,32 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
-    int k = 0;
-    if ( AMR && ( k = this->m_regridder->maxLevels() - index - 1 ) > 0 )
+    int k = this->m_regridder->maxLevels() - index - 1;
+
+    ReferenceGrid<DIM> grid_finest ( grid, index );
+    grid_finest.addFinestLevel ( k );
+    grid_finest.addReference();
+
+    for ( int p = 0; p < patches->size(); ++p )
     {
-        ReferenceGrid<DIM> grid_finest ( grid, index );
-        grid_finest.addFinestLevel ( k );
-        grid_finest.addReference();
+        const Patch * patch = patches->get ( p );
+        Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
 
-        for ( int p = 0; p < patches->size(); ++p )
-        {
-            const Patch * patch = patches->get ( p );
-            Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
 
-            DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
+        DWView < ScalarField<const double>, VAR, DIM > u ( dw_new, u_label, material, patch );
+        AMRInterpolator < HeatProblem<VAR, STN, TST>, U, C2F > u_finest ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_finest );
 
-            DWView < ScalarField<const double>, VAR, DIM > u ( dw_new, u_label, material, patch );
-            AMRInterpolator < HeatProblem<VAR, STN, TST>, U, C2F > u_finest ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_finest );
+        DWView < ScalarField<double>, VAR, DIM > epsilon_u ( dw_new, epsilon_u_label, material, patch );
+        DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
 
-            DWView < ScalarField<double>, VAR, DIM > epsilon_u ( dw_new, epsilon_u_label, material, patch );
-            DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
+        BlockRange range ( this->get_range ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
 
-            BlockRange range ( this->get_range ( patch ) );
-            DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
-
-            parallel_reduce_sum ( range, [patch, patch_finest, &simTime, &L, &u, &u_finest, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, patch_finest, simTime, L[X], u, u_finest, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
-        }
-
-        grid_finest.removeReference();
+        parallel_reduce_sum ( range, [patch, patch_finest, &simTime, &L, &u, &u_finest, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, patch_finest, simTime, L[X], u, u_finest, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
     }
-    else
-    {
-        for ( int p = 0; p < patches->size(); ++p )
-        {
-            const Patch * patch = patches->get ( p );
-            DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
 
-            DWView < ScalarField<const double>, VAR, DIM > u ( dw_new, u_label, material, patch );
-
-            DWView < ScalarField<double>, VAR, DIM > epsilon_u ( dw_new, epsilon_u_label, material, patch );
-            DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
-
-            BlockRange range ( this->get_range ( patch ) );
-            DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
-
-            parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error ( {i, j, k}, patch, patch, simTime, L[X], u, u, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
-        }
-    }
+    grid_finest.removeReference();
 
     dw_new->put ( sum_vartype ( norms[0] ), u_norm2_L2_label );
     dw_new->put ( sum_vartype ( norms[1] ), error_norm2_L2_label );
@@ -3586,7 +3744,110 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives (
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-void
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
+    const IntVector & id,
+    const Patch * patch,
+    const double & t,
+    const double & L,
+    const View < VectorField<const double, DIM> > & du,
+    const View < VectorField<const double, DIM> > & ddu,
+    View < VectorField<double, DIM> > & epsilon_du,
+    View < VectorField<double, DIM> > & epsilon_ddu,
+    View < VectorField<double, DIM> > & error_du,
+    View < VectorField<double, DIM> > & error_ddu,
+    double & u_norm2_H10,
+    double & u_norm2_H20,
+    double & error_norm2_H10,
+    double & error_norm2_H20
+)
+{
+    const Level * level ( patch->getLevel() );
+
+    double a = M_PI_2 / L;
+    double e = a * a * alpha * static_cast<double> ( DIM );
+    double ut = exp ( -e * ( t + delt ) );
+    double duf[DIM], dduf[DIM], lapuf;
+    double edu[DIM], eddu[DIM], elapu;
+    double du2[] = { 0., 0., 0.}, lapu2 = 0.;
+    double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
+
+    Vector v ( this->get_position ( patch, id ).asVector() );
+
+#ifdef __INTEL_COMPILER
+    // BUG workaround
+    std::stringstream ss;
+    ss << v << std::endl;
+#endif
+
+    double ddu_ex = -a * ut;
+    double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
+    ddu_ex *= a;
+
+    for ( size_t i = 0; i < DIM; ++i )
+    {
+        double c = cos ( a * v[i] );
+        double s = sin ( a * v[i] );
+        du_ex[i] *= s;
+        ddu_ex *= c;
+        for ( size_t j = 0; j < i; ++j )
+            du_ex[j] *= c;
+        for ( size_t j = i + 1; j < DIM; ++j )
+            du_ex[j] *= c;
+    }
+
+    for ( size_t i = 0; i < DIM; ++i )
+    {
+        duf[i] = du[i][id];
+        dduf[i] = ddu[i][id];
+        epsilon_du[i][id] = edu[i] = duf[i] - du_ex[i];
+        epsilon_ddu[i][id] = eddu[i] = dduf[i] - ddu_ex;
+    }
+
+    double area = level->cellVolume();
+
+    if ( VAR == NC )
+        for ( size_t D = DIM; D < 3; ++D )
+            area *= .5;
+
+    lapuf = 0.;
+    elapu = 0.;
+    for ( size_t i = 0; i < DIM; ++i )
+    {
+#ifdef EXACT_NORM
+        lapuf += ddu_ex;
+#else
+        lapuf += dduf[i];
+#endif
+        elapu += eddu[i];
+#ifdef EXACT_NORM
+        du2[i] += area * du_ex[i] * du_ex[i];
+#else
+        du2[i] += area * duf[i] * duf[i];
+#endif
+        du_err2[i] += area * edu[i] * edu[i];
+        ddu_err2[i] += area * eddu[i] * eddu[i];
+    }
+
+    lapu2 += area * lapuf * lapuf;
+    lapu_err2 += area * elapu * elapu;
+
+    for ( size_t i = 0; i < DIM; ++i )
+    {
+        error_du[i][id] = sqrt ( du_err2[i] );
+        error_ddu[i][id] = sqrt ( ddu_err2[i] );
+        u_norm2_H10 += du2[i];
+        error_norm2_H10 += du_err2[i];
+    }
+
+    u_norm2_H20 += lapu2;
+    error_norm2_H20 += lapu_err2;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
     const IntVector & id,
     const Patch * patch,
@@ -3608,27 +3869,138 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 )
 {
     const Level * level ( patch->getLevel() );
-    const Level * level_finest = patch_finest->getLevel();
-    const GridP grid_tmp = level_finest->getGrid();
+    IntVector low = patch->getExtraCellLowIndex(-1) - 1;
+    IntVector high = patch->getCellHighIndex();
 
-    if ( level->hasFinerLevel() && level->getFinerLevel()->containsCell ( level->mapCellToFiner ( id ) ) )
+    if ( this->is_refined ( level, patch, id ) )
     {
-        for ( size_t i = 0; i < DIM; ++i )
+        if ( VAR == CC || gt (id, low ) )
+            for ( size_t i = 0; i < DIM; ++i )
+            {
+                epsilon_du[i][id] = 0.;
+                epsilon_ddu[i][id] = 0.;
+                error_du[i][id] = 0.;
+                error_ddu[i][id] = 0.;
+            }
+        else
         {
-            epsilon_du[i][id] = 0.;
-            epsilon_ddu[i][id] = 0.;
-            error_du[i][id] = 0.;
-            error_ddu[i][id] = 0.;
+            const Level * level_finest = patch_finest->getLevel();
+            const GridP grid_tmp = level_finest->getGrid();
+
+            double a = M_PI_2 / L;
+            double e = a * a * alpha * static_cast<double> ( DIM );
+            double ut = exp ( -e * ( t + delt ) );
+            double duf[DIM], dduf[DIM];
+            double edu[DIM], eddu[DIM];
+            double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.};
+
+            Vector v ( this->get_position ( patch, id ).asVector() );
+
+#ifdef __INTEL_COMPILER
+            // BUG workaround
+            std::stringstream ss;
+            ss << v << std::endl;
+#endif
+
+            double ddu_ex = -a * ut;
+            double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
+            ddu_ex *= a;
+
+            for ( size_t i = 0; i < DIM; ++i )
+            {
+                double c = cos ( a * v[i] );
+                double s = sin ( a * v[i] );
+                du_ex[i] *= s;
+                ddu_ex *= c;
+                for ( size_t j = 0; j < i; ++j )
+                    du_ex[j] *= c;
+                for ( size_t j = i + 1; j < DIM; ++j )
+                    du_ex[j] *= c;
+            }
+
+            for ( size_t i = 0; i < DIM; ++i )
+            {
+                epsilon_du[i][id] = du[i][id] - du_ex[i];
+                epsilon_ddu[i][id] = ddu[i][id] - ddu_ex;
+            }
+
+            IntVector refinement ( 1 );
+            for ( int i = level->getIndex() + 1; i <= level_finest->getIndex(); ++i )
+            {
+                auto l = grid_tmp ->getLevel ( i );
+                auto r = l->getRefinementRatio();
+                refinement = refinement * level_finest->getGrid()->getLevel ( i )->getRefinementRatio();
+            }
+
+            IntVector id_finest = id * refinement;
+            for ( size_t D = 0; D < DIM; ++D )
+                if ( id_finest[D] < 0 && refinement[D] > 1 )
+                    id_finest[D] += 1;
+
+            double area = level_finest->cellVolume();
+            IntVector offset, idf;
+
+            for ( size_t D = DIM; D < 3; ++D )
+                area *= .5;
+
+            for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
+                for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
+                    for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
+                    {
+                        idf = id_finest + offset;
+                        v = this->get_position ( patch_finest, idf ).asVector();
+
+#ifdef __INTEL_COMPILER
+                        // BUG workaround
+                        std::stringstream ss;
+                        ss << v << std::endl;
+#endif
+                        ddu_ex = -a * ut;
+                        du_ex[0] = du_ex[1] = du_ex[2] = ddu_ex;
+                        ddu_ex *= a;
+
+                        for ( size_t i = 0; i < DIM; ++i )
+                        {
+                            double c = cos ( a * v[i] );
+                            double s = sin ( a * v[i] );
+                            du_ex[i] *= s;
+                            ddu_ex *= c;
+                            for ( size_t j = 0; j < i; ++j )
+                                du_ex[j] *= c;
+                            for ( size_t j = i + 1; j < DIM; ++j )
+                                du_ex[j] *= c;
+                        }
+
+                        for ( size_t i = 0; i < DIM; ++i )
+                        {
+                            duf[i] = du_finest[i][idf];
+                            dduf[i] = ddu_finest[i][idf];
+                            edu[i] = duf[i] - du_ex[i];
+                            eddu[i] = dduf[i] - ddu_ex;
+                            du_err2[i] += area * edu[i] * edu[i];
+                            ddu_err2[i] += area * eddu[i] * eddu[i];
+                        }
+                    }
+
+            for ( size_t i = 0; i < DIM; ++i )
+            {
+                error_du[i][id] = sqrt ( du_err2[i] );
+                error_ddu[i][id] = sqrt ( ddu_err2[i] );
+            }
+
         }
     }
     else
     {
+        const Level * level_finest = patch_finest->getLevel();
+        const GridP grid_tmp = level_finest->getGrid();
+
         double a = M_PI_2 / L;
         double e = a * a * alpha * static_cast<double> ( DIM );
         double ut = exp ( -e * ( t + delt ) );
-        double duf, dduf, lapuf;
-        double edu, eddu, elapu;
-        double du2[] = { 0., 0., 0.}, ddu2[] = { 0., 0., 0.}, lapu2 = 0.;
+        double duf[DIM], dduf[DIM], lapuf;
+        double edu[DIM], eddu[DIM], elapu;
+        double du2[] = { 0., 0., 0.}, lapu2 = 0.;
         double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
 
         Vector v ( this->get_position ( patch, id ).asVector() );
@@ -3657,8 +4029,8 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
         for ( size_t i = 0; i < DIM; ++i )
         {
-            epsilon_du[i][id] = du_ex[i] - du[i][id];
-            epsilon_ddu[i][id] = ddu_ex - ddu[i][id];
+            epsilon_du[i][id] = du[i][id] - du_ex[i];
+            epsilon_ddu[i][id] = ddu[i][id] - ddu_ex;
         }
 
         IntVector refinement ( 1 );
@@ -3676,6 +4048,16 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
         double area = level_finest->cellVolume();
         IntVector offset, idf;
+
+        if ( VAR == NC )
+        {
+            for ( size_t D = 0; D < DIM; ++D )
+                if ( id[D] == high[D] )
+                    refinement[D] = 1;
+            for ( size_t D = DIM; D < 3; ++D )
+                area *= .5;
+        }
+
         for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
             for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
                 for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
@@ -3708,22 +4090,28 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
                     elapu = 0.;
                     for ( size_t i = 0; i < DIM; ++i )
                     {
-                        duf = du_finest[i][idf];
-                        dduf = ddu_finest[i][idf];
-                        lapuf += dduf;
-                        edu = duf - du_ex[i];
-                        eddu = dduf - ddu_ex;
-                        elapu += eddu;
-                        du2[i] += area * duf * duf;
-                        ddu2[i] += area * dduf * dduf;
-                        du_err2[i] += area * edu * edu;
-                        ddu_err2[i] += area * eddu * eddu;
+                        duf[i] = du_finest[i][idf];
+                        dduf[i] = ddu_finest[i][idf];
+                        edu[i] = duf[i] - du_ex[i];
+                        eddu[i] = dduf[i] - ddu_ex;
+#ifdef EXACT_NORM
+                        lapuf += ddu_ex;
+#else
+                        lapuf += dduf[i];
+#endif
+                        elapu += eddu[i];
+#ifdef EXACT_NORM
+                        du2[i] += area * du_ex[i] * du_ex[i];
+#else
+                        du2[i] += area * duf[i] * duf[i];
+#endif
+                        du_err2[i] += area * edu[i] * edu[i];
+                        ddu_err2[i] += area * eddu[i] * eddu[i];
                     }
                     lapu2 += area * lapuf * lapuf;
                     lapu_err2 += area * elapu * elapu;
                 }
 
-        area = level->cellVolume();
         for ( size_t i = 0; i < DIM; ++i )
         {
             error_du[i][id] = sqrt ( du_err2[i] );
@@ -3734,7 +4122,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
         u_norm2_H20 += lapu2;
         error_norm2_H20 += lapu_err2;
-
     }
 }
 #endif
@@ -3943,7 +4330,69 @@ void Heat<VAR, DIM, STN, AMR, TST>::time_advance_update_dbg_matrix
 #endif
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-void
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
+(
+    const IntVector & id,
+    const Patch * patch,
+    const double & t,
+    const double & L,
+    const View < ScalarField<const double> > & u,
+    View < ScalarField<double> > & epsilon_u,
+    View < ScalarField<double> > & error_u,
+    double & u_norm2_L2,
+    double & error_norm2_L2
+)
+{
+    const Level * level ( patch->getLevel() );
+
+    double a = M_PI_2 / L;
+    double e = a * a * alpha * static_cast<double> ( DIM );
+    double ut = exp ( -e * ( t + delt ) );
+    double uf;
+    double eu;
+    double u2 = 0.;
+    double u_err2 = 0.;
+
+    Vector v ( this->get_position ( patch, id ).asVector() );
+
+#ifdef __INTEL_COMPILER
+    // BUG workaround
+    std::stringstream ss;
+    ss << v << std::endl;
+#endif
+
+    double u_ex = ut;
+
+    for ( size_t i = 0; i < DIM; ++i )
+        u_ex *= cos ( a * v[i] );
+
+    uf = u[id];
+    epsilon_u[id] = eu = uf - u_ex;
+
+    double area = level->cellVolume();
+
+    if ( VAR == NC )
+        for ( size_t D = DIM; D < 3; ++D )
+            area *= .5;
+
+#ifdef EXACT_NORM
+    u2 += area * u_ex * u_ex;
+#else
+    u2 += area * uf * uf;
+#endif
+    u_err2 += area * eu * eu;
+
+    error_u[id] = sqrt ( u_err2 );
+
+    u_norm2_L2 += u2;
+    error_norm2_L2 += u_err2;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 (
     const IntVector & id,
@@ -3960,34 +4409,112 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 )
 {
     const Level * level ( patch->getLevel() );
-    const Level * level_finest = patch_finest->getLevel();
-    const GridP grid_tmp = level_finest->getGrid();
+    IntVector low = patch->getExtraCellLowIndex(-1) - 1;
+    IntVector high = patch->getCellHighIndex();
 
-    if ( level->hasFinerLevel() && level->getFinerLevel()->containsCell ( level->mapCellToFiner ( id ) ) )
+    if ( this->is_refined ( level, patch, id ) )
     {
-        epsilon_u[id] = 0;
-        error_u[id] = 0;
+        if ( VAR == CC || gt ( id, low ) )
+        {
+            epsilon_u[id] = 0;
+            error_u[id] = 0;
+        }
+        else
+        {
+            const Level * level_finest = patch_finest->getLevel();
+            const GridP grid_tmp = level_finest->getGrid();
+
+            double a = M_PI_2 / L;
+            double e = a * a * alpha * static_cast<double> ( DIM );
+            double ut = exp ( -e * ( t + delt ) );
+            double uf;
+            double eu;
+            double u_err2 = 0.;
+
+            Vector v ( this->get_position ( patch, id ).asVector() );
+
+#ifdef __INTEL_COMPILER
+            // BUG workaround
+            std::stringstream ss;
+            ss << v << std::endl;
+#endif
+            double u_ex = ut;
+
+            for ( size_t i = 0; i < DIM; ++i )
+                u_ex *= cos ( a * v[i] );
+
+            epsilon_u[id] = u[id] - u_ex;
+
+            IntVector refinement ( 1 );
+            for ( int i = level->getIndex() + 1; i <= level_finest->getIndex(); ++i )
+            {
+                auto l = grid_tmp ->getLevel ( i );
+                auto r = l->getRefinementRatio();
+                refinement = refinement * level_finest->getGrid()->getLevel ( i )->getRefinementRatio();
+            }
+
+            IntVector id_finest = id * refinement;
+            for ( size_t D = 0; D < DIM; ++D )
+                if ( id_finest[D] < 0 && refinement[D] > 1 )
+                    id_finest[D] += 1;
+
+            double area = level_finest->cellVolume();
+            IntVector offset, idf;
+
+            for ( size_t D = DIM; D < 3; ++D )
+                area *= .5;
+
+            for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
+                for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
+                    for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
+                    {
+                        idf = id_finest + offset;
+                        v = this->get_position ( patch_finest, idf ).asVector();
+
+#ifdef __INTEL_COMPILER
+                        // BUG workaround
+                        std::stringstream ss;
+                        ss << v << std::endl;
+#endif
+                        double u_ex = ut;
+
+                        for ( size_t i = 0; i < DIM; ++i )
+                            u_ex *= cos ( a * v[i] );
+
+                        uf = u_finest[idf];
+                        eu = uf - u_ex;
+                        u_err2 += area * eu * eu;
+                    }
+
+            error_u[id] = sqrt ( u_err2 );
+        }
     }
     else
     {
+        const Level * level_finest = patch_finest->getLevel();
+        const GridP grid_tmp = level_finest->getGrid();
+
         double a = M_PI_2 / L;
         double e = a * a * alpha * static_cast<double> ( DIM );
         double ut = exp ( -e * ( t + delt ) );
-        double uf, eu, u2 = 0., u_err2 = 0.;
+        double uf;
+        double eu;
+        double u2 = 0.;
+        double u_err2 = 0.;
 
-        Vector v ( this->get_position ( patch, id ) );
+        Vector v ( this->get_position ( patch, id ).asVector() );
 
 #ifdef __INTEL_COMPILER
         // BUG workaround
         std::stringstream ss;
         ss << v << std::endl;
 #endif
-
         double u_ex = ut;
+
         for ( size_t i = 0; i < DIM; ++i )
             u_ex *= cos ( a * v[i] );
 
-        epsilon_u[id] = u_ex - u[id];
+        epsilon_u[id] = u[id] - u_ex;
 
         IntVector refinement ( 1 );
         for ( int i = level->getIndex() + 1; i <= level_finest->getIndex(); ++i )
@@ -4004,6 +4531,16 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
         double area = level_finest->cellVolume();
         IntVector offset, idf;
+
+        if ( VAR == NC )
+        {
+            for ( size_t D = 0; D < DIM; ++D )
+                if ( id[D] == high[D] )
+                    refinement[D] = 1;
+            for ( size_t D = DIM; D < 3; ++D )
+                area *= .5;
+        }
+
         for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
             for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
                 for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
@@ -4016,19 +4553,22 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
                     std::stringstream ss;
                     ss << v << std::endl;
 #endif
+                    double u_ex = ut;
 
-                    u_ex = ut;
                     for ( size_t i = 0; i < DIM; ++i )
                         u_ex *= cos ( a * v[i] );
 
                     uf = u_finest[idf];
                     eu = uf - u_ex;
+#ifdef EXACT_NORM
+                    u2 += area * u_ex * u_ex;
+#else
                     u2 += area * uf * uf;
+#endif
                     u_err2 += area * eu * eu;
                 }
 
-        area = level->cellVolume();
-        error_u[id] = sqrt ( u_err2 / area );
+        error_u[id] = sqrt ( u_err2 );
 
         u_norm2_L2 += u2;
         error_norm2_L2 += u_err2;
@@ -4114,6 +4654,3 @@ Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_PhaseField_Applications_Heat_h
-
-
-
