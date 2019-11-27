@@ -105,7 +105,7 @@ namespace PhaseField
 {
 
 /// Debugging stream for component schedulings
-static constexpr bool dbg_heat_scheduling = false;
+static constexpr bool dbg_heat_scheduling = true;
 
 /**
  * @brief Heat PhaseField applications
@@ -2034,6 +2034,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance (
     SchedulerP & sched
 )
 {
+    WAIT_FOR_DEBUGGER();
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance " );
 
 #ifdef PhaseField_Heat_DBG_DERIVATIVES
@@ -2110,12 +2111,15 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
 {
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error " );
 
+    constexpr int IGN = C2F - 1;
+    constexpr Ghost::GhostType IGT = IGN ? VAR==CC ? Ghost::AroundCells : Ghost::AroundNodes : Ghost::None;
+
     Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<MG, T> );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     for ( size_t D = 0; D < DIM; ++D )
     {
-        task->requires ( Task::NewDW, du_label[D], Ghost::None, 0 );
-        task->requires ( Task::NewDW, ddu_label[D], Ghost::None, 0 );
+        task->requires ( Task::NewDW, du_label[D], IGT, IGN );
+        task->requires ( Task::NewDW, ddu_label[D], IGT, IGN  );
         task->computes ( epsilon_du_label[D] );
         task->computes ( epsilon_ddu_label[D] );
         task->computes ( error_du_label[D] );
@@ -2141,12 +2145,19 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
 
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error " );
 
+    constexpr int IGN = C2F - 1;
+    constexpr Ghost::GhostType IGT = IGN ? VAR==CC ? Ghost::AroundCells : Ghost::AroundNodes : Ghost::None;
+
+    int k = this->m_regridder->maxLevels() - level->getIndex() - 1;
+
     Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<MG, T> );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     for ( size_t D = 0; D < DIM; ++D )
     {
         task->requires ( Task::NewDW, du_label[D], Ghost::None, 0 );
         task->requires ( Task::NewDW, ddu_label[D], Ghost::None, 0 );
+        task->requires ( Task::NewDW, du_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+        task->requires ( Task::NewDW, ddu_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
         task->computes ( epsilon_du_label[D] );
         task->computes ( epsilon_ddu_label[D] );
         task->computes ( error_du_label[D] );
@@ -2338,7 +2349,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_backward_euler_assem
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct " );
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct", this, &Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2360,7 +2371,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_backward_euler_assem
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct " );
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct", this, &Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2474,7 +2485,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assem
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct " );
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -2496,7 +2507,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assem
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct " );
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
