@@ -128,6 +128,7 @@ private: // METHODS
         return view_coarse[id];
     }
 
+#ifdef HAVE_HYPRE
     Entries<V>
     coarse_entries (
         const IntVector & id
@@ -136,6 +137,7 @@ private: // METHODS
         const auto & view_coarse = *m_view_coarse;
         return view_coarse.entries(id);
     }
+#endif
 
     /**
      * @brief Compute required fine region
@@ -520,9 +522,11 @@ public: // VIEW METHODS
                w[1][1][1] * coarse_value ( n[1][1][1] );
     }
 
+#ifdef HAVE_HYPRE
     virtual Entries<typename std::remove_const<T>::type>
     entries (
         const IntVector & id_fine
+        Entries<V> r
     ) const override
     {
         IntVector id_coarse ( m_level_fine->mapCellToCoarser ( id_fine ) );
@@ -641,6 +645,7 @@ public: // VIEW METHODS
         res.simplify();
         return res;
     };
+#endif
 
 }; // class amr_interpolator <I1, D3>
 

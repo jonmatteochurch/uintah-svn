@@ -116,6 +116,7 @@ private: // METHODS
         return view_coarse[id];
     }
 
+#ifdef HAVE_HYPRE
     Entries<V>
     coarse_entries (
         const IntVector & id
@@ -124,6 +125,7 @@ private: // METHODS
         const auto & view_coarse = *m_view_coarse;
         return view_coarse.entries(id);
     }
+#endif
 
 protected: // COPY CONSTRUCTOR
 

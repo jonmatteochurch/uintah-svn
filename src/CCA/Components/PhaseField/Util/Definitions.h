@@ -39,6 +39,7 @@
 #include <sci_defs/kokkos_defs.h>
 #include <sci_defs/hypre_defs.h>
 
+#include <Core/Disclosure/TypeUtils.h>
 #include <Core/Grid/Patch.h>
 #include <Core/Grid/Ghost.h>
 
@@ -991,7 +992,7 @@ getTypeDescription()
  * @return corresponding MPI_Datatype enum value
  */
 template<typename T>
-static const MPI_Datatype
+static MPI_Datatype
 getMPIType()
 {
     return getTypeDescription<T>()->getMPIType();

@@ -34,7 +34,6 @@
 #include <CCA/Components/PhaseField/DataTypes/Problem.h>
 #include <CCA/Components/PhaseField/BoundaryConditions/BCInterface.h>
 #include <CCA/Components/PhaseField/Applications/Application.h>
-// #include <numeric>
 
 namespace Uintah
 {

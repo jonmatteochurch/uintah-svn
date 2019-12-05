@@ -138,6 +138,7 @@ private: // METHODS
         return coarse_interp[id];
     };
 
+#ifdef HAVE_HYPRE
     inline Entries<V>
     coarse_interp_entries (
         const IntVector & id
@@ -145,6 +146,7 @@ private: // METHODS
     {
         return m_coarse_interp->entries ( id );
     };
+#endif
 
 protected: // COPY CONSTRUCTOR
 
@@ -290,9 +292,11 @@ public: // VIEW METHODS
 
         if ( use_ghosts )
         {
+#ifdef HAVE_HYPRE
             if ( C2F & FC::FCNew )
                 m_coarse_interp->set ( dw->getOtherDataWarehouse ( Task::NewDW ), level, l, h, use_ghosts );
             else
+#endif
                 m_coarse_interp->set ( dw, level, l, h, use_ghosts );
         }
         m_support.emplace_back ( l, h );
@@ -326,6 +330,7 @@ public: // VIEW METHODS
         return coarse_interp ( id );
     };
 
+#ifdef HAVE_HYPRE
     virtual Entries<V>
     entries (
         const IntVector & id
@@ -333,6 +338,7 @@ public: // VIEW METHODS
     {
         return coarse_interp_entries ( id );
     };
+#endif
 
     /**
      * @brief Get the region on which the view is defined

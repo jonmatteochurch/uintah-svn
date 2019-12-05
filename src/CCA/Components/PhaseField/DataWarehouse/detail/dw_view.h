@@ -480,6 +480,7 @@ public: // VIEW METHODS
         return ( *m_view ) [id];
     };
 
+#ifdef HAVE_HYPRE
     virtual Entries<V>
     entries (
         const IntVector & id
@@ -487,6 +488,7 @@ public: // VIEW METHODS
     {
         return { Entry<V> ( m_level->getIndex(), id ) };
     };
+#endif
 
 public: // DW METHODS
 

@@ -124,6 +124,7 @@ private: // METHODS
         return view_fine[id];
     }
 
+#ifdef HAVE_HYPRE
     Entries<V>
     fine_entries (
         const IntVector & id
@@ -132,6 +133,7 @@ private: // METHODS
         const auto & view_fine = *m_view_fine;
         return view_fine.entries(id);
     }
+#endif
 
 protected: // COPY CONSTRUCTOR
 
@@ -397,6 +399,7 @@ public: // VIEW METHODS
         return sum_u / cnt;
     }
 
+#ifdef HAVE_HYPRE
     virtual Entries<typename std::remove_const<T>::type>
     entries (
         const IntVector & id_coarse
@@ -411,6 +414,7 @@ public: // VIEW METHODS
             res.add ( fine_entries ( *it ), 1. / cnt );
         return res;
     }
+#endif
 
 }; // class amr_restrictor
 

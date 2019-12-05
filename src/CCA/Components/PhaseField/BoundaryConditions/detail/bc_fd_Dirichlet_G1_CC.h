@@ -321,6 +321,7 @@ public: // VIEW METHODS
         return 2. * m_value - value ( i );
     };
 
+#ifdef HAVE_HYPRE
     virtual Entries<V>
     entries (
         const IntVector & id
@@ -330,6 +331,7 @@ public: // VIEW METHODS
         i[D] -= SGN;
         return { 2. * m_value, Entry<V> ( m_level->getIndex(), i, -1. ) };
     };
+#endif
 
 public: // BASIC FD VIEW METHODS
 

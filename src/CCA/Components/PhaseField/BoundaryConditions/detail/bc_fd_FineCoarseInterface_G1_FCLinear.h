@@ -135,7 +135,7 @@ private: // METHODS
         return ( *m_fine_view ) [ id ];
     };
 
-
+#ifdef HAVE_HYPRE
     inline Entries<V>
     fine_entries (
         const IntVector & id
@@ -143,6 +143,7 @@ private: // METHODS
     {
         return m_fine_view->entries ( id );
     };
+#endif
 
     /**
      * @brief Get coarse value at position
@@ -159,6 +160,7 @@ private: // METHODS
         return coarse_view[id];
     };
 
+#ifdef HAVE_HYPRE
     inline Entries<V>
     coarse_entries (
         const IntVector & id
@@ -166,6 +168,7 @@ private: // METHODS
     {
         return m_coarse_view->entries ( id );
     };
+#endif
 
     /**
      * @brief Get coarse interpolation at position
@@ -181,6 +184,7 @@ private: // METHODS
         return operator[] ( id );
     };
 
+#ifdef HAVE_HYPRE
     inline Entries<V>
     coarse_interp_entries (
         const IntVector & id
@@ -188,6 +192,7 @@ private: // METHODS
     {
         return entries ( id );
     };
+#endif
 
 protected:
 
@@ -400,6 +405,7 @@ public: // VIEW METHODS
         return w0 * u0 + w1 * u1 + w2 * u2;
     };
 
+#ifdef HAVE_HYPRE
     virtual Entries<V>
     entries (
         const IntVector & id_fine
@@ -432,6 +438,7 @@ public: // VIEW METHODS
         res.simplify();
         return res;
     };
+#endif
 
     /**
      * @brief Get the region on which the view is defined

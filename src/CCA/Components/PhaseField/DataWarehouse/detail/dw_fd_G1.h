@@ -280,6 +280,7 @@ public: // VIEW METHODS
         return value ( id );
     };
 
+#ifdef HAVE_HYPRE
     inline virtual Entries<V>
     entries (
         const IntVector & id
@@ -287,6 +288,7 @@ public: // VIEW METHODS
     {
         return { Entry<V> ( m_level->getIndex(), id ) };
     };
+#endif
 
 public: // BASIC FD VIEW METHODS
 

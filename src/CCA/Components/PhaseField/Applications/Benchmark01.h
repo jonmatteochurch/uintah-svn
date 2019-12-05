@@ -724,6 +724,7 @@ protected: // IMPLEMENTATIONS
         View< ScalarField<double> > & u_new
     );
 
+#ifdef HAVE_HYPRE
     template<TS SI>
     typename std::enable_if < SI == TS::SemiImplicit0, void >::type
     time_advance_solution_semi_implicit_assemble_hypre_all (
@@ -758,6 +759,7 @@ protected: // IMPLEMENTATIONS
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<double> > & b
     );
+#endif
 
     /**
      * @brief Advance system energy implementation

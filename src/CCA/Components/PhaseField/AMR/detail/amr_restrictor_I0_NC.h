@@ -125,6 +125,7 @@ private: // METHODS
         return view_fine[id];
     }
 
+#ifdef HAVE_HYPRE
     Entries<V>
     fine_entries (
         const IntVector & id
@@ -133,6 +134,7 @@ private: // METHODS
         const auto & view_fine = *m_view_fine;
         return view_fine.entries(id);
     }
+#endif
 
 protected: // COPY CONSTRUCTOR
 
@@ -396,6 +398,7 @@ public: // VIEW METHODS
         return fine_value ( id_fine );
     }
 
+#ifdef HAVE_HYPRE
     virtual Entries<V>
     entries (
         const IntVector & id_coarse
@@ -405,6 +408,7 @@ public: // VIEW METHODS
         ASSERT ( ( m_level_coarse->getNodePosition ( id_coarse ).asVector() - m_level_coarse->getFinerLevel()->getNodePosition ( id_fine ).asVector() ).length() == 0 );
         return fine_entries ( id_fine );
     }
+#endif
 
 }; // class amr_restrictor
 

@@ -210,6 +210,7 @@ private: // SINGLE FACE METHODS
         return true;
     }
 
+#ifdef HAVE_HYPRE
     template<BCF Q>
     bool
     add_adj_entries (
@@ -231,7 +232,7 @@ private: // SINGLE FACE METHODS
         res.add ( bc_view.entries ( adj ), w );
         return true;
     }
-
+#endif
 
 private: // METHODS
 
@@ -393,6 +394,7 @@ public: // VIEW METHODS
         return result;
     };
 
+#ifdef HAVE_HYPRE
     virtual Entries<V>
     entries (
         const IntVector & id
@@ -406,6 +408,7 @@ public: // VIEW METHODS
         std::array<bool, ORD> {{ add_adj_entries<P> ( opp, res, w ) ... }};
         return res;
     };
+#endif
 
 };
 
