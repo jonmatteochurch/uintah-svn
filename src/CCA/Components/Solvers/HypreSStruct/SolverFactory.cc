@@ -39,8 +39,6 @@
 using namespace Uintah;
 using namespace HypreSStruct;
 
-template<> SStructInterfaceFactory::FactoryMap SStructInterfaceFactory::RegisteredNames = {};
-
 SolverCommon *
 SolverFactory::create (
     const ProcessorGroup * myWorld,
