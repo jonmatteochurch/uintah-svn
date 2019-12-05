@@ -83,12 +83,6 @@ DIMs=(
   "D3"
 )
 
-for F in "${Fs[@]}"; do
-  echo "template<> DWFactoryView < $F >::FactoryMap DWFactoryView < $F >::RegisteredNames = {};" >> $SRC
-done
-
-echo '' >> $SRC
-
 for ((f=0; f<${#Fs[@]}; f++)); do
   F="${Fs[f]}";
   for VAR in ${VARs[@]}; do

@@ -629,9 +629,6 @@ class Application < Problem<VAR, STN, Field...>, true >
 {
 protected: // STATIC MEMBERS
 
-    /// If SubProblems are required (i.e. if Problem has any boundary Field)
-    using Application< Problem<VAR, STN, Field...>, false >::use_subprblems;
-
     /// Number of ghost elements required by STN (on the same level)
     using Application< Problem<VAR, STN, Field...> >::FGN;
 

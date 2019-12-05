@@ -120,7 +120,7 @@ public: // FD VIEW METHODS
     ) const override
     {
         std::vector<V> res ( DIM );
-        res[X] = this->template dx ( id );
+        res[X] = this->dx ( id );
         if ( DIM > D1 ) res[Y] = this->dy ( id );
         if ( DIM > D2 ) res[Z] = this->dz ( id );
         return res;

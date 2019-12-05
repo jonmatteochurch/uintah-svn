@@ -38,8 +38,6 @@
 using namespace Uintah;
 using namespace PhaseField;
 
-template<> UintahParallelComponentFactory::FactoryMap UintahParallelComponentFactory::RegisteredNames = {};
-
 UintahParallelComponent *
 ApplicationFactory::create (
     const ProcessorGroup * myWorld,

@@ -526,7 +526,6 @@ public: // VIEW METHODS
     virtual Entries<typename std::remove_const<T>::type>
     entries (
         const IntVector & id_fine
-        Entries<V> r
     ) const override
     {
         IntVector id_coarse ( m_level_fine->mapCellToCoarser ( id_fine ) );

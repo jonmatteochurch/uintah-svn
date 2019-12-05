@@ -74,14 +74,6 @@ VARs=(CC NC)
 for ((f=0; f<${#Fs[@]}; f++)); do
   F="${Fs[f]}";
   for STN in ${STNs[f]}; do
-    echo "template<> DWFactoryFDView < $F, $STN >::FactoryMap DWFactoryFDView < $F, $STN >::RegisteredNames = {};" >> $SRC
-  done
-  echo "" >> $SRC
-done
-
-for ((f=0; f<${#Fs[@]}; f++)); do
-  F="${Fs[f]}";
-  for STN in ${STNs[f]}; do
     for VAR in ${VARs[@]}; do
       echo "template<> const std::string DWFDView < $F, $STN, $VAR >::Name = \"$VAR|$STN\";" >> $SRC
     done

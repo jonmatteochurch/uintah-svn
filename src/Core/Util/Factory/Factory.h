@@ -56,7 +56,7 @@ public:
     /// Type of the map between strings and derived classes constructors
     using FactoryMap = std::map<std::string, FactoryMethod>;
 
-// protected:
+protected:
     /// Mapping between strings and derived classes constructors
     static FactoryMap RegisteredNames;
 
@@ -129,6 +129,9 @@ public:
         return registeredPair->second;
     }
 }; // class typename
+
+template<typename B, typename ... Args>
+typename Factory<B, Args...>::FactoryMap Factory<B, Args...>::RegisteredNames = {};
 
 } // namespace Uintah
 
