@@ -61,7 +61,7 @@ static constexpr bool dbg_scheduling = false;
 template < typename Problem, bool AMR = false > class Application;
 
 /**
- * @brief Virtual base for PhaseField applications (non-AMR implementation)
+ * @brief Virtual base for PhaseField applications (no boundary fields, non-AMR implementation)
  *
  * Wrapper of ApplicationCommon and interfaces
  *
@@ -70,16 +70,13 @@ template < typename Problem, bool AMR = false > class Application;
  * @tparam VAR type of variable representation
  * @tparam STN finite-difference stencil
  */
-template < VarType VAR, StnType STN, typename... Field >
-class Application < Problem<VAR, STN, Field... >, false >
+template < VarType VAR, StnType STN >
+class Application < Problem<VAR, STN>, false >
     : public ApplicationCommon
     , public DWInterface < VAR, get_stn<STN>::dim >
     , public BCInterface < VAR, STN >
 {
 protected: // STATIC MEMBERS
-
-    /// If SubProblems are required (i.e. if Problem has any boundary Field)
-    static constexpr bool use_subprblems = sizeof... ( Field );
 
     /// Number of ghost elements required by STN (on the same level)
     static constexpr int FGN = get_stn<STN>::ghosts;
@@ -100,6 +97,10 @@ protected: // STATIC MEMBERS
     /// Restriction type for coarsening
     static constexpr FCIType F2C = ( VAR == CC ) ? I1 : I0; // TODO make template parameter
 
+    static constexpr int IGN = C2F - 1;
+
+    static constexpr Ghost::GhostType IGT = IGN ? VAR == CC ? Ghost::AroundCells : Ghost::AroundNodes : Ghost::None;
+
 protected: // MEMBERS
 
     /// Verbosity level 1
@@ -113,15 +114,6 @@ protected: // MEMBERS
 
     /// Verbosity level 3
     const bool m_dbg_lvl4;
-
-    /// List of labels for boundary variables
-    std::tuple< typename Field::label_type... > * m_boundary_labels;
-
-    /// Label for subproblems in the DataWarehouse
-    const VarLabel * m_subproblems_label;
-
-    /// Store which fine/coarse interface conditions to use on each variable
-    std::map<std::string, FC> * m_c2f;
 
 #ifdef HAVE_HYPRE
     /// Time advance scheme
@@ -155,16 +147,196 @@ public: // CONSTRUCTORS/DESTRUCTOR
         m_dbg_lvl1 ( verbosity > 0 ),
         m_dbg_lvl2 ( verbosity > 1 ),
         m_dbg_lvl3 ( verbosity > 2 ),
-        m_dbg_lvl4 ( verbosity > 3 ),
-        m_boundary_labels ( nullptr ),
-        m_subproblems_label ( nullptr ),
-        m_c2f ( nullptr )
+        m_dbg_lvl4 ( verbosity > 3 )
 #ifdef HAVE_HYPRE
         , m_solver ( nullptr )
 #endif
     {
-        if ( use_subprblems )
-            m_subproblems_label = VarLabel::create ( "subproblems", SubProblems< Problem<VAR, STN, Field... > >::getTypeDescription() );
+    }
+
+    /**
+     * @brief Destructor
+     */
+    ~Application ()
+    {
+    }
+
+protected: // SCHEDULINGS
+
+    /**
+     * @brief Schedule task_initialize_subproblems
+     *
+     * Defines the dependencies and output of the task which initializes the
+     * subproblems allowing sched to control its execution order
+     *
+     * @param grid grid to be initialized
+     * @param perProcPatchSet set of all patches assigned to process
+     * @param scheduler scheduler to manage the tasks
+     */
+    virtual void
+    scheduleInitializeSystemVars (
+        const GridP & grid,
+        const PatchSet * perProcPatchSet,
+        SchedulerP & scheduler
+    ) override
+    {
+        ApplicationCommon::scheduleInitializeSystemVars ( grid, perProcPatchSet, scheduler );
+
+#ifdef HAVE_HYPRE
+        if ( m_solver )
+        {
+            for ( int idx = 0; idx < grid->numLevels(); ++idx )
+            {
+                m_solver->scheduleInitialize ( grid->getLevel ( idx ), scheduler, this->m_materialManager->allMaterials() );
+            }
+        }
+#endif
+    }
+
+}; // class Application
+
+
+/**
+ * @brief Virtual base for PhaseField applications (no boundary fields, AMR implementation)
+ *
+ * Wrapper of ApplicationCommon and interfaces
+ *
+ * @implements Application < Problem, AMR >
+ *
+ * @tparam VAR type of variable representation
+ * @tparam STN finite-difference stencil
+ */
+template < VarType VAR, StnType STN >
+class Application < Problem<VAR, STN>, true >
+    : public Application < Problem<VAR, STN>, false >
+    , public AMRInterface < VAR, get_stn<STN>::dim >
+{
+public: // CONSTRUCTORS/DESTRUCTOR
+
+    /// Constructor
+    using Application< Problem<VAR, STN>, false >::Application;
+
+protected: // SCHEDULINGS
+
+    /**
+     * @brief Schedule task_initialize_subproblems and task_communicate_subproblems after regridding
+     *
+     * Defines the dependencies and output of the task which initializes the
+     * subproblems allowing sched to control its execution order
+     *
+     * @remark subproblems need to be reinitialized on all patches because
+     * even preexisting patches may have different neighbors
+     * @remark task_communicate_subproblems is scheduled just for inducing MPI
+     * send of reinitialized subproblems to other processors that may need them
+     *
+     * @param grid grid to be initialized
+     * @param perProcPatchSet set of all patches assigned to process
+     * @param scheduler scheduler to manage the tasks
+     */
+    virtual void
+    scheduleRefineSystemVars (
+        const GridP & grid,
+        const PatchSet * perProcPatchSet,
+        SchedulerP & scheduler
+    ) override
+    {
+        Application< Problem<VAR, STN>, false >::scheduleRefineSystemVars ( grid, perProcPatchSet, scheduler );
+
+#ifdef HAVE_HYPRE
+        if ( this->m_solver )
+        {
+            if ( this->m_solver->getName() == "hypre" )
+            {
+                scheduler->setRestartInitTimestep(true);
+            }
+            else if ( this->m_solver->getName() == "hypre_sstruct" )
+            {
+                for ( int idx = 0; idx < grid->numLevels(); ++idx )
+                {
+                    this->m_solver->scheduleInitialize ( grid->getLevel ( idx ), scheduler, this->m_materialManager->allMaterials() );
+                }
+            }
+        }
+#endif
+    }
+
+}; // class Application
+
+/**
+ * @brief Virtual base for PhaseField applications (boundary fields, non-AMR implementation)
+ *
+ * Wrapper of ApplicationCommon and interfaces
+ *
+ * @implements Application < Problem, AMR >
+ *
+ * @tparam VAR type of variable representation
+ * @tparam STN finite-difference stencil
+ */
+template < VarType VAR, StnType STN, typename... Field >
+class Application < Problem<VAR, STN, Field... >, false >
+    : public Application < Problem<VAR, STN>, false >
+{
+// protected: // STATIC MEMBERS
+// 
+//     /// If SubProblems are required (i.e. if Problem has any boundary Field)
+//     static constexpr bool use_subprblems = sizeof... ( Field );
+// 
+//     /// Number of ghost elements required by STN (on the same level)
+//     static constexpr int FGN = get_stn<STN>::ghosts;
+// 
+//     /// Type of ghost elements required by VAR and STN (on the same level)
+//     static constexpr Ghost::GhostType FGT = FGN ? get_var<VAR>::ghost_type : Ghost::None;
+// 
+//     /// Number of ghost elements required by STN (on coarser level)
+//     /// @remark this should depend on FCI bc type but if fixed for simplicity
+//     static constexpr int CGN = 1;
+// 
+//     /// Type of ghost elements required by VAR and STN (on coarser level)
+//     static constexpr Ghost::GhostType CGT = CGN ? get_var<VAR>::ghost_type : Ghost::None;
+// 
+//     /// Interpolation type for refinement
+//     static constexpr FCIType C2F = ( VAR == CC ) ? I0 : I1; // TODO make template parameter
+// 
+//     /// Restriction type for coarsening
+//     static constexpr FCIType F2C = ( VAR == CC ) ? I1 : I0; // TODO make template parameter
+
+protected: // MEMBERS
+
+    /// List of labels for boundary variables
+    std::tuple< typename Field::label_type... > * m_boundary_labels;
+
+    /// Label for subproblems in the DataWarehouse
+    const VarLabel * m_subproblems_label;
+
+    /// Store which fine/coarse interface conditions to use on each variable
+    std::map<std::string, FC> * m_c2f;
+
+public: // CONSTRUCTORS/DESTRUCTOR
+
+    /**
+     * @brief Constructor
+     *
+     * Intantiate a PhaseField application
+     *
+     * @remark m_subproblems_label is initialized only if problem has any
+     *         boundary field
+     * @remark m_boundary_labels and m_c2f are left uninitialized
+     *         for being set later by Application implementation problemSetup
+     *
+     * @param myWorld data structure to manage mpi processes
+     * @param materialManager data structure to manage materials
+     * @param verbosity constrols amount of debugging output
+     */
+    Application (
+        const ProcessorGroup * myWorld,
+        const MaterialManagerP materialManager,
+        int verbosity = 0
+    ) : Application< Problem<VAR, STN>, false > ( myWorld, materialManager, verbosity ),
+        m_boundary_labels ( nullptr ),
+        m_subproblems_label ( nullptr ),
+        m_c2f ( nullptr )
+    {
+        m_subproblems_label = VarLabel::create ( "subproblems", SubProblems< Problem<VAR, STN, Field... > >::getTypeDescription() );
     }
 
     /**
@@ -258,10 +430,8 @@ protected: // SCHEDULINGS
         SchedulerP & scheduler
     ) override
     {
-        ApplicationCommon::scheduleInitializeSystemVars ( grid, perProcPatchSet, scheduler );
+        Application< Problem<VAR, STN>, false >::scheduleInitializeSystemVars ( grid, perProcPatchSet, scheduler );
 
-        if ( use_subprblems )
-        {
             ASSERTMSG ( m_boundary_labels, "Application uses subproblems. Missing call to setBoundaryVariables()" );
 
             // set behaviour noCheckpoint
@@ -275,17 +445,6 @@ protected: // SCHEDULINGS
                 task->computes ( m_subproblems_label );
                 scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
             }
-
-#ifdef HAVE_HYPRE
-            if ( m_solver )
-            {
-                for ( int idx = 0; idx < grid->numLevels(); ++idx )
-                {
-                    m_solver->scheduleInitialize ( grid->getLevel ( idx ), scheduler, this->m_materialManager->allMaterials() );
-                }
-            }
-#endif
-        }
     }
 
     /**
@@ -305,24 +464,21 @@ protected: // SCHEDULINGS
         SchedulerP & scheduler
     ) override
     {
-        ApplicationCommon::scheduleAdvanceSystemVars ( grid, perProcPatchSet, scheduler );
+        Application< Problem<VAR, STN>, false >::scheduleAdvanceSystemVars ( grid, perProcPatchSet, scheduler );
 
-        if ( use_subprblems )
+        DOUTR ( dbg_scheduling, "scheduleAdvanceSystemVars" );
+
+        for ( int idx = 0; idx < grid->numLevels(); ++idx )
         {
-            DOUTR ( dbg_scheduling, "scheduleAdvanceSystemVars" );
-
-            for ( int idx = 0; idx < grid->numLevels(); ++idx )
-            {
-                Task * task = scinew Task ( "Application::task_time_advance_subproblems", this, &Application::task_time_advance_subproblems );
-                task->requires ( Task::OldDW, m_subproblems_label, Ghost::None, 0 );
-                task->computes ( m_subproblems_label );
-                scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
-            }
-
-            Task * task = scinew Task ( "Application::task_time_advance_subproblems_foreign", this, &Application::task_time_advance_subproblems_foreign );
-            task->setType ( Task::OncePerProc );
-            scheduler->addTask ( task, perProcPatchSet, this->m_materialManager->allMaterials() );
+            Task * task = scinew Task ( "Application::task_time_advance_subproblems", this, &Application::task_time_advance_subproblems );
+            task->requires ( Task::OldDW, m_subproblems_label, Ghost::None, 0 );
+            task->computes ( m_subproblems_label );
+            scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
         }
+
+        Task * task = scinew Task ( "Application::task_time_advance_subproblems_foreign", this, &Application::task_time_advance_subproblems_foreign );
+        task->setType ( Task::OncePerProc );
+        scheduler->addTask ( task, perProcPatchSet, this->m_materialManager->allMaterials() );
     }
 
 protected: // TASKS
@@ -352,21 +508,21 @@ protected: // TASKS
     )
     {
         int myrank = myworld->myRank();
-        DOUT ( m_dbg_lvl1, myrank << "==== Application::task_initialize_subproblems ====" );
+        DOUT ( this->m_dbg_lvl1, myrank << "==== Application::task_initialize_subproblems ====" );
         for ( int m = 0; m < matls->size(); m++ )
         {
             const int material = matls->get ( m );
             for ( int p = 0; p < patches->size(); ++p )
             {
                 const Patch * patch = patches->get ( p );
-                DOUT ( m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " Material: " << material );
+                DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " Material: " << material );
 
                 SubProblems < Problem<VAR, STN, Field...> > subproblems ( std::get<I> ( *m_boundary_labels )..., m_subproblems_label, material, patch, m_c2f );
                 dw_new->put ( subproblems, m_subproblems_label, material, patch );
             }
         }
 
-        DOUT ( m_dbg_lvl2, myrank );
+        DOUT ( this->m_dbg_lvl2, myrank );
     }
 
     /**
@@ -415,11 +571,11 @@ protected: // TASKS
     {
         int myrank = myworld->myRank();
         const Level * level = getLevel ( patches );
-        DOUT ( m_dbg_lvl1, myrank << "==== Application::task_time_advance_subproblems ====" );
-        DOUT ( m_dbg_lvl2, myrank << "== Transfer From OldDW Patches: " << *patches << " Level: " << level->getIndex() << " Materials: " << *matls );
+        DOUT ( this->m_dbg_lvl1, myrank << "==== Application::task_time_advance_subproblems ====" );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Transfer From OldDW Patches: " << *patches << " Level: " << level->getIndex() << " Materials: " << *matls );
         dw_new->transferFrom ( dw_old, m_subproblems_label, patches, matls );
 
-        DOUT ( m_dbg_lvl2, myrank );
+        DOUT ( this->m_dbg_lvl2, myrank );
     }
 
     /**
@@ -447,11 +603,11 @@ protected: // TASKS
         int myrank = myworld->myRank();
         if ( myworld->nRanks() > 1 ) // look for foreign subproblems
         {
-            DOUT ( m_dbg_lvl2, myrank << "== Transfer Foreign Vars From OldDW: " );
+            DOUT ( this->m_dbg_lvl2, myrank << "== Transfer Foreign Vars From OldDW: " );
             dw_new->transferForeignFrom ( dw_old, m_subproblems_label );
         }
 
-        DOUT ( m_dbg_lvl2, myrank );
+        DOUT ( this->m_dbg_lvl2, myrank );
     }
 
 }; // class Application
@@ -519,8 +675,6 @@ protected: // SCHEDULINGS
     {
         Application< Problem<VAR, STN, Field...>, false >::scheduleRefineSystemVars ( grid, perProcPatchSet, scheduler );
 
-        if ( use_subprblems )
-        {
             DOUTR ( dbg_scheduling, "scheduleRefineSystemVars" );
 
             for ( int idx = 0; idx < grid->numLevels(); ++idx )
@@ -537,7 +691,6 @@ protected: // SCHEDULINGS
                 task->modifies ( this->m_subproblems_label );
                 scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
             }
-        }
 
 #ifdef HAVE_HYPRE
         if ( this->m_solver )

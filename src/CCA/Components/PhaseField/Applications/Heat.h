@@ -170,8 +170,8 @@ private: // STATIC MEMBERS
     /// Restriction type for coarsening
     using Application< HeatProblem<VAR, STN, TST> >::F2C;
 
-    static constexpr int IGN = C2F - 1;
-    static constexpr Ghost::GhostType IGT = IGN ? VAR == CC ? Ghost::AroundCells : Ghost::AroundNodes : Ghost::None;
+    using Application< HeatProblem<VAR, STN, TST> >::IGN;
+    using Application< HeatProblem<VAR, STN, TST> >::IGT;
 
 #ifdef HAVE_HYPRE
     using _AdditionalEntries = PerPatch<HypreSStruct::AdditionalEntriesP>;
