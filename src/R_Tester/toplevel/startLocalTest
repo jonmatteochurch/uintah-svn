@@ -61,23 +61,23 @@ mkdir local_RT > /dev/null 2>&1
 cd    local_RT
 
 if [ ! -d TestScripts ]; then
-  ln -sf ${SRCTOP}/R_Tester TestScripts
+  ln -sf "${SRCTOP}/R_Tester" TestScripts
 fi
 
 if [ ! -f replace_all_GS ]; then
-  ln -sf ${SRCTOP}/R_Tester/helpers/replace_all_GS replace_all_GS
+  ln -sf "${SRCTOP}/R_Tester/helpers/replace_all_GS" replace_all_GS
 fi
 
 if [ ! -d susdir ]; then
-  ln -sf ../StandAlone susdir
+  ln -sf "${BUILD_DIR}/StandAlone" susdir
 fi
 
 if [ ! -d tools ]; then
-  ln -sf ${SRCTOP}/tools tools
+  ln -sf "${SRCTOP}/tools" tools
 fi
 
 if [ ! -d inputs ]; then
-  ln -sf ${SRCTOP}/StandAlone/inputs inputs
+  ln -sf "${SRCTOP}/StandAlone/inputs" inputs
 fi
 
 # The gold standard path must be updated every time local_rt is run
@@ -235,11 +235,13 @@ for componentTest in $selectedCompTests; do
   doTestScript="do${componentTest}tests"
   echo "#!/bin/tcsh"                                         >  "$doTestScript"
   echo "setenv PATH $PATH"                                   >> "$doTestScript"
+  echo "setenv LD_LIBRARY_PATH $LD_LIBRARY_PATH"             >> "$doTestScript"
   echo "setenv OS $OS"                                       >> "$doTestScript"
   echo "setenv SCI_DEBUG \"\""                               >> "$doTestScript"
   echo "setenv LOCAL_OR_NIGHTLY_TEST $LOCAL_OR_NIGHTLY_TEST" >> "$doTestScript"
   echo "setenv WHICH_TESTS ${WHICH_TESTS[c]}"                >> "$doTestScript"
   echo "setenv SCI_MALLOC_ENABLED $SCI_MALLOC_ENABLED"       >> "$doTestScript"
+  echo "setenv FI_PROVIDER_PATH $FI_PROVIDER_PATH"           >> "$doTestScript"
   
   BUILD_TYPE="opt"
   if [ "$IS_DEBUG_BUILD" = 'yes' ]; then

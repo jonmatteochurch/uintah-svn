@@ -612,7 +612,7 @@ def runSusTest(test, susdir, inputxml, compare_root, application, dbg_opt, max_p
 
   #__________________________________
   # define resources limits
-  if environ['IGNORE_RLIMITS'] != "yes" :
+  if getenv('IGNORE_RLIMITS') != "yes" :
     #Kilo = 2**10
     #Mega = 2**20
     #Giga = 2**30
