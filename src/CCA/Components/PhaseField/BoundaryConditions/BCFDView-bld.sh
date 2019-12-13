@@ -182,7 +182,7 @@ for VAR in ${VARs[@]}; do
 
             for BC0 in "${BCs[@]}"; do
               P0="Patch::$F0 | BC::$BC0"
-              echo "template<> const std::string BCFDView < $PB, $I, $P0 >::Name = \"$PP|$I|$VAR|$F0|$BC0|\";" >> $SRC
+              echo "template<> const FactoryString BCFDView < $PB, $I, $P0 >::Name = \"$PP|$I|$VAR|$F0|$BC0|\";" >> $SRC
 
               for ((d1=d0+1; d1<$DIM; d1++)); do
                 DIR1="${DIRs[d1]}"
@@ -190,7 +190,7 @@ for VAR in ${VARs[@]}; do
                   F1=$DIR1$SIGN1
                   for BC1 in "${BCs[@]}"; do
                     P1="Patch::$F1 | BC::$BC1"
-                    echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$BC1|\";" >> $SRC
+                    echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$BC1|\";" >> $SRC
 
                     for ((d2=d1+1; d2<$DIM; d2++)); do
                       DIR2="${DIRs[d2]}"
@@ -198,7 +198,7 @@ for VAR in ${VARs[@]}; do
                         F2=$DIR2$SIGN2
                         for BC2 in "${BCs[@]}"; do
                           P2="Patch::$F2 | BC::$BC2"
-                          echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$BC1|$F2|$BC2|\";" >> $SRC
+                          echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$BC1|$F2|$BC2|\";" >> $SRC
 
                         done
                       done

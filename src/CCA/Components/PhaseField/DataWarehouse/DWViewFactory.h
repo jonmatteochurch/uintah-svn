@@ -45,7 +45,7 @@ namespace PhaseField
 template<typename Field> using DWFactoryView = Factory < View<Field>, const typename Field::label_type &, int>;
 
 /// Factory base for DWView
-template<typename Field> using DWBaseView = Base< View<Field> >;
+// template<typename Field> using DWBaseView = Base< View<Field> >;
 
 /// Factory creator implementation for DWView Not implemented as there is no need yet
 template < typename Field, VarType VAR, DimType DIM > struct DWViewFactory;

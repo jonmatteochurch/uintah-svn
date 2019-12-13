@@ -44,7 +44,7 @@ namespace PhaseField
 template<typename Field, StnType STN> using DWFactoryFDView = Factory < FDView<Field, STN>, const typename Field::label_type &, int, const Level * >;
 
 /// Factory base for DWFDView
-template<typename Field, StnType STN> using DWBaseFDView = Base< FDView<Field, STN> >;
+// template<typename Field, StnType STN> using DWBaseFDView = Base< FDView<Field, STN> >;
 
 /// Factory creator implementation for DWFDView Not implemented as there is no need yet
 template<typename Field, VarType VAR, StnType STN> struct DWFDViewFactory;

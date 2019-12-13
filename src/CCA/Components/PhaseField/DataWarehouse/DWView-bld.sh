@@ -54,8 +54,6 @@ echo '#include <CCA/Components/PhaseField/DataWarehouse/DWView.h>' >> $SRC
 echo '#include <CCA/Components/PhaseField/DataWarehouse/DWViewFactory.h>' >> $SRC
 echo '' >> $SRC
 echo 'namespace Uintah {' >> $SRC
-echo 'namespace PhaseField {' >> $SRC
-echo '' >> $SRC
 
 Fs=(
   "ScalarField<int>"
@@ -83,11 +81,19 @@ DIMs=(
   "D3"
 )
 
+for F in "${Fs[@]}"; do
+  echo "template class Factory < PhaseField::View< PhaseField::$F >, const typename PhaseField::$F::label_type &, int >;" >> $SRC
+done
+echo '' >> $SRC
+
+echo 'namespace PhaseField {' >> $SRC
+echo '' >> $SRC
+
 for ((f=0; f<${#Fs[@]}; f++)); do
   F="${Fs[f]}";
   for VAR in ${VARs[@]}; do
     for DIM in ${DIMs[f]}; do
-      echo "template<> const std::string DWView < $F, $VAR, $DIM >::Name = \"$VAR|$DIM|\";" >> $SRC
+      echo "template<> const FactoryString DWView < $F, $VAR, $DIM >::Name = \"$VAR|$DIM|\";" >> $SRC
     done
   done
   echo "" >> $SRC
@@ -103,5 +109,5 @@ for ((f=0; f<${#Fs[@]}; f++)); do
   echo "" >> $SRC
 done
 
-echo '} // namespace Uintah' >> $SRC
 echo '} // namespace PhaseField' >> $SRC
+echo '} // namespace Uintah' >> $SRC

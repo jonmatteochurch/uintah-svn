@@ -38,7 +38,7 @@
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 #include <CCA/Components/PhaseField/Views/FDView.h>
 
-#include <Core/Util/Factory/Base.h>
+// #include <Core/Util/Factory/Base.h>
 #include <Core/Util/Factory/Factory.h>
 #include <Core/Exceptions/ProblemSetupException.h>
 
@@ -51,7 +51,7 @@ namespace PhaseField
 template<typename Field, StnType STN> using BCFactoryFDView = Factory < FDView<Field, STN>, const typename Field::label_type &, const VarLabel *, int, const Level *, const std::vector< BCInfo<Field> > & >;
 
 /// Factory base for BCFDView
-template<typename Field, StnType STN> using BCBaseFDView = Base< FDView<Field, STN> >;
+// template<typename Field, StnType STN> using BCBaseFDView = Base< FDView<Field, STN> >;
 
 /**
  * @brief Factory creator implementation for BCFDView
@@ -96,7 +96,6 @@ public:
         const std::vector < BCInfo<Field> > & bcs
     )
     {
-        BCBaseFDView<Field, STN> * ptr = nullptr;
         std::string bcview = Problem::Name + "|" + std::to_string ( I ) + "|" + var_to_str ( VAR ) + "|";
 
         auto face = faces.begin();
@@ -107,13 +106,13 @@ public:
             ++face;
             ++bci;
         }
-        ptr = BCFactoryFDView<Field, STN>::Create ( bcview, label, subproblems_label, material, level, bcs );
-        if ( !ptr )
-        {
-            SCI_THROW ( ProblemSetupException ( "Cannot Create BCView '" + bcview + "'", __FILE__, __LINE__ ) );
-        }
 
-        return dynamic_cast< FDView<Field, STN>* > ( ptr );
+        FDView<Field, STN> * ptr = BCFactoryFDView<Field, STN>::Create ( bcview, label, subproblems_label, material, level, bcs );
+
+        if ( !ptr )
+            SCI_THROW ( ProblemSetupException ( "Cannot Create BCView '" + bcview + "'", __FILE__, __LINE__ ) );
+
+        return ptr;
     }
 
 }; // class BCFDViewFactory

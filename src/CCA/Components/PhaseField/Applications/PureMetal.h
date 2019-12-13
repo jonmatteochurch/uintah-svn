@@ -160,7 +160,7 @@ class PureMetal
 public: // STATIC MEMBERS
 
     /// Class name as used by ApplicationFactory
-    static const std::string Name;
+    const static FactoryString Name;
 
 protected: // MEMBERS
 

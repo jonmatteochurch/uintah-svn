@@ -68,7 +68,7 @@ public: // STATIC MEMBERS
     static constexpr StnType Stn = STN;
 
     /// class name as used by ApplicationFactory
-    static const std::string Name;
+    const static FactoryString Name;
 
 
 public: // TYPE HELPERS

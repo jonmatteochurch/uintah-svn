@@ -32,7 +32,6 @@
 #define Packages_Uintah_CCA_Components_Util_Factory_Implementation_h
 
 #include <Core/Malloc/Allocator.h>
-#include <Core/Util/Factory/Base.h>
 #include <Core/Util/Factory/Factory.h>
 
 namespace Uintah
@@ -49,13 +48,20 @@ namespace Uintah
  * @tparam Args types of the arguments for the derived classes constructors
  */
 template<typename I, typename B, typename ... Args>
-class Implementation : public Base<B>
+class Implementation
 {
 protected:
     /// Determine if the class definition is registered
-    static const bool m_isRegistered;
+    static const bool m_registry_instance;
+
+    /// Determine if the class definition is registered
+    const bool m_register;
 
 protected:
+  Implementation ()
+    : m_register ( m_registry_instance ) // force singleton factory registration
+  {}
+
     /**
      * @brief Factory create
      *
@@ -64,42 +70,43 @@ protected:
      * @param args parameters forwarded to the constructor
      * @return new instance of derived class
      */
-    static Base<B> *
+    static B *
     Create (
         Args ... args
     )
     {
+        std::cout << "Creating `" << I::Name << "` implementation of `" << typeid(B).name() << "`" << std::endl; 
         return scinew I ( args... );
     }
 
-    /**
-     * @brief Get Implementation name
-     *
-     * Get the identifier of the derived class
-     *
-     * @return string identifying a derived class
-     */
-    virtual std::string
-    getName()
-    override
-    {
-        return I::Name;
-    }
+//     /**
+//      * @brief Get Implementation name
+//      *
+//      * Get the identifier of the derived class
+//      *
+//      * @return string identifying a derived class
+//      */
+//     virtual std::string
+//     getName()
+//     override
+//     {
+//         return I::Name;
+//     }
 
-    /**
-    * @brief Default constructor
-    *
-    * Initialize derived class and register it to the factory
-    */
-    Implementation()
-        : Base<B> ( m_isRegistered )
-    {}
+//     /**
+//     * @brief Default constructor
+//     *
+//     * Initialize derived class and register it to the factory
+//     */
+//     Implementation()
+//         : Base<B> ( m_isRegistered )
+//     {}
 };
 
 // attempt to initialize the IsRegistered variable of derived classes
 // whilst registering them to the factory
 template<typename I, typename B, typename ... Args>
-const bool Implementation<I, B, Args ...>::m_isRegistered = Factory<B, Args ...>::Register ( I::Name, &Implementation<I, B, Args ... >::Create );
+const bool Implementation<I, B, Args ...>::m_registry_instance = Factory<B, Args ...>::Register ( I::Name, &Implementation<I, B, Args ... >::Create );
 
 } // namespace Uintah
 

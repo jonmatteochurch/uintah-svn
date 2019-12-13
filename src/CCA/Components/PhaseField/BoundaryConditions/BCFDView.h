@@ -77,7 +77,7 @@ public: // STATIC MEMBERS
     static constexpr bool use_ghosts_dflt = true;
 
     /// Implementation identifier within Factory
-    static const std::string Name;
+    const static FactoryString Name;
 
 public: // CONSTRUCTOR
 

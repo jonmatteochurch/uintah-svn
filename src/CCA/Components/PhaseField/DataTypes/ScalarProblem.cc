@@ -39,10 +39,10 @@ namespace PhaseField
 {
 
 /// @cond DOXYIGNORE
-template<> const std::string ScalarProblem<CC, P5>::Name = "ScalarProblem";
-template<> const std::string ScalarProblem<NC, P5>::Name = "ScalarProblem";
-template<> const std::string ScalarProblem<CC, P7>::Name = "ScalarProblem";
-template<> const std::string ScalarProblem<NC, P7>::Name = "ScalarProblem";
+template<> const FactoryString ScalarProblem<CC, P5>::Name = "ScalarProblem";
+template<> const FactoryString ScalarProblem<NC, P5>::Name = "ScalarProblem";
+template<> const FactoryString ScalarProblem<CC, P7>::Name = "ScalarProblem";
+template<> const FactoryString ScalarProblem<NC, P7>::Name = "ScalarProblem";
 /// @endcond
 
 } // namespace Uintah

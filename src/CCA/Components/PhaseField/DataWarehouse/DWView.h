@@ -59,7 +59,7 @@ class DWView :
 public: // STATIC MEMBERS
 
     /// Implementation identifier within Factory
-    static const std::string Name;
+    const static FactoryString Name;
 
 public: // CONSTRUCTORS/DESTRUCTOR
 

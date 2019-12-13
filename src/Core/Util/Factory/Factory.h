@@ -33,9 +33,15 @@
 
 #include <functional>
 #include <map>
+#include <iostream>
 
 namespace Uintah
 {
+
+struct FactoryString : public std::string
+{
+  FactoryString(const char str[]) : std::string(str) { std::cout << "Created string `" << std::string(str) << "`" << std::endl; }
+};
 
 /**
  * @brief Generic factory creator class
@@ -51,14 +57,25 @@ class Factory
 {
 public:
     /// Pointer type of the derived classes constructors
-    using FactoryMethod = std::function< Base<B> * ( Args... ) >;
+    using FactoryMethod = std::function< B * ( Args... ) >;
 
     /// Type of the map between strings and derived classes constructors
+#if 0
     using FactoryMap = std::map<std::string, FactoryMethod>;
+#else
+    struct FactoryMap 
+    : public std::map<std::string, FactoryMethod>
+    {
+        FactoryMap() : std::map<std::string, FactoryMethod>() 
+        { 
+            std::cout << "Created factory map for " << typeid(B).name() << std::endl; 
+        }
+    };
+#endif
 
 protected:
     /// Mapping between strings and derived classes constructors
-    static FactoryMap RegisteredNames;
+    static FactoryMap m_registry;
 
 public:
     /**
@@ -76,10 +93,11 @@ public:
         FactoryMethod constructor
     )
     {
+        std::cout << "Registering `" << name << "` to `" << typeid(B).name() << "` factory" << std::endl;
         // add the pair to the map
-        auto registeredPair = Factory::RegisteredNames.insert ( std::make_pair ( name.c_str(), constructor ) );
+        auto it = m_registry.emplace ( name, constructor );
         // return whether it was added or updated
-        return registeredPair.second;
+        return it.second;
     }
 
     /**
@@ -91,19 +109,24 @@ public:
      * @param args parameters forwarded to the constructor
      * @return new instance of derived class
      */
-    static Base<B> *
+    static B *
     Create (
         std::string name,
         Args ... args
     )
     {
+        std::cout << "Factory creating `" << name << "` instance of `" << typeid(B).name()  << "`... ";
         // attempt to get the pair from the map
-        auto registeredPair = Factory::RegisteredNames.find ( name );
+        auto it = m_registry.find ( name );
         // did we find one?
-        if ( registeredPair == Factory::RegisteredNames.end() )
+        if ( it == m_registry.end() )
+        {
+            std::cout << "FAILED" << std::endl; 
             return nullptr; // return NULL
+        }
         // return a new instance of derived class
-        return registeredPair->second ( args... );
+        std::cout << "SUCCESS" << std::endl; 
+        return it->second ( args... );
     }
 
     /**
@@ -121,17 +144,18 @@ public:
     )
     {
         // attempt to get the pair from the map
-        auto registeredPair = Factory::RegisteredNames.find ( name );
+        auto it = m_registry.find ( name );
         // did we find one?
-        if ( registeredPair == Factory::RegisteredNames.end() )
+        if ( it == m_registry.end() )
             return FactoryMethod(); // return empty function
         // return registered creator of derived class
-        return registeredPair->second;
+        return it->second;
     }
 }; // class typename
 
+// WARN: still needs to be referenced to be initialized
 template<typename B, typename ... Args>
-typename Factory<B, Args...>::FactoryMap Factory<B, Args...>::RegisteredNames = {};
+typename Factory<B, Args...>::FactoryMap Factory<B, Args...>::m_registry = {};
 
 } // namespace Uintah
 

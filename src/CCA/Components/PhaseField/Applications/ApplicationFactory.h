@@ -34,7 +34,7 @@
 #include <Core/Grid/MaterialManagerP.h>
 #include <Core/ProblemSpec/ProblemSpecP.h>
 
-#include <Core/Util/Factory/Base.h>
+// #include <Core/Util/Factory/Base.h>
 #include <Core/Util/Factory/Factory.h>
 
 namespace Uintah
@@ -47,7 +47,7 @@ namespace PhaseField
 {
 
 /// Base class for UintahParallelComponent
-using UintahParallelComponentBase = Base<UintahParallelComponent>;
+// using UintahParallelComponentBase = Base<UintahParallelComponent>;
 
 /// Factory class for UintahParallelComponent
 using UintahParallelComponentFactory = Factory<UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>;

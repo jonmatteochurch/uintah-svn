@@ -39,10 +39,10 @@ namespace PhaseField
 {
 
 /// @cond DOXYIGNORE
-template<> const std::string HeatProblem<CC, P5, TST>::Name = "HeatTestProblem";
-template<> const std::string HeatProblem<NC, P5, TST>::Name = "HeatTestProblem";
-template<> const std::string HeatProblem<CC, P7, TST>::Name = "HeatTestProblem";
-template<> const std::string HeatProblem<NC, P7, TST>::Name = "HeatTestProblem";
+template<> const FactoryString HeatProblem<CC, P5, TST>::Name = "HeatTestProblem";
+template<> const FactoryString HeatProblem<NC, P5, TST>::Name = "HeatTestProblem";
+template<> const FactoryString HeatProblem<CC, P7, TST>::Name = "HeatTestProblem";
+template<> const FactoryString HeatProblem<NC, P7, TST>::Name = "HeatTestProblem";
 /// @endcond
 
 } // namespace Uintah

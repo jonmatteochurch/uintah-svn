@@ -88,7 +88,7 @@ class Benchmark03
 public: // STATIC MEMBERS
 
     /// Class name as used by ApplicationFactory
-    static const std::string Name;
+    static const FactoryString Name;
 
 protected: // MEMBERS
 

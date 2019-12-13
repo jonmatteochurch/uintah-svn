@@ -41,16 +41,16 @@ namespace Uintah {
 namespace PhaseField {
 
 /// @cond DOXYIGNORE
-template<> const std::string Benchmark01<CC,P5>::Name = "benchmark01|cc|d2|p5";
-template<> const std::string Benchmark01<NC,P5>::Name = "benchmark01|nc|d2|p5";
-template<> const std::string Benchmark02<CC,P5>::Name = "benchmark02|cc|d2|p5";
-template<> const std::string Benchmark02<NC,P5>::Name = "benchmark02|nc|d2|p5";
-template<> const std::string Benchmark03<CC,P3>::Name = "benchmark03|cc|d1|p3";
-template<> const std::string Benchmark03<NC,P3>::Name = "benchmark03|nc|d1|p3";
-template<> const std::string Benchmark04<CC,P5>::Name = "benchmark04|cc|d2|p5";
-template<> const std::string Benchmark04<NC,P5>::Name = "benchmark04|nc|d2|p5";
-template<> const std::string Benchmark01<NC,P5,AMR>::Name = "amr|benchmark01|nc|d2|p5";
-template<> const std::string Benchmark01<CC,P5,AMR>::Name = "amr|benchmark01|cc|d2|p5";
+template<> const FactoryString Benchmark01<CC,P5>::Name = "benchmark01|cc|d2|p5";
+template<> const FactoryString Benchmark01<NC,P5>::Name = "benchmark01|nc|d2|p5";
+template<> const FactoryString Benchmark02<CC,P5>::Name = "benchmark02|cc|d2|p5";
+template<> const FactoryString Benchmark02<NC,P5>::Name = "benchmark02|nc|d2|p5";
+template<> const FactoryString Benchmark03<CC,P3>::Name = "benchmark03|cc|d1|p3";
+template<> const FactoryString Benchmark03<NC,P3>::Name = "benchmark03|nc|d1|p3";
+template<> const FactoryString Benchmark04<CC,P5>::Name = "benchmark04|cc|d2|p5";
+template<> const FactoryString Benchmark04<NC,P5>::Name = "benchmark04|nc|d2|p5";
+template<> const FactoryString Benchmark01<NC,P5,AMR>::Name = "amr|benchmark01|nc|d2|p5";
+template<> const FactoryString Benchmark01<CC,P5,AMR>::Name = "amr|benchmark01|cc|d2|p5";
 
 template class Benchmark01<CC,P5>;
 template class Benchmark01<NC,P5>;

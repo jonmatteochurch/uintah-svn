@@ -192,25 +192,25 @@ for VAR in ${VARs[@]}; do
             F0=$DIR0$SIGN0
             for C2F in "${C2Fs[@]}"; do
               P0="Patch::$F0 | BC::FineCoarseInterface | FC::$C2F"
-              echo "template<> const std::string BCFDView < $PB, $I, $P0 >::Name = \"$PP|$I|$VAR|$F0|$C2F|\";" >> $SRC
+              echo "template<> const FactoryString BCFDView < $PB, $I, $P0 >::Name = \"$PP|$I|$VAR|$F0|$C2F|\";" >> $SRC
 
               for ((d1=d0+1; d1<$DIM; d1++)); do
                 DIR1="${DIRs[d1]}"
                 for SIGN1 in "${SIGNs[@]}"; do
                   F1=$DIR1$SIGN1
                   P1="Patch::$F1 | BC::FineCoarseInterface | FC::$C2F"
-                  echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$C2F|\";" >> $SRC
+                  echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$C2F|\";" >> $SRC
 
                   for ((d2=d1+1; d2<$DIM; d2++)); do
                     DIR2="${DIRs[d2]}"
                     for SIGN2 in "${SIGNs[@]}"; do
                       F2=$DIR2$SIGN2
                       P2="Patch::$F2 | BC::FineCoarseInterface | FC::$C2F"
-                      echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$C2F|$F2|$C2F|\";" >> $SRC
+                      echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$C2F|$F2|$C2F|\";" >> $SRC
 
                       for BC2 in "${BCs[@]}"; do
                         P2="Patch::$F2 | BC::$BC2"
-                        echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$C2F|$F2|$BC2|\";" >> $SRC
+                        echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$C2F|$F2|$BC2|\";" >> $SRC
 
                       done
                     done
@@ -218,18 +218,18 @@ for VAR in ${VARs[@]}; do
 
                   for BC1 in "${BCs[@]}"; do
                     P1="Patch::$F1 | BC::$BC1"
-                    echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$BC1|\";" >> $SRC
+                    echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$BC1|\";" >> $SRC
 
                     for ((d2=d1+1; d2<$DIM; d2++)); do
                       DIR2="${DIRs[d2]}"
                       for SIGN2 in "${SIGNs[@]}"; do
                         F2=$DIR2$SIGN2
                         P2="Patch::$F2 | BC::FineCoarseInterface | FC::$C2F"
-                        echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$BC1|$F2|$C2F|\";" >> $SRC
+                        echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$BC1|$F2|$C2F|\";" >> $SRC
 
                         for BC2 in "${BCs[@]}"; do
                           P2="Patch::$F2 | BC::$BC2"
-                          echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$BC1|$F2|$BC2|\";" >> $SRC
+                          echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$C2F|$F1|$BC1|$F2|$BC2|\";" >> $SRC
 
                         done
                       done
@@ -249,18 +249,18 @@ for VAR in ${VARs[@]}; do
                   F1=$DIR1$SIGN1
                   for C2F in "${C2Fs[@]}"; do
                     P1="Patch::$F1 | BC::FineCoarseInterface | FC::$C2F"
-                    echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$C2F|\";" >> $SRC
+                    echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$C2F|\";" >> $SRC
 
                     for ((d2=d1+1; d2<$DIM; d2++)); do
                       DIR2="${DIRs[d2]}"
                       for SIGN2 in "${SIGNs[@]}"; do
                         F2=$DIR2$SIGN2
                         P2="Patch::$F2 | BC::FineCoarseInterface | FC::$C2F"
-                        echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$C2F|$F2|$C2F|\";" >> $SRC
+                        echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$C2F|$F2|$C2F|\";" >> $SRC
 
                         for BC2 in "${BCs[@]}"; do
                           P2="Patch::$F2 | BC::$BC2"
-                          echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$C2F|$F2|$BC2|\";" >> $SRC
+                          echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$C2F|$F2|$BC2|\";" >> $SRC
 
                         done
                       done
@@ -276,7 +276,7 @@ for VAR in ${VARs[@]}; do
                         F2=$DIR2$SIGN2
                         for C2F in "${C2Fs[@]}"; do
                           P2="Patch::$F2 | BC::FineCoarseInterface | FC::$C2F"
-                          echo "template<> const std::string BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$BC1|$F2|$C2F|\";" >> $SRC
+                          echo "template<> const FactoryString BCFDView < $PB, $I, $P0, $P1, $P2 >::Name = \"$PP|$I|$VAR|$F0|$BC0|$F1|$BC1|$F2|$C2F|\";" >> $SRC
 
                         done
                       done

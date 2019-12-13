@@ -38,6 +38,8 @@
 using namespace Uintah;
 using namespace PhaseField;
 
+// template<> UintahParallelComponentFactory::FactoryMap UintahParallelComponentFactory::RegisteredNames = {};
+
 UintahParallelComponent *
 ApplicationFactory::create (
     const ProcessorGroup * myWorld,
@@ -74,9 +76,10 @@ ApplicationFactory::create (
     int verbosity;
     probSpec->getWithDefault ( "verbosity", verbosity, 0 );
 
-    UintahParallelComponentBase * ptr = UintahParallelComponentFactory::Create ( application, myWorld, materialManager, verbosity );
+    UintahParallelComponent * ptr = UintahParallelComponentFactory::Create ( application, myWorld, materialManager, verbosity );
 
     if ( !ptr )
         SCI_THROW ( ProblemSetupException ( "Cannot Create PhaseField Application '" + application + "'", __FILE__, __LINE__ ) );
-    return dynamic_cast<UintahParallelComponent *> ( ptr );
+
+    return ptr;
 }

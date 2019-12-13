@@ -31,7 +31,7 @@
 #ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverFactory_h
 #define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverFactory_h
 
-#include <Core/Util/Factory/Base.h>
+// #include <Core/Util/Factory/Base.h>
 #include <Core/Util/Factory/Factory.h>
 
 #include <Core/ProblemSpec/ProblemSpecP.h>
@@ -49,7 +49,7 @@ namespace HypreSStruct
 class SStructInterface;
 
 /// Base class for SStructInterface
-using SStructInterfaceBase = Base< SStructInterface >;
+// using SStructInterfaceBase = Base< SStructInterface >;
 
 /// Factory class for SStructInterface
 using SStructInterfaceFactory = Factory< SStructInterface, /*const int &,*/ const GlobalDataP & >;
