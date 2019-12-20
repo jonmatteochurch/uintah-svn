@@ -1,0 +1,207 @@
+<?xml version="1.0"?>
+<Uintah_specification>
+  <Meta>
+    <title>heat_test_nc_3d_fe_2_0</title>
+  </Meta>
+  <SimulationComponent type="phasefield"/>
+  <!--__________________________________-->
+  <PhaseField type="heat_test">
+    <var>nc</var>
+    <dim>3</dim>
+    <delt>1.000000</delt>
+    <alpha>1.</alpha>
+    <verbosity>0</verbosity>
+  </PhaseField>
+  <!--__________________________________-->
+  <Time>
+    <maxTime>101.</maxTime>
+    <initTime>0.0</initTime>
+    <delt_min>0.01</delt_min>
+    <delt_max>1.</delt_max>
+    <timestep_multiplier>1.</timestep_multiplier>
+  </Time>
+  <!--__________________________________-->
+  <Grid>
+    <Level>
+      <Box label="1">
+        <lower>[  0.,  0.,  0.]</lower>
+        <upper>[ 32., 32., 32.]</upper>
+        <patches>[8,8,8]</patches>
+      </Box>
+      <spacing>[0.250000,0.250000,0.250000]</spacing>
+    </Level>
+    <BoundaryConditions>
+      <Face side="x-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uzz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="x+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uzz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="y-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uzz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="y+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uzz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="z-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uzz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="z+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uzz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+      </Face>
+    </BoundaryConditions>
+  </Grid>
+  <!--__________________________________-->
+  <DataArchiver>
+    <filebase>heat_test_nc_3d_fe_2_0.uda </filebase>
+    <outputTimestepInterval>0 </outputTimestepInterval>
+    <checkpoint cycle="2" timestepInterval="100"/>
+    <save label="u"/>
+    <save label="epsilon_u"/>
+    <save label="error_u"/>
+    <save label="ux"/>
+    <save label="uy"/>
+    <save label="uz"/>
+    <save label="uxx"/>
+    <save label="uyy"/>
+    <save label="uzz"/>
+    <save label="epsilon_ux"/>
+    <save label="epsilon_uy"/>
+    <save label="epsilon_uz"/>
+    <save label="epsilon_uxx"/>
+    <save label="epsilon_uyy"/>
+    <save label="epsilon_uzz"/>
+    <save label="error_ux"/>
+    <save label="error_uy"/>
+    <save label="error_uz"/>
+    <save label="error_uxx"/>
+    <save label="error_uyy"/>
+    <save label="error_uzz"/>
+    <save label="u_norm2_L2"/>
+    <save label="u_norm2_H10"/>
+    <save label="u_norm2_H20"/>
+    <save label="error_norm2_L2"/>
+    <save label="error_norm2_H10"/>
+    <save label="error_norm2_H20"/>
+  </DataArchiver>
+</Uintah_specification>

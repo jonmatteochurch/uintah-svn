@@ -1,0 +1,54 @@
+#$ -cwd -V
+#$ -m be -M scjmc@leeds.ac.uk
+#$ -l nodes=103
+
+if [ -z "$UPATH" ]; then
+    UPATH=$HOME/uintah/trunk
+fi
+
+SUS=$UPATH/arc4/StandAlone/sus
+
+INP=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_3_0.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_3_1.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_3_2.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_3_3.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_3_4.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_3_5.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_3_6.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_3_0.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_3_1.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_3_2.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_3_3.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_3_4.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_3_5.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_3_6.ups
+mpirun -np 4096 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
