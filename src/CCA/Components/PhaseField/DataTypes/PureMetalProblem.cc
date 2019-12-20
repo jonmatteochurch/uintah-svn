@@ -23,67 +23,27 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/DataTypes/Entry.h
+ * @file CCA/Components/PhaseField/DataTypes/PureMetalProblem.cc
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
- * @date 2019/12
+ * @date 2018/12
+ *
+ * In this the names used by ApplicationFactory for the differnt implementations
+ * of the PureMetal application are defined as well as their explicit instantiation.
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_DataTypes_Entry_h
-#define Packages_Uintah_CCA_Components_PhaseField_DataTypes_Entry_h
-
-#include <Core/Geometry/IntVector.h>
+#include <CCA/Components/PhaseField/DataTypes/PureMetalProblem.h>
 
 namespace Uintah
 {
 namespace PhaseField
 {
 
-/**
- * @brief Matrix row entry
- *
- * Structure containing all information for defining the matrix
- * entry on a (not given) row at the column identified by the
- * level/index key pair.
- */
-template <typename T>
-struct Entry
-{
-public: // MEMBERS
+/// @cond DOXYIGNORE
+template<> const FactoryString PureMetalProblem<CC, P5>::Name = "PureMetalProblem";
+template<> const FactoryString PureMetalProblem<NC, P5>::Name = "PureMetalProblem";
+template<> const FactoryString PureMetalProblem<CC, P7>::Name = "PureMetalProblem";
+template<> const FactoryString PureMetalProblem<NC, P7>::Name = "PureMetalProblem";
+/// @endcond
 
-    /// Column level index
-    int level;
-
-    /// Column grid entry index
-    IntVector index;
-
-    /// Matrix entry value
-    T weight;
-
-public: // CONSTRUCTORS
-
-    /**
-     * @brief Constructor
-     *
-     * Populates members
-     *
-     * @param level column level index
-     * @param index column grid entry index
-     * @param weight field value multiplier
-     */
-    Entry (
-        int level,
-        IntVector index,
-        T weight = 1
-    ) : level ( level ),
-        index ( index ),
-        weight ( weight )
-    {}
-
-};
-
-} // namespace PhaseField
 } // namespace Uintah
-
-#endif // Packages_Uintah_CCA_Components_PhaseField_DataTypes_Entry_h
-
-
+} // namespace PhaseField

@@ -194,11 +194,13 @@ public: // CONSTRUCTORS
      * @param i following BCInfo's
      */
     template<typename I0, typename... I>
-    BCInfo ( I0 && i0, I && ... i ) :
-        value { std::forward<T> ( i0.value ), std::forward<T> ( i.value )... },
-          bc ( i0.bc ),
-          c2f ( i0.c2f )
-    {};
+    BCInfo (
+        I0 && i0,
+        I && ... i
+    ) : value { std::forward<T> ( i0.value ), std::forward<T> ( i.value )... },
+        bc ( i0.bc ),
+        c2f ( i0.c2f )
+    {}
 
     /**
      * @brief Default Constructor

@@ -344,6 +344,8 @@ public: // CONSTRUCTORS/DESTRUCTOR
      */
     ~Application ()
     {
+        delete m_boundary_labels;
+        delete m_c2f;
         VarLabel::destroy ( m_subproblems_label );
     }
 

@@ -35,13 +35,24 @@
 #include <map>
 #include <iostream>
 
+// #define FACTORY_DBG
+
 namespace Uintah
 {
 
-struct FactoryString : public std::string
+#ifdef FACTORY_DBG
+struct FactoryString
+        : public std::string
 {
-  FactoryString(const char str[]) : std::string(str) { std::cout << "Created string `" << std::string(str) << "`" << std::endl; }
+    FactoryString ( const char str[] )
+        : std::string ( str )
+    {
+        std::cout << "Created string `" << std::string ( str ) << "`" << std::endl;
+    }
 };
+#else
+using FactoryString = std::string;
+#endif
 
 /**
  * @brief Generic factory creator class
@@ -60,17 +71,17 @@ public:
     using FactoryMethod = std::function< B * ( Args... ) >;
 
     /// Type of the map between strings and derived classes constructors
-#if 0
-    using FactoryMap = std::map<std::string, FactoryMethod>;
-#else
-    struct FactoryMap 
-    : public std::map<std::string, FactoryMethod>
+#ifdef FACTORY_DBG
+    struct FactoryMap
+            : public std::map<std::string, FactoryMethod>
     {
-        FactoryMap() : std::map<std::string, FactoryMethod>() 
-        { 
-            std::cout << "Created factory map for " << typeid(B).name() << std::endl; 
+        FactoryMap() : std::map<std::string, FactoryMethod>()
+        {
+            std::cout << "Created factory map for " << typeid ( B ).name() << std::endl;
         }
     };
+#else
+    using FactoryMap = std::map<std::string, FactoryMethod>;
 #endif
 
 protected:
@@ -93,7 +104,9 @@ public:
         FactoryMethod constructor
     )
     {
-        std::cout << "Registering `" << name << "` to `" << typeid(B).name() << "` factory" << std::endl;
+#ifdef FACTORY_DBG
+        std::cout << "Registering `" << name << "` to `" << typeid ( B ).name() << "` factory" << std::endl;
+#endif
         // add the pair to the map
         auto it = m_registry.emplace ( name, constructor );
         // return whether it was added or updated
@@ -115,17 +128,23 @@ public:
         Args ... args
     )
     {
-        std::cout << "Factory creating `" << name << "` instance of `" << typeid(B).name()  << "`... ";
+#ifdef FACTORY_DBG
+        std::cout << "Factory creating `" << name << "` instance of `" << typeid ( B ).name()  << "`... ";
+#endif
         // attempt to get the pair from the map
         auto it = m_registry.find ( name );
         // did we find one?
         if ( it == m_registry.end() )
         {
-            std::cout << "FAILED" << std::endl; 
+#ifdef FACTORY_DBG
+            std::cout << "FAILED" << std::endl;
+#endif
             return nullptr; // return NULL
         }
         // return a new instance of derived class
-        std::cout << "SUCCESS" << std::endl; 
+#ifdef FACTORY_DBG
+        std::cout << "SUCCESS" << std::endl;
+#endif
         return it->second ( args... );
     }
 

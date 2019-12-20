@@ -23,7 +23,7 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/Applications/HeatTestProblem.cc
+ * @file CCA/Components/PhaseField/DataTypes/HeatTestProblem.cc
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2018/12
  *

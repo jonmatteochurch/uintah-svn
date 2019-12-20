@@ -33,11 +33,29 @@ namespace Uintah
 namespace PhaseField
 {
 
+/**
+  * @brief Grid overlad to allow the insertion of a fictitious finest
+  * level to be used as the reference (target) level
+  *
+  * Grid that allows reference levels
+  *
+  * @tparam DIM problem dimension
+  */
 template<DimType DIM>
 class ReferenceGrid
     : public Grid
 {
-public:
+public: // CONSTRUCTORS/DESTRUCTOR
+
+    /**
+     * @brief Constructor
+     *
+     * Creates a copy of a given grid up to a level index. The new grid
+     * will point to the same levels in the original grid.
+     *
+     * @param grid discretized grid to use
+     * @param index maximum grid level to use
+     */
     ReferenceGrid (
         const Grid * grid,
         const int & index
@@ -48,8 +66,29 @@ public:
             d_levels.emplace_back ( grid->getLevel ( i ) );
     }
 
+    /// Default destructor
     virtual ~ReferenceGrid () = default;
 
+    /// Prevent copy (and move) constructor
+    ReferenceGrid ( const ReferenceGrid & ) = delete;
+
+    /// Prevent copy (and move) assignment
+    /// @return deleted
+    ReferenceGrid & operator= ( const ReferenceGrid & ) = delete;
+
+public: // METHODS
+
+    /**
+     * @brief Get the finest region under a given patch
+     *
+     * Computes the bounding indices (begin and past-the-end) on the
+     * reference level corresponding to a patch ad a given level index
+     *
+     * @param patch grid patch
+     * @param index index of patch's level
+     * @param[out] low computed lower index on the reference level
+     * @param[out] high computed upper index on the reference level
+     */
     void
     mapPatchToFinest (
         const Patch * patch,
@@ -75,8 +114,18 @@ public:
             }
     }
 
+    /**
+     * @brief Add reference level
+     *
+     * Add to the grid the fictitious finest level. This is supposed to
+     * be k times more refined than the finest available level and a
+     * refinement ratio of 2 is assumed in each direction between each
+     * skipped level
+     *
+     * @param k number of refinements between the finest available and the reference levels
+     */
     Level *
-    addFinestLevel ( 
+    addFinestLevel (
         int k
     )
     {
@@ -89,10 +138,19 @@ public:
         return addLevel ( anchor, dcell );
     }
 
+    /**
+     * @brief Add patch to reference level
+     *
+     * Add a virtual Patch to the reference level which corresponds to
+     * given one
+     *
+     * @param patch grid patch
+     * @param index index of the patch's level
+     */
     Patch *
     addFinestPatch (
         const Patch * patch,
-        const int & index 
+        const int & index
     )
     {
         IntVector low, high;

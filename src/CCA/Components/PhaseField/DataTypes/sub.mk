@@ -33,3 +33,4 @@ SRCS += \
   $(SRCDIR)/SubProblems.cc \
   $(SRCDIR)/ScalarProblem.cc \
   $(SRCDIR)/HeatTestProblem.cc \
+  $(SRCDIR)/PureMetalProblem.cc \

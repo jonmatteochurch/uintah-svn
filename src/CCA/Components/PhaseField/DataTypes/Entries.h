@@ -22,6 +22,11 @@
  * IN THE SOFTWARE.
  */
 
+/**
+ * @file CCA/Components/PhaseField/DataTypes/Entries.h
+ * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
+ * @date 2019/12
+ */
 
 #ifndef Packages_Uintah_CCA_Components_PhaseField_DataType_Entries_h
 #define Packages_Uintah_CCA_Components_PhaseField_DataType_Entries_h
@@ -33,38 +38,106 @@ namespace Uintah
 namespace PhaseField
 {
 
+/**
+ * @brief System row entries
+ *
+ * Structure containing a list of matrix entries and rhs value on a
+ * (not given) row of a linear system
+ */
 template <typename T>
 struct Entries
 {
+public: // MEMBERS
+
+    /// Matrix row entries
     std::list<Entry<T> > values;
+
+    /// Rhs entry
     T rhs;
 
-public:
+public: // CONSTRUCTORS
+
+    /**
+     * @brief Constructor
+     *
+     * Populates members
+     *
+     * @tparam E... matrix entry type
+     * @param rhs rhs entry
+     * @param values matrix row entries
+     */
+    template<typename... E>
+    Entries (
+        T rhs,
+        E... values
+    ) : values { values... },
+        rhs ( rhs )
+    {}
+
+    /**
+     * @brief Constructor
+     *
+     * Populates members (homogeneous rhs)
+     *
+     * @tparam E... matrix entry type
+     * @param values matrix row entries
+     */
+    template<typename... E>
+    Entries (
+        E... values
+    ) : values { values... },
+        rhs ( 0. )
+    {}
+
+    /// Default move constructor
     Entries ( Entries<T> && copy ) = default;
 
-    template<typename... V>
-    Entries ( T rhs, V... values )
-        : values { values... },
-          rhs ( rhs )
-    {
-    }
+public: // MODIFIERS
 
-    template<typename... V>
-    Entries ( V... values )
-        : values { values... },
-          rhs ( 0. )
+    /**
+     * @brief Matrix row entries sum
+     *
+     * Add to the system row another row
+     *
+     * @param entries system row entries to be added
+     */
+    void
+    add (
+        Entries<T> && entries
+    )
     {
-    }
-
-    void add ( Entries<T> && entries, T weight = 1. )
-    {
-        for ( Entry<T> & entry : entries.values )
-            entry.weight *= weight;
         values.splice ( values.end(), entries.values );
         rhs += entries.rhs;
     }
 
-    void simplify()
+    /**
+     * @brief Matrix row entries weighted sum
+     *
+     * Add to the system row another row multiplied by a weight
+     *
+     * @param entries system row entries to be added (rvalue)
+     * @param weight field value multiplier
+     */
+    void
+    add (
+        Entries<T> && entries,
+        T weight = 1.
+    )
+    {
+        for ( Entry<T> & entry : entries.values )
+            entry.weight *= weight;
+        values.splice ( values.end(), entries.values );
+        rhs += weight * entries.rhs;
+    }
+
+    /**
+     * @brief Simplify row entries
+     *
+     * Check if multiple row entries points to the same matrix element
+     * and combine them
+     */
+    void
+    simplify()
     {
         for ( auto it1 = values.begin(); it1 != values.end(); it1++ )
         {
@@ -72,8 +145,8 @@ public:
             while ( it2 != values.end() )
             {
                 if ( it1->level == it2->level &&
-                        it1->index[0] == it2->index[0] &&
-                        it1->index[1] == it2->index[1] )
+                     it1->index[0] == it2->index[0] &&
+                     it1->index[1] == it2->index[1] )
                 {
                     it1->weight += it2->weight;
                     it2 = values.erase ( it2 );

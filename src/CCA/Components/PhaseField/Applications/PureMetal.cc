@@ -40,11 +40,6 @@ namespace PhaseField
 {
 
 /// @cond DOXYIGNORE
-template<> const FactoryString PureMetalProblem<CC, P5>::Name = "PureMetalProblem";
-template<> const FactoryString PureMetalProblem<NC, P5>::Name = "PureMetalProblem";
-template<> const FactoryString PureMetalProblem<CC, P7>::Name = "PureMetalProblem";
-template<> const FactoryString PureMetalProblem<NC, P7>::Name = "PureMetalProblem";
-
 template<> const FactoryString PureMetal<CC, D2, P5>::Name = "pure_metal|cc|d2|p5";
 template<> const FactoryString PureMetal<NC, D2, P5>::Name = "pure_metal|nc|d2|p5";
 template<> const FactoryString PureMetal<CC, D3, P7>::Name = "pure_metal|cc|d3|p7";

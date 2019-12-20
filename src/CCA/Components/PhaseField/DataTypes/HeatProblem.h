@@ -42,7 +42,7 @@ namespace PhaseField
 
 /// Type of Problem used by Heat application
 template<VarType VAR, StnType STN, bool TST> using HeatProblem =
-    typename std::conditional < TST, HeatTestProblem < VAR, STN>, ScalarProblem<VAR, STN> >::type;
+    typename std::conditional< TST, HeatTestProblem<VAR, STN>, ScalarProblem<VAR, STN> >::type;
 
 } // namespace PhaseFieldSTNSTN
 } // namespace Uintah

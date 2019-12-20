@@ -58,9 +58,9 @@ protected:
     const bool m_register;
 
 protected:
-  Implementation ()
-    : m_register ( m_registry_instance ) // force singleton factory registration
-  {}
+    Implementation ()
+        : m_register ( m_registry_instance ) // force singleton factory registration
+    {}
 
     /**
      * @brief Factory create
@@ -75,7 +75,9 @@ protected:
         Args ... args
     )
     {
-        std::cout << "Creating `" << I::Name << "` implementation of `" << typeid(B).name() << "`" << std::endl; 
+#ifdef FACTORY_DBG
+        std::cout << "Creating `" << I::Name << "` implementation of `" << typeid ( B ).name() << "`" << std::endl;
+#endif
         return scinew I ( args... );
     }
 
