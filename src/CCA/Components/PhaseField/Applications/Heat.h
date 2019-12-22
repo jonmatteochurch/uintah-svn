@@ -968,6 +968,15 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    void
+    task_restart_initialize_hypresstruct (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
     /**
      * @brief Compute timestep task
      *
@@ -2013,6 +2022,14 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleRestartInitialize (
 )
 {
     DOUTR ( dbg_heat_scheduling, "scheduleRestartInitialize on level " << level->getIndex() << " " );
+
+    if ( time_scheme & TS::Implicit && this->m_solver->getName() == "hypre_sstruct" )
+    {
+        Task * task = scinew Task ( "Heat::task_restart_initialize_hypresstruct", this, &Heat::task_restart_initialize_hypresstruct );
+        task->computes ( matrix_label );
+        task->computes ( additional_entries_label );
+        sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+    }
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -2808,6 +2825,32 @@ Heat<VAR, DIM, STN, AMR, TST>::task_initialize_solution (
 
         DWView < ScalarField<double>, VAR, DIM > u ( dw_new, u_label, material, patch );
         parallel_for ( range, [patch, &L, &u, this] ( int i, int j, int k )->void { initialize_solution ( {i, j, k}, patch, L[X], u ); } );
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+void
+Heat<VAR, DIM, STN, AMR, TST>::task_restart_initialize_hypresstruct (
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset *,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_restart_initialize_hypresstruct ====" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+
+        _AdditionalEntries additional_entries;
+        additional_entries.setData ( scinew HypreSStruct::AdditionalEntries );
+        dw_new->put ( additional_entries, additional_entries_label, material, patch );
     }
 
     DOUT ( this->m_dbg_lvl2, myrank );

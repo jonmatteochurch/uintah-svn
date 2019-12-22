@@ -125,6 +125,7 @@ public:
         VarLabel::destroy ( m_timeStepLabel );
         VarLabel::destroy ( m_hypre_global_data_label );
         for ( auto && l : m_hypre_sstruct_interface_label ) VarLabel::destroy ( l.second );
+        delete m_params;
     }
 
     virtual
@@ -154,16 +155,16 @@ public:
 
                 int cSolverType;
                 int relaxType;
-                ASSERTMSG( param_ps->get ( "max_levels",    m_params->max_levels ),   "HypreSStruct::Solver ERROR. Missing parameter: max_level" );
-                param_ps->getWithDefault ( "maxiterations", m_params->max_iter,       -1  );
+                ASSERTMSG ( param_ps->get ( "max_levels",    m_params->max_levels ),   "HypreSStruct::Solver ERROR. Missing parameter: max_level" );
+                param_ps->getWithDefault ( "maxiterations", m_params->max_iter,       -1 );
                 param_ps->getWithDefault ( "tolerance",     m_params->tol,            -1. );
-                param_ps->getWithDefault ( "rel_change",    m_params->rel_change,     -1  );
-                param_ps->getWithDefault ( "relax_type",    relaxType,                -1  );
+                param_ps->getWithDefault ( "rel_change",    m_params->rel_change,     -1 );
+                param_ps->getWithDefault ( "relax_type",    relaxType,                -1 );
                 param_ps->getWithDefault ( "weight",        m_params->weight,         -1. );
-                param_ps->getWithDefault ( "npre",          m_params->num_pre_relax,  -1  );
-                param_ps->getWithDefault ( "npost",         m_params->num_post_relax, -1  );
-                param_ps->getWithDefault ( "csolver_type",  cSolverType,              -1  );
-                param_ps->getWithDefault ( "logging",       m_params->logging,        -1  );
+                param_ps->getWithDefault ( "npre",          m_params->num_pre_relax,  -1 );
+                param_ps->getWithDefault ( "npost",         m_params->num_post_relax, -1 );
+                param_ps->getWithDefault ( "csolver_type",  cSolverType,              -1 );
+                param_ps->getWithDefault ( "logging",       m_params->logging,        -1 );
                 m_params->relax_type = ( RelaxType ) relaxType;
                 m_params->csolver_type = ( CoarseSolverType ) cSolverType;
 
@@ -260,7 +261,7 @@ public:
         task->computes ( sstruct_interface_label );
 
         task->requires ( matrix_dw, m_stencil_entries_label, gtype, gnum );
-        task->requires ( matrix_dw, m_additional_entries_label, (MaterialSubset*)nullptr );
+        task->requires ( matrix_dw, m_additional_entries_label, ( MaterialSubset * ) nullptr );
 
         task->requires ( m_rhs_dw, m_rhs_label, Ghost::None, 0 );
         task->requires ( Task::NewDW, m_timeStepLabel );
@@ -538,7 +539,7 @@ private:
 
             GridP grd = nullptr;
             constCCVariable<Stencil7> ** stencil_entries = nullptr;
-            AdditionalEntries ** * additional_entries = nullptr;
+            AdditionalEntries *** additional_entries = nullptr;
             constCCVariable<double> ** rhs = nullptr;
             constCCVariable<double> ** guess = nullptr;
             CCVariable<double> ** solution = nullptr;
@@ -669,6 +670,26 @@ private:
                 sstruct_interface->solverUpdate();
             }
 
+            if ( stencil_entries )
+                for ( int part = 0; part < nparts; ++part )
+                    delete[] stencil_entries[part];
+            delete[] stencil_entries;
+
+            if ( additional_entries )
+                for ( int part = 0; part < nparts; ++part )
+                    delete additional_entries[part];
+            delete[] additional_entries;
+
+            if ( rhs )
+                for ( int part = 0; part < nparts; ++part )
+                    delete[] rhs[part];
+            delete[] rhs;
+
+            if ( guess )
+                for ( int part = 0; part < nparts; ++part )
+                    delete[] guess[part];
+            delete[] guess;
+
 #ifdef HYPRE_TIMING
             hypre_EndTiming ( tMatVecSetup_ );
 #endif
@@ -729,6 +750,11 @@ private:
             //__________________________________
             // Push the solution into Uintah data structure
             sstruct_interface->getSolution ( &solution );
+
+            if ( solution )
+                for ( int part = 0; part < nparts; ++part )
+                    delete[] solution[part];
+            delete[] solution;
 
 #ifdef HYPRE_TIMING
             hypre_EndTiming ( tHypreAll_ );

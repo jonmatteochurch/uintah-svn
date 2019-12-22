@@ -84,7 +84,7 @@ SolverInterface* SolverFactory::create(       ProblemSpecP   & ps,
     return HypreSStruct::SolverFactory::create( world, ps->findBlock( "Solver" ) );
 #else
     std::ostringstream msg;
-    msg << "\nERROR<Solver>: Hypre FAC solver not available, Hypre was not configured.\n";
+    msg << "\nERROR<Solver>: HypreSStruct solver not available, Hypre was not configured.\n";
     throw ProblemSetupException( msg.str(), __FILE__, __LINE__ );
 #endif
   }

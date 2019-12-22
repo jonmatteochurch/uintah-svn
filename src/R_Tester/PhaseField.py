@@ -37,37 +37,44 @@ the_dir = "%s/%s" % ( getInputsDir(), "PhaseField" )
 benchmark01_cc_ups = modUPS2 ( the_dir, "benchmark01/benchmark01_cc_eps020_n063_k3e-02.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
   ("update", "/Uintah_specification/Time/maxTime: 100 "), \
+  ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: 500 "), \
   ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 100 "), \
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 2001" ), \
 ])
 benchmark01_nc_ups = modUPS2 ( the_dir, "benchmark01/benchmark01_nc_eps020_n064_k3e-02.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
   ("update", "/Uintah_specification/Time/maxTime: 100 "), \
+  ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: 500 "), \
   ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 100 "), \
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 2001" ), \
 ])
 benchmark02_cc_ups = modUPS2 ( the_dir, "benchmark02/benchmark02_cc_eps010_n062_k1e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
+  ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: 1000 "), \
   ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 20 "), \
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 4001" ), \
 ])
 benchmark02_nc_ups = modUPS2 ( the_dir, "benchmark02/benchmark02_nc_eps010_n064_k1e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
+  ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: 1000 "), \
   ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 20 "), \
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 4001" ), \
 ])
 benchmark03_cc_ups = modUPS2 ( the_dir, "benchmark03/benchmark03_cc_n063_k3e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
+  ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: 3750 "), \
   ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 750 "), \
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 15001" ), \
 ])
 benchmark03_nc_ups = modUPS2 ( the_dir, "benchmark03/benchmark03_nc_n064_k3e-04.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
+  ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: 3750 "), \
   ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 750 "), \
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 15001" ), \
 ])
 benchmark04_ups    = modUPS2( the_dir, "benchmark04/benchmark04_cc_n096.ups", [ \
   ("delete", "/Uintah_specification/DataArchiver/outputInterval" ), \
+  ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: 750 "), \
   ("append", "/Uintah_specification/DataArchiver/filebase:elem:outputTimestepInterval: 15 "), \
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 3001" ), \
 ])
@@ -97,6 +104,7 @@ for dim in DIM:
   for var in VAR:
     ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_fe.ups" % (var,dim), [ \
       ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+      ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
     HEATTEST   .append( ( "heat_periodic_%s_%s_fe"     % (var,dim), ups, 1, "All", ["exactComparison"] ) )
@@ -110,6 +118,7 @@ for dim in DIM:
   for var in VAR:
     ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_fe.ups" % (var,dim), [ \
       ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+      ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
     HEATBCTEST   .append( ( "heat_test_%s_%s_fe"     % (var,dim), ups, 1, "All", ["exactComparison"] ) )
@@ -124,6 +133,7 @@ for dim in DIM:
     for var in VAR:
       ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_fe_amr_%s.ups" % (var,dim,f2c), [ \
         ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+        ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
         ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
       ])
       HEATAMRTEST   .append( ( "heat_periodic_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
@@ -138,6 +148,7 @@ for dim in DIM:
     for f2c in F2C[dim]:
       ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_fe_amr_%s.ups" % (var,dim,f2c), [ \
         ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+        ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
         ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
       ])
       HEATAMRBCTEST   .append( ( "heat_test_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
@@ -153,6 +164,7 @@ for dim in DIM:
       for im in IM:
         ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_%s.ups" % (var,dim,im), [ \
           ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+          ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
           ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
         ])
         HEATHYPRETEST   .append( ( "heat_periodic_%s_%s_%s"     % (var,dim,im), ups, 1, "All", ["exactComparison"] ) )
@@ -169,6 +181,7 @@ for dim in DIM:
         for f2c in FCN:
           ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_%s_amr_hypre_%s.ups" % (var,dim,im,f2c), [ \
             ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+            ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREAMRTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
@@ -185,6 +198,7 @@ for dim in DIM:
         for f2c in FCN:
           ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_%s_amr_hypre_%s.ups" % (var,dim,im,f2c), [ \
             ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+            ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREAMRBCTEST   .append( ( "heat_test_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
@@ -201,6 +215,7 @@ for dim in DIM:
         for f2c in F2C[dim]:
           ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s.ups" % (var,dim,im,f2c), [ \
             ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+            ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREFACTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
@@ -217,6 +232,7 @@ for dim in DIM:
         for f2c in F2C[dim]:
           ups = modUPS2 ( the_dir, "heat/heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s.ups" % (var,dim,im,f2c), [ \
             ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+            ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREFACBCTEST   .append( ( "heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
@@ -230,6 +246,7 @@ for dim in DIM:
   for var in VAR:
     ups = modUPS2 ( the_dir, "pure_metal/pure_metal_%s_%s.ups" % (var,dim), [ \
       ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+      ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
     PUREMETALTEST   .append( ( "pure_metal_%s_%s"     % (var,dim), ups, 1, "All", ["exactComparison"] ) )
@@ -244,6 +261,7 @@ for dim in DIM:
     for f2c in F2C[dim]:
       ups = modUPS2 ( the_dir, "pure_metal/pure_metal_%s_%s_amr_%s.ups" % (var,dim,f2c), [ \
       ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
+      ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
       PUREMETALAMRTEST   .append( ( "pure_metal_%s_%s_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )

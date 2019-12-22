@@ -23,6 +23,7 @@
   <precond_maxiters    spec="OPTIONAL INTEGER 'positive'" />
   <precond_tolerance   spec="OPTIONAL DOUBLE" />
   <relax_type          spec="OPTIONAL INTEGER '0,3'"/> <!-- 0=jacobi,1=weighted jacobi,2=rb symmetric,3=rb non-symmetric -->
+  <weight              spec="OPTIONAL DOUBLE" />
   <setupFrequency      spec="OPTIONAL INTEGER" />
   <skip                spec="OPTIONAL INTEGER" />
   <solveFrequency      spec="OPTIONAL INTEGER" />

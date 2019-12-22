@@ -50,15 +50,16 @@ SolverFactory::create (
     solvSpec->getAttribute ( "c2f", c2f );
 
     std::string solver, precond;
-    solvSpec->getWithDefault ( "solver", solver, "fac" );
-    solvSpec->getWithDefault ( "preconditioner", precond, "" );
-    std::string impl = solver + "|"  + ( precond.empty() ? "" : precond + "|" ) + ndim + "|" + c2f;
+    ProblemSpecP solvParam = solvSpec->getFirstChild();
+    solvParam->getWithDefault ( "solver", solver, "fac" );
+    solvParam->getWithDefault ( "preconditioner", precond, "none" );
+    std::string impl = solver + "|"  + ( precond == "none" ? "" : precond + "|" ) + ndim + "|" + c2f;
 
     SStructInterfaceFactory::FactoryMethod interface_creator;
     if ( solver == "fac" )
     {
         int csolver_type;
-        solvSpec->getWithDefault ( "csolver_type", csolver_type, 1 );
+        solvParam->getWithDefault ( "csolver_type", csolver_type, 1 );
         std::string cimpl;
         switch ( csolver_type )
         {

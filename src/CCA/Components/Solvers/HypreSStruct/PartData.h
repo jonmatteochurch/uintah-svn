@@ -89,6 +89,10 @@ public:
 
     virtual ~PartData()
     {
+        delete[] m_ilowers;
+        delete[] m_iuppers;
+        delete[] m_boxsizes;
+        delete[] m_interfaces;
     }
 
     const int *

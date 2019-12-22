@@ -1070,8 +1070,9 @@ namespace Uintah {
     // Time Step
     m_timeStepLabel = VarLabel::create(timeStep_name, timeStep_vartype::getTypeDescription() );
 
-    m_hypre_solver_label[0] = VarLabel::create("hypre_solver_label_" + std::to_string(0),
-                                          SoleVariable<hypre_solver_structP>::getTypeDescription());
+    if ( m_hypre_solver_label.find ( 0 ) == m_hypre_solver_label.end() )
+        m_hypre_solver_label[0] = VarLabel::create ( "hypre_solver_label_" + std::to_string ( 0 ),
+                                                            SoleVariable<hypre_solver_structP>::getTypeDescription() );
 
     m_params = scinew HypreParams();
 
@@ -1419,3 +1420,4 @@ namespace Uintah {
   }
   //---------------------------------------------------------------------------------------------
 } // end namespace Uintah
+
