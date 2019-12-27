@@ -3068,7 +3068,7 @@ sci_defs_files="$sci_defs_files include/sci_defs/blas_testdefs.h"
 
 ##  --  search for lapack stuff  -----------------------------------------
 
-if test "$with_lapack" != "no" -a "$HAVE_LAPCK" != "yes"; then
+if test "$with_lapack" != "no" -a "$HAVE_LAPACK" != "yes"; then
 
   # if HAVE_LAPACK is yes at this point, then atlas/mkl has been found and we
   # don't want to check for it here.
@@ -4447,6 +4447,23 @@ else
                         $MPI_LIB_DIR_FLAG $MPI_LIB_FLAG $MALLOC_TRACE_LIB_DIR_FLAG $MALLOC_TRACE_LIB_FLAG $BLAS_LIB_DIR_FLAG $BLAS_LIB_FLAG $F_LIB_DIR_FLAG $F_LIB_FLAG $M_LIB_DIR_FLAG $M_LIB_FLAG $DL_LIB_FLAG $THREAD_LIB_FLAG $ESCHEW_SYS_LIBS,
                         ,
                         optional)
+
+     if test "$HAVE_HYPRE" == "yes"; then
+        for i in HYPRE HYPRE_utilities HYPRE_struct_mv HYPRE_struct_ls HYPRE_sstruct_mv HYPRE_sstruct_ls HYPRE_parcsr_ls HYPRE_krylov HYPRE_parcsr_mv; do
+           if test -z "$i"; then
+              continue
+           fi
+           has_minus=`echo $i | sed 's/-.*//'`
+           if test -z "$has_minus"; then
+              i=`echo $i | sed 's/-l//g'`
+           fi
+           if test ! -e $_sci_lib/lib$i.so && test ! -e $_sci_lib/lib$i.a && test ! -e $_sci_lib/$i.lib && test ! -e $_sci_lib/lib$i.dylib; then
+              AC_MSG_WARN(Specifically requested HYPRE library file '$_sci_lib/lib$i' (.so, .a, or .dylib) was not found)
+              HAVE_HYPRE="no"
+              break
+           fi
+        done
+     fi
 
      if test "$HAVE_HYPRE" != "yes"; then
            SCI_TRY_LINK(HYPRE,HYPRE libraries and headers - 2,HYPRE.h,$_sci_inc,

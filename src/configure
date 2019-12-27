@@ -1459,10 +1459,10 @@ if test -n "$ac_unrecognized_opts"; then
 fi
 
 # Check all directory arguments for consistency.
-for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
-		datadir sysconfdir sharedstatedir localstatedir includedir \
-		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+for ac_var in  exec_prefix prefix bindir sbindir libexecdir datarootdir \
+               datadir sysconfdir sharedstatedir localstatedir includedir \
+               oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
+               libdir localedir mandir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -30113,7 +30113,7 @@ sci_defs_files="$sci_defs_files include/sci_defs/blas_testdefs.h"
 
 ##  --  search for lapack stuff  -----------------------------------------
 
-if test "$with_lapack" != "no" -a "$HAVE_LAPCK" != "yes"; then
+if test "$with_lapack" != "no" -a "$HAVE_LAPACK" != "yes"; then
 
   # if HAVE_LAPACK is yes at this point, then atlas/mkl has been found and we
   # don't want to check for it here.
@@ -40387,6 +40387,24 @@ _sci_includes=''
 ##
 
 
+
+     if test "$HAVE_HYPRE" == "yes"; then
+        for i in HYPRE HYPRE_utilities HYPRE_struct_mv HYPRE_struct_ls HYPRE_sstruct_mv HYPRE_sstruct_ls HYPRE_parcsr_ls HYPRE_krylov HYPRE_parcsr_mv; do
+           if test -z "$i"; then
+              continue
+           fi
+           has_minus=`echo $i | sed 's/-.*//'`
+           if test -z "$has_minus"; then
+              i=`echo $i | sed 's/-l//g'`
+           fi
+           if test ! -e $_sci_lib/lib$i.so && test ! -e $_sci_lib/lib$i.a && test ! -e $_sci_lib/$i.lib && test ! -e $_sci_lib/lib$i.dylib; then
+              { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Specifically requested HYPRE library file '$_sci_lib/lib$i' (.so, .a, or .dylib) was not found" >&5
+$as_echo "$as_me: WARNING: Specifically requested HYPRE library file '$_sci_lib/lib$i' (.so, .a, or .dylib) was not found" >&2;}
+              HAVE_HYPRE="no"
+              break
+           fi
+        done
+     fi
 
      if test "$HAVE_HYPRE" != "yes"; then
 
