@@ -64,8 +64,8 @@ public: // STATIC MEMBERS
     /// Class name as used by ApplicationFactory
     static const std::string Name;
 
-    static constexpr auto precond = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructFACSolve3;
-    static constexpr auto precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructFACSetup2;
+    static const HYPRE_PtrToSolverFcn precond;
+    static const HYPRE_PtrToSolverFcn precond_setup;
 
     SStructSolver (
         const GlobalDataP & gdata
@@ -168,6 +168,10 @@ public: // required if precond
         return ( HYPRE_Solver ) solver;
     }
 };
+
+
+template<int DIM, int C2F > const HYPRE_PtrToSolverFcn SStructSolver<S::FAC, DIM, C2F>::precond = (HYPRE_PtrToSolverFcn) HYPRE_SStructFACSolve3;
+template<int DIM, int C2F > const HYPRE_PtrToSolverFcn SStructSolver<S::FAC, DIM, C2F>::precond_setup = (HYPRE_PtrToSolverFcn) HYPRE_SStructFACSetup2;
 
 } // namespace HypreSStruct
 } // namespace Uintah

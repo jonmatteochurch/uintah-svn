@@ -48,10 +48,10 @@ protected:
 
     using SStruct = SStructImplementation<DIM, C2F>;
 
-    HYPRE_Solver & solver;
-    HYPRE_Matrix & A;
-    HYPRE_Vector & b; 
-    HYPRE_Vector & x;
+    HYPRE_Solver solver;
+    HYPRE_Matrix A;
+    HYPRE_Vector b; 
+    HYPRE_Vector x;
 
     using SStruct::solver_initialized;
     using SStruct::guess_updated;
@@ -66,10 +66,10 @@ public: // STATIC MEMBERS
     SStructSolver (
         const GlobalDataP & gdata
     ) : SStruct ( gdata ),
-        solver ( (HYPRE_Solver &) SStruct::solver ),
-        A ( (HYPRE_Matrix &) SStruct::A ),
-        b ( (HYPRE_Vector &) SStruct::b ),
-        x ( (HYPRE_Vector &) SStruct::x )
+        solver ( reinterpret_cast<HYPRE_Solver> ( SStruct::solver ) ),
+        A ( reinterpret_cast<HYPRE_Matrix> ( SStruct::A ) ),
+        b ( reinterpret_cast<HYPRE_Vector> ( SStruct::b ) ),
+        x ( reinterpret_cast<HYPRE_Vector> ( SStruct::x ) )
     {
     }
 
