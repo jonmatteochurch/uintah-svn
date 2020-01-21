@@ -186,6 +186,7 @@ private: // STATIC MEMBERS
     using Application< ScalarProblem<VAR, STN> >::F2C;
 
 #ifdef HAVE_HYPRE
+    /// Non-stencil entries type for implicit matrix
     using _AdditionalEntries = PerPatch<HypreSStruct::AdditionalEntriesP>;
 #endif
 
@@ -206,12 +207,13 @@ protected: // MEMBERS
     const VarLabel * energy_label;
 
 #ifdef HAVE_HYPRE
-    /// Label for the implicit matrix vector in the DataWarehouse
+    /// Label for the implicit matrix (stencil entries) in the DataWarehouse
     const VarLabel * matrix_label;
 
     /// Label for the implicit vector in the DataWarehouse
     const VarLabel * rhs_label;
 
+    /// Label for the implicit matrix (non-stencil entries) in the DataWarehouse
     const VarLabel * additional_entries_label;
 #endif // HAVE_HYPRE
 
@@ -293,6 +295,15 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     ) override;
 
+    /**
+     * @brief Schedule task_initialize_solution (non AMR implementation)
+     *
+     * Defines the dependencies and output of the task which initializes the
+     * solution allowing sched to control its execution order
+     *
+     * @param level grid level to be initialized
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
     scheduleInitialize_solution (
@@ -300,6 +311,15 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_initialize_solution (AMR implementation)
+     *
+     * Defines the dependencies and output of the task which initializes the
+     * solution allowing sched to control its execution order
+     *
+     * @param level grid level to be initialized
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleInitialize_solution (
@@ -370,6 +390,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_forward_euler
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which updates u
+     * allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
     scheduleTimeAdvance_solution_forward_euler (
@@ -377,6 +407,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_forward_euler
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which updates u
+     * allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution_forward_euler (
@@ -385,6 +425,16 @@ protected: // SCHEDULINGS
     );
 
 #ifdef HAVE_HYPRE
+    /**
+     * @brief Schedule task_time_advance_solution_semi_implicit_assemble
+     * (non AMR implementation)
+     *
+     * Switches between available implementations depending on the given time
+     * solver
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG, TS SI >
     typename std::enable_if < !MG, void >::type
     scheduleTimeAdvance_solution_semi_implicit_assemble (
@@ -392,6 +442,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_semi_implicit_assemble
+     * (AMR implementation)
+     *
+     * Switches between available implementations depending on the given time
+     * solver
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG, TS SI >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution_semi_implicit_assemble (
@@ -399,6 +459,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_semi_implicit_assemble_hypre
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG, TS SI >
     typename std::enable_if < !MG, void >::type
     scheduleTimeAdvance_solution_semi_implicit_assemble_hypre (
@@ -406,6 +476,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_semi_implicit_assemble_hypre
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG, TS SI >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution_semi_implicit_assemble_hypre (
@@ -413,6 +493,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_semi_implicit_assemble_hypresstruct
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG, TS SI >
     typename std::enable_if < !MG, void >::type
     scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct (
@@ -420,6 +510,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_semi_implicit_assemble_hypresstruct
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG, TS SI >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution_semi_implicit_assemble_hypresstruct (
@@ -427,6 +527,15 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule semi-implicit solve task
+     *
+     * Defines the dependencies and output of the task which solve the implicit
+     * system to update u
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     void
     scheduleTimeAdvance_solve (
         const LevelP & level,
@@ -436,6 +545,7 @@ protected: // SCHEDULINGS
 
     /**
      * @brief Schedule task_time_advance_postprocess
+     * (coarsest level implementation)
      *
      * Defines the dependencies and output of the task which updates energy and
      * solution value at the center allowing sched to control its execution order
@@ -450,6 +560,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_postprocess
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which updates energy and
+     * solution value at the center allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_postprocess (
@@ -457,18 +577,50 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule the refinement tasks
+     *
+     * Specify all tasks to be performed after an AMR regrid in order to populate
+     * variables in the DataWarehouse at newly created patches
+     *
+     * @remark If regridding happens at initial time step scheduleInitialize is
+     * called instead
+     *
+     * @param new_patches patches to be populated
+     * @param sched scheduler to manage the tasks
+     */
     virtual void
     scheduleRefine (
         const PatchSet * new_patches,
         SchedulerP & sched
     ) override;
 
+    /**
+     * @brief Schedule task_refine_solution
+     *
+     * Defines the dependencies and output of the task which interpolates the
+     * solution from the coarser level to each one of the new_patches
+     * allowing sched to control its execution order
+     *
+     * @param new_patches patches to be populated
+     * @param sched scheduler to manage the tasks
+     */
     void
     scheduleRefine_solution (
         const PatchSet * new_patches,
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule the refinement tasks
+     *
+     * Do nothing
+     *
+     * @param level_fine unused
+     * @param sched unused
+     * @param need_old_coarse unused
+     * @param need_new_coarse unused
+     */
     virtual void
     scheduleRefineInterface (
         const LevelP & level_fine,
@@ -477,24 +629,62 @@ protected: // SCHEDULINGS
         bool need_new_coarse
     ) override;
 
+    /**
+     * @brief Schedule the time coarsen tasks
+     *
+     * Specify all tasks to be performed after each timestep to restrict the
+     * computed variables from finer to coarser levels
+     *
+     * @param level_coarse level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     virtual void
     scheduleCoarsen (
         const LevelP & level_coarse,
         SchedulerP & sched
     ) override;
 
+    /**
+     * @brief Schedule task_coarsen_solution
+     *
+     * Defines the dependencies and output of the task which restrict the
+     * solution to level_coarse from its finer level allowing sched to control
+     * its execution order
+     *
+     * @param level_coarse level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     void
     scheduleCoarsen_solution (
         const LevelP & level_coarse,
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule the error estimate tasks
+     *
+     * Specify all tasks to be performed before each timestep to estimate the
+     * spatial discretization error on the solution update in order to decide
+     * where to refine the grid
+     *
+     * @param level level to check
+     * @param sched scheduler to manage the tasks
+     */
     virtual void
     scheduleErrorEstimate (
         const LevelP & level,
         SchedulerP & sched
     ) override;
 
+    /**
+     * @brief Schedule task_error_estimate_solution (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which estimates the
+     * spatial discretization error allowing sched to controvaluel its execution order
+     *
+     * @param level level to check
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
     scheduleErrorEstimate_solution (
@@ -502,6 +692,15 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_error_estimate_solution (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which estimates the
+     * spatial discretization error allowing sched to control its execution order
+     *
+     * @param level level to check
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleErrorEstimate_solution (
@@ -509,6 +708,18 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule the initial error estimate tasks
+     *
+     * Specify all tasks to be performed before the first timestep to estimate
+     * the spatial discretization error on the solution update in order to decide
+     * where to refine the grid
+     *
+     * @remark forward to scheduleErrorEstimate
+     *
+     * @param level level to check
+     * @param sched scheduler to manage the tasks
+     */
     virtual void
     scheduleInitialErrorEstimate (
         const LevelP & level,
@@ -560,7 +771,7 @@ protected: // TASKS
     );
 
     /**
-     * @brief Advance solution task
+     * @brief Advance solution task (Forward Euler implementation)
      *
      * Computes new value of u using the value of the solution and at
      * previous timestep
@@ -581,6 +792,19 @@ protected: // TASKS
     );
 
 #ifdef HAVE_HYPRE
+    /**
+     * @brief Assemble hypre system task (Semi Implicit implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @tparam SI semi implicit scheme
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template<TS SI>
     void
     task_time_advance_solution_semi_implicit_assemble_hypre (
@@ -591,9 +815,22 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre system task (Semi Implicit, full implementation)
+     *
+     * Assemble both semi-implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @tparam SI semi implicit scheme
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template<TS SI>
     void
-    task_time_advance_solution_semi_implicit_assemble_hypre_all (
+    task_time_advance_solution_semi_implicit_assemble_hypre_full (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -601,6 +838,19 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre system task (Semi Implicit, rhs implementation)
+     *
+     * Assemble only semi-implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @tparam SI semi implicit scheme
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template<TS SI>
     void
     task_time_advance_solution_semi_implicit_assemble_hypre_rhs (
@@ -611,6 +861,19 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Semi Implicit implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @tparam SI semi implicit scheme
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template<TS SI>
     void
     task_time_advance_solution_semi_implicit_assemble_hypresstruct (
@@ -621,9 +884,22 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Semi Implicit, full implementation)
+     *
+     * Assemble both semi-implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @tparam SI semi implicit scheme
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template<TS SI>
     void
-    task_time_advance_solution_semi_implicit_assemble_hypresstruct_all (
+    task_time_advance_solution_semi_implicit_assemble_hypresstruct_full (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -631,6 +907,19 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Semi Implicit, rhs implementation)
+     *
+     * Assemble only semi-implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @tparam SI semi implicit scheme
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template<TS SI>
     void
     task_time_advance_solution_semi_implicit_assemble_hypresstruct_rhs (
@@ -662,6 +951,17 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Refine solution task
+     *
+     * Computes interpolated value of u on new refined patched
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches_fine list of patches to be initialized
+     * @param matls unused
+     * @param dw_old unused
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_refine_solution (
         const ProcessorGroup * myworld,
@@ -671,6 +971,18 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Coarsen solution task
+     *
+     * Restricted value of u from refined regions to coarse patches
+     * underneath
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches_coarse list of patches to be updated
+     * @param matls unused
+     * @param dw_old unused
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_coarsen_solution (
         const ProcessorGroup * myworld,
@@ -680,6 +992,19 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief ErrorEstimate solution task
+     *
+     * Computes the gradient of the solution using its value at the previous
+     * timestep and set refinement flag where it is above the threshold given
+     * in input
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_error_estimate_solution (
         const ProcessorGroup * myworld,
@@ -725,15 +1050,46 @@ protected: // IMPLEMENTATIONS
     );
 
 #ifdef HAVE_HYPRE
+    /**
+     * @brief Assemble hypre system implementation
+     * (SemiImplicit0, full implementation)
+     *
+     * compute both semi-implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * \f[
+     * [1 - k\epsilon^2 \nabla^2] u_{k+1} = [1 + k - k u_k^2] u_k
+     * \f]
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     template<TS SI>
     typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-    time_advance_solution_semi_implicit_assemble_hypre_all (
+    time_advance_solution_semi_implicit_assemble_hypre_full (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<Stencil7> > & A,
         View < ScalarField<double> > & b
     );
 
+    /**
+     * @brief Assemble hypre system implementation
+     * (SemiImplicit0, rhs implementation)
+     *
+     * compute only semi-implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * \f[
+     * [1 - k\epsilon^2 \nabla^2] u_{k+1} = [1 + k - k u_k^2] u_k
+     * \f]
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     template<TS SI>
     typename std::enable_if < SI == TS::SemiImplicit0, void >::type
     time_advance_solution_semi_implicit_assemble_hypre_rhs (
@@ -742,9 +1098,26 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+    /**
+     * @brief Assemble hypre sstruct system implementation
+     * (SemiImplicit0, full implementation)
+     *
+     * compute both semi-implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * \f[
+     * [1 - k\epsilon^2 \nabla^2] u_{k+1} = [1 + k - k u_k^2] u_k
+     * \f]
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] A_additional view of the implicit matrix non-stencil per patch entries in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     template<TS SI>
     typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-    time_advance_solution_semi_implicit_assemble_hypresstruct_all (
+    time_advance_solution_semi_implicit_assemble_hypresstruct_full (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<Stencil7> > & A,
@@ -752,6 +1125,21 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+    /**
+     * @brief Assemble hypre sstruct system implementation
+     * (SemiImplicit0, rhs implementation)
+     *
+     * compute only semi-implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * \f[
+     * [1 - k\epsilon^2 \nabla^2] u_{k+1} = [1 + k - k u_k^2] u_k
+     * \f]
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     template<TS SI>
     typename std::enable_if < SI == TS::SemiImplicit0, void >::type
     time_advance_solution_semi_implicit_assemble_hypresstruct_rhs (
@@ -779,6 +1167,15 @@ protected: // IMPLEMENTATIONS
         double & energy
     );
 
+    /**
+     * @brief Refine solution implementation
+     *
+     * Computes interpolated value of u at a given grid position
+
+     * @param id_fine fine grid index
+     * @param u_coarse_interp interpolator of the aolution field on the coarse level
+     * @param[out] u_fine view of the aolution field on the fine level
+     */
     void
     refine_solution (
         const IntVector id_fine,
@@ -786,6 +1183,15 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & u_fine
     );
 
+    /**
+     * @brief Coarsen solution implementation
+     *
+     * Computes restricted value of u at a given grid position
+
+     * @param id_coarse coarse grid index
+     * @param u_fine_restr restrictor of the aolution field on the fine level
+     * @param[out] u_coarse view of the aolution field on the coarse level
+     */
     void
     coarsen_solution (
         const IntVector id_coarse,
@@ -793,6 +1199,18 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & u_coarse
     );
 
+    /**
+     * @brief ErrorEstimate solution implementation (cell centered implementation)
+     *
+     * Computes the gradient of the phase field using its value at the previous
+     * timestep and set refinement flag where it is above the threshold given
+     * in input
+     *
+     * @param id grid index
+     * @param u view of the solution the old dw
+     * @param[out] refine_flag view of refine flag (grid field) in the new dw
+     * @param[out] refine_patch flag for patch refinement
+     */
     template < VarType V >
     typename std::enable_if < V == CC, void >::type
     error_estimate_solution (
@@ -803,6 +1221,18 @@ protected: // IMPLEMENTATIONS
 
     );
 
+    /**
+     * @brief ErrorEstimate solution implementation (vertex based implementation)
+     *
+     * Computes the gradient of the phase field using its value at the previous
+     * timestep and set refinement flag where it is above the threshold given
+     * in input
+     *
+     * @param id grid index
+     * @param u view of the solution in the old dw
+     * @param[out] refine_flag view of refine flag (grid field) in the new dw
+     * @param[out] refine_patch flag for patch refinement
+     */
     template < VarType V >
     typename std::enable_if < V == NC, void >::type
     error_estimate_solution (
@@ -914,7 +1344,7 @@ Benchmark01<VAR, STN, AMR>::problemSetup (
             fci->getAttribute ( "var", var );
             c2f[label] = str_to_fc ( var );
         }
-        while ( fci = fci->findNextBlock ( "FCIType" ) );
+        while ( ( fci = fci->findNextBlock ( "FCIType" ) ) );
 
         this->setC2F ( c2f );
     }
@@ -972,8 +1402,8 @@ Benchmark01<VAR, STN, AMR>::scheduleInitialize_solution (
 template < VarType VAR, StnType STN, bool AMR >
 void
 Benchmark01<VAR, STN, AMR>::scheduleRestartInitialize (
-    const LevelP & level,
-    SchedulerP & sched
+    const LevelP & /*level*/,
+    SchedulerP & /*sched*/
 )
 {
 }
@@ -1345,7 +1775,8 @@ Benchmark01<VAR, STN, AMR>::scheduleRefineInterface (
     bool /*need_old_coarse*/,
     bool /*need_new_coarse*/
 )
-{};
+{
+};
 
 template<VarType VAR, StnType STN, bool AMR>
 void
@@ -1532,7 +1963,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
     double timeStep = timeStepVar;
 
     if ( timeStep == 1 || this->isRegridTimeStep() )
-        task_time_advance_solution_semi_implicit_assemble_hypre_all<SI> ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_semi_implicit_assemble_hypre_full<SI> ( myworld, patches, matls, dw_old, dw_new );
     else
         task_time_advance_solution_semi_implicit_assemble_hypre_rhs<SI> ( myworld, patches, matls, dw_old, dw_new );
 }
@@ -1540,7 +1971,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
 template<VarType VAR, StnType STN, bool AMR>
 template<TS SI>
 void
-Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hypre_all
+Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hypre_full
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -1551,7 +1982,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypre_all ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypre_full ====" );
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -1567,7 +1998,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &A, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hypre_all<SI> ( {i, j, k}, u_old, A, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &A, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hypre_full<SI> ( {i, j, k}, u_old, A, b ); } );
         }
     }
 
@@ -1629,7 +2060,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
     double timeStep = timeStepVar;
 
     if ( timeStep == 1 || this->isRegridTimeStep() )
-        task_time_advance_solution_semi_implicit_assemble_hypresstruct_all<SI> ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_semi_implicit_assemble_hypresstruct_full<SI> ( myworld, patches, matls, dw_old, dw_new );
     else
         task_time_advance_solution_semi_implicit_assemble_hypresstruct_rhs<SI> ( myworld, patches, matls, dw_old, dw_new );
 }
@@ -1637,18 +2068,18 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
 template<VarType VAR, StnType STN, bool AMR>
 template<TS SI>
 void
-Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hypresstruct_all
+Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hypresstruct_full
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
-    const MaterialSubset * matls,
+    const MaterialSubset * /*matls*/,
     DataWarehouse * dw_old,
     DataWarehouse * dw_new
 )
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct_all ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Benchmark01::task_time_advance_solution_semi_implicit_assemble_hypresstruct_full ====" );
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -1665,7 +2096,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_semi_implicit_assemble_hy
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hypresstruct_all<SI> ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_semi_implicit_assemble_hypresstruct_full<SI> ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
         }
 
         _AdditionalEntries additional_entries;
@@ -1722,7 +2153,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_postprocess (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset *,
-    DataWarehouse * dw_old,
+    DataWarehouse * /*dw_old*/,
     DataWarehouse * dw_new
 )
 {
@@ -1989,7 +2420,7 @@ Benchmark01<VAR, STN, AMR>::time_advance_solution_forward_euler (
 template < VarType VAR, StnType STN, bool AMR >
 template<TS SI>
 typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypre_all (
+Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypre_full (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,
     View < ScalarField<Stencil7> > & A,
@@ -2030,7 +2461,7 @@ Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypre_r
 template < VarType VAR, StnType STN, bool AMR >
 template<TS SI>
 typename std::enable_if < SI == TS::SemiImplicit0, void >::type
-Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypresstruct_all (
+Benchmark01<VAR, STN, AMR>::time_advance_solution_semi_implicit_assemble_hypresstruct_full (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,
     View < ScalarField<Stencil7> > & A_stencil,

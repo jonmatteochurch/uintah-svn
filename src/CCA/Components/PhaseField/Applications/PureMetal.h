@@ -877,13 +877,19 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Commpunicate psi task
+     *
+     * Empty task used in schedulings to force mpi communication of
+     * psi values accross neighbour patches
+     */
     void
     task_communicate_psi (
-        const ProcessorGroup * _DOXYARG ( myworld ),
-        const PatchSubset * _DOXYARG ( patches ),
-        const MaterialSubset * _DOXYARG ( matls ),
-        DataWarehouse * _DOXYARG ( dw_old ),
-        DataWarehouse * _DOXYARG ( dw_new )
+        const ProcessorGroup * ,
+        const PatchSubset * ,
+        const MaterialSubset * ,
+        DataWarehouse * ,
+        DataWarehouse *
     )
     {}
 

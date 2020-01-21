@@ -68,7 +68,7 @@ template<typename Field, StnType STN, BCF ... P > class bc_vertical_angle_view;
  * and one for accessing the DataWarehouse on internal indices) to allow
  * extrapolation in regions corresponding to vertical angle
  *
- * @tparam Field type of Field
+ * @tparam T type of Field
  * @tparam STN finite-difference stencil
  * @tparam P list of BC, FC, and Patch::Face packs (FineCoarseInterface are not allowed)
  */
@@ -84,8 +84,9 @@ private: // TYPES
     /// Non const type of the field value
     using V = typename std::remove_const<T>::type;
 
+    /// Boundary variety order (number of boundary faces incident to given region)
     static constexpr size_t ORD = sizeof... ( P );
-    
+
     static_assert ( ORD >=2, "bc_vertical_angle_view must be used only over edges or vertices" );
 
 private: // MEMBERS

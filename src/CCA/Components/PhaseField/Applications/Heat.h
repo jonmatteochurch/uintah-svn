@@ -170,13 +170,23 @@ private: // STATIC MEMBERS
     /// Restriction type for coarsening
     using Application< HeatProblem<VAR, STN, TST> >::F2C;
 
+    /// Number of ghost elements required by intepolation scheme
     using Application< HeatProblem<VAR, STN, TST> >::IGN;
+
+    /// Type of ghost elements required by intepolation scheme
     using Application< HeatProblem<VAR, STN, TST> >::IGT;
 
 #ifdef HAVE_HYPRE
+    /// Non-stencil entries type for implicit matrix
     using _AdditionalEntries = PerPatch<HypreSStruct::AdditionalEntriesP>;
 #endif
 
+    /// Lexicografic greater then comparison for IntVector's
+    /// @remark used in vertex base simulation to identify vertices on
+    /// upper faces
+    /// @param a first index
+    /// @param b second index
+    /// @return if a > b
     inline static bool gt ( const IntVector & a, const IntVector & b )
     {
         for ( size_t D = 0; D < DIM; ++D )
@@ -211,9 +221,10 @@ protected: // MEMBERS
     /// Label for the gradient vector of the solution in the DataWarehouse
     std::array<const VarLabel *, DIM> du_label;
 
-    /// Label for the local error in the first order derivatives of u in the DataWarehouse
+    /// Label for the difference between computed and analytical solution first order derivatives
     std::array<const VarLabel *, DIM> epsilon_du_label;
 
+    /// Label for the local error in the first order derivatives of u in the DataWarehouse
     std::array<const VarLabel *, DIM> error_du_label;
 
     /// Label for the square of the discrete H1-seminorm of the solution in the DataWarehouse
@@ -225,6 +236,7 @@ protected: // MEMBERS
     /// Label for the second order derivatives vector of the solution in the DataWarehouse
     std::array<const VarLabel *, DIM> ddu_label;
 
+    /// Label for the difference between computed and analytical solution second order derivatives
     std::array<const VarLabel *, DIM> epsilon_ddu_label;
 
     /// Label for the local error in the second order derivatives of u in the DataWarehouse
@@ -235,16 +247,16 @@ protected: // MEMBERS
 
     /// Label for the square of the global H2-error of the solution in the DataWarehouse
     const VarLabel * error_norm2_H20_label;
-
 #endif // PhaseField_Heat_DBG_DERIVATIVES
 
 #ifdef HAVE_HYPRE
-    /// Label for the implicit matrix vector in the DataWarehouse
+    /// Label for the implicit matrix stencil entries in the DataWarehouse
     const VarLabel * matrix_label;
 
     /// Label for the implicit vector in the DataWarehouse
     const VarLabel * rhs_label;
 
+    /// Label for the implicit matrix non-stecil entries in the DataWarehouse
     const VarLabel * additional_entries_label;
 
 #   ifdef PhaseField_Heat_DBG_MATRIX
@@ -333,20 +345,34 @@ protected: // SETUP
         GridP & grid
     ) override;
 
-    template < bool T >
-    typename std::enable_if < T, void >::type
-    problemSetup_boundary_variables (
-    )
-    {
-        this->setBoundaryVariables ( u_label, du_label, ddu_label );
-    }
-
+    /**
+     * @brief Setup Boundary Variables
+     * (default implementation)
+     *
+     * Specify the label for u as the one to be considered when partitioning
+     * in subproblems
+     */
     template < bool T >
     typename std::enable_if < !T, void >::type
     problemSetup_boundary_variables (
     )
     {
         this->setBoundaryVariables ( u_label );
+    }
+
+    /**
+     * @brief Setup Boundary Variables
+     * (test implementation)
+     *
+     * Specify the label for u and its derivatives as those to be considered
+     * when partitioning in subproblems
+     */
+    template < bool T >
+    typename std::enable_if < T, void >::type
+    problemSetup_boundary_variables (
+    )
+    {
+        this->setBoundaryVariables ( u_label, du_label, ddu_label );
     }
 
 protected: // SCHEDULINGS
@@ -476,16 +502,22 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule update of solution derivatives errors
+     * (default implementation)
+     *
+     * Do nothing
+     */
     template < bool MG, bool T >
     typename std::enable_if < !T, void >::type
     scheduleTimeAdvance_dbg_derivatives_error (
-        const LevelP & level,
-        SchedulerP & sched
+        const LevelP & ,
+        SchedulerP &
     ) {};
 
     /**
      * @brief Schedule task_time_advance_dbg_derivatives_error
-     * (non AMR implementation)
+     * (test, non AMR implementation)
      *
      * Defines the dependencies and output of the task which updates the
      * error on solution derivatives allowing sched to control its execution order
@@ -502,7 +534,7 @@ protected: // SCHEDULINGS
 
     /**
      * @brief Schedule task_time_advance_dbg_derivatives_error
-     * (AMR implementation)
+     * (test, AMR implementation)
      *
      * Defines the dependencies and output of the task which updates the
      * error on solution derivatives allowing sched to control its execution order
@@ -636,6 +668,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_backward_euler_assemble_hypresstruct
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
     scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct (
@@ -643,6 +685,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_backward_euler_assemble_hypresstruct
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct (
@@ -718,6 +770,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypresstruct
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
     scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct (
@@ -725,6 +787,16 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypresstruct
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct (
@@ -766,7 +838,21 @@ protected: // SCHEDULINGS
 #endif // HAVE_HYPRE
 
     /**
+     * @brief Schedule update of solution errors
+     * (default implementation)
+     *
+     * Do nothing
+     */
+    template < bool MG, bool T >
+    typename std::enable_if < !T, void >::type
+    scheduleTimeAdvance_solution_error (
+        const LevelP & ,
+        SchedulerP &
+    ) {};
+
+    /**
      * @brief Schedule task_time_advance_solution_error
+     * (test, non AMR implementation)
      *
      * Defines the dependencies and output of the task which updates the
      * error on solution allowing sched to control its execution order
@@ -775,19 +861,22 @@ protected: // SCHEDULINGS
      * @param sched scheduler to manage the tasks
      */
     template < bool MG, bool T >
-    typename std::enable_if < !T, void >::type
-    scheduleTimeAdvance_solution_error (
-        const LevelP & level,
-        SchedulerP & sched
-    ) {};
-
-    template < bool MG, bool T >
     typename std::enable_if < T && !MG, void >::type
     scheduleTimeAdvance_solution_error (
         const LevelP & level,
         SchedulerP & sched
     );
 
+    /**
+     * @brief Schedule task_time_advance_solution_error
+     * (test, AMR implementation)
+     *
+     * Defines the dependencies and output of the task which updates the
+     * error on solution allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
     template < bool MG, bool T >
     typename std::enable_if < T && MG, void >::type
     scheduleTimeAdvance_solution_error (
@@ -968,6 +1057,18 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Initialize hypre sstruct structures on restart task
+     *
+     * Allocate and save variables for non-stencil variables for each 
+     * one of the patches and save them to dw_new
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old unused
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_restart_initialize_hypresstruct (
         const ProcessorGroup * myworld,
@@ -1023,7 +1124,8 @@ protected: // TASKS
     );
 
     /**
-     * @brief Advance derivatives error task (debug)
+     * @brief Advance derivatives error task
+     * (test, non AMR implementation)
      *
      * Computes the error in the approximation of u derivatives
      * comparing them with their analytical expressions (for debugging purpose)
@@ -1044,6 +1146,19 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Advance derivatives error task
+     * (test, AMR implementation)
+     *
+     * Computes the error in the approximation of u derivatives
+     * comparing them with their analytical expressions (for debugging purpose)
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template < bool MG, bool T >
     typename std::enable_if < T && MG, void >::type
     task_time_advance_dbg_derivatives_error (
@@ -1099,7 +1214,7 @@ protected: // TASKS
     );
 
     /**
-     * @brief Assemble hypre system task (Backward Euler, all implementation)
+     * @brief Assemble hypre system task (Backward Euler, full implementation)
      *
      * Assemble both implicit matrix and vector for hypre using the value of the
      * solution and at previous timestep
@@ -1111,7 +1226,7 @@ protected: // TASKS
      * @param dw_new DataWarehouse to be initialized
      */
     void
-    task_time_advance_solution_backward_euler_assemble_hypre_all (
+    task_time_advance_solution_backward_euler_assemble_hypre_full (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -1140,6 +1255,18 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Backward Euler implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_time_advance_solution_backward_euler_assemble_hypresstruct (
         const ProcessorGroup * myworld,
@@ -1149,8 +1276,20 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Backward Euler, full implementation)
+     *
+     * Assemble both implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
-    task_time_advance_solution_backward_euler_assemble_hypresstruct_all (
+    task_time_advance_solution_backward_euler_assemble_hypresstruct_full (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -1158,6 +1297,18 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Backward Euler, rhs implementation)
+     *
+     * Assemble only implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_time_advance_solution_backward_euler_assemble_hypresstruct_rhs (
         const ProcessorGroup * myworld,
@@ -1189,7 +1340,7 @@ protected: // TASKS
     );
 
     /**
-     * @brief Assemble hypre system task (Crank Nicolson, all implementation)
+     * @brief Assemble hypre system task (Crank Nicolson, full implementation)
      *
      * Assemble both implicit matrix and vector for hypre using the value of the
      * solution and at previous timestep
@@ -1201,7 +1352,7 @@ protected: // TASKS
      * @param dw_new DataWarehouse to be initialized
      */
     void
-    task_time_advance_solution_crank_nicolson_assemble_hypre_all (
+    task_time_advance_solution_crank_nicolson_assemble_hypre_full (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -1230,6 +1381,18 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Crank Nicolson implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_time_advance_solution_crank_nicolson_assemble_hypresstruct (
         const ProcessorGroup * myworld,
@@ -1239,8 +1402,20 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Crank Nicolson, full implementation)
+     *
+     * Assemble both implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
-    task_time_advance_solution_crank_nicolson_assemble_hypresstruct_all (
+    task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
@@ -1248,6 +1423,18 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Assemble hypre sstruct system task (Crank Nicolson, rhs implementation)
+     *
+     * Assemble only implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     void
     task_time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs (
         const ProcessorGroup * myworld,
@@ -1281,7 +1468,7 @@ protected: // TASKS
 #endif // HAVE_HYPRE
 
     /**
-     * @brief Advance solution error task (test)
+     * @brief Advance solution error task (test, coarsest level implementation)
      *
      * Computes error in u approximation using the analytical solution
      *
@@ -1303,6 +1490,19 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    /**
+     * @brief Advance solution error task (test, refinement level implementation)
+     *
+     * Computes error in u approximation using the analytical solution
+     *
+     * @remark test must be set to true in input
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
     template < bool MG, bool T >
     typename std::enable_if < T && MG, void >::type
     task_time_advance_solution_error (
@@ -1312,6 +1512,7 @@ protected: // TASKS
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
     );
+
     /**
      * @brief Refine solution task
      *
@@ -1418,6 +1619,7 @@ protected: // IMPLEMENTATIONS
 
     /**
      * @brief Advance derivatives error implementation
+     * (coarsest level implementation)
      *
      * Computes error in the approximation of u derivatives comparing them with
      * their analytical expressions at a given grid position
@@ -1429,12 +1631,14 @@ protected: // IMPLEMENTATIONS
      * @param t simulation time
      * @param du view of the solution derivatives vector field in the new dw
      * @param ddu view of the solution derivatives vector field in the new dw
+     * @param[out] epsilon_du view of the solution derivatives residual vector field in the new dw
+     * @param[out] epsilon_ddu view of the solution derivatives residual vector field in the new dw
      * @param[out] error_du view of the solution derivatives error vector field in the new dw
      * @param[out] error_ddu view of the solution derivatives error vector field in the new dw
-     * @param[out] u_normH10 L2-norm of the solution 1st order derivatives vector
-     * @param[out] u_normH20 L2-norm of the solution 2nd order derivatives vector
-     * @param[out] error_normH10 L2-norm of the solution 1st order derivatives error vector
-     * @param[out] error_normH20 L2-norm of the solution 2nd order derivatives error vector
+     * @param[out] u_norm2_H10 square of the L2-norm of the solution 1st order derivatives vector
+     * @param[out] u_norm2_H20 square of the L2-norm of the solution 2nd order derivatives vector
+     * @param[out] error_norm2_H10 L2-norm of the solution 1st order derivatives error vector
+     * @param[out] error_norm2_H20 L2-norm of the solution 2nd order derivatives error vector
      */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
@@ -1455,6 +1659,32 @@ protected: // IMPLEMENTATIONS
         double & error_norm2_H20
     );
 
+    /**
+     * @brief Advance derivatives error implementation
+     * (refined level implementation)
+     *
+     * Computes error in the approximation of u derivatives comparing them with
+     * their analytical expressions at a given grid position
+     * (for debugging purpose)
+     *
+     * @param id grid index
+     * @param patch grid patch
+     * @param patch_finest reference grid patch
+     * @param L domain width
+     * @param t simulation time
+     * @param du view of the solution derivatives vector field in the new dw
+     * @param ddu view of the solution derivatives vector field in the new dw
+     * @param du_finest view for evaluating the solution derivatives on the reference patch (interpolator)
+     * @param ddu_finest view for evaluating the solution derivatives on the reference patch (interpolator)
+     * @param[out] epsilon_du view of the solution derivatives residual vector field in the new dw
+     * @param[out] epsilon_ddu view of the solution derivatives residual vector field in the new dw
+     * @param[out] error_du view of the solution derivatives error vector field in the new dw
+     * @param[out] error_ddu view of the solution derivatives error vector field in the new dw
+     * @param[out] u_norm2_H10 square of the L2-norm of the solution 1st order derivatives vector
+     * @param[out] u_norm2_H20 square of the L2-norm of the solution 2nd order derivatives vector
+     * @param[out] error_norm2_H10 L2-norm of the solution 1st order derivatives error vector
+     * @param[out] error_norm2_H20 L2-norm of the solution 2nd order derivatives error vector
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     time_advance_dbg_derivatives_error (
@@ -1497,7 +1727,7 @@ protected: // IMPLEMENTATIONS
 
 #ifdef HAVE_HYPRE
     /**
-     * @brief Assemble hypre system implementation (Backward Euler, all implementation)
+     * @brief Assemble hypre system implementation (Backward Euler, full implementation)
      *
      * compute both implicit matrix stencil and vector entries at a given grid
      * position using the value of the solution and at previous timestep
@@ -1508,7 +1738,7 @@ protected: // IMPLEMENTATIONS
      * @param[out] b view of the implicit vector field in the new dw
      */
     void
-    time_advance_solution_backward_euler_assemble_hypre_all (
+    time_advance_solution_backward_euler_assemble_hypre_full (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<Stencil7> > & A,
@@ -1532,8 +1762,20 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+    /**
+     * @brief Assemble hypre sstruct system implementation (Backward Euler, full implementation)
+     *
+     * compute both implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] A_additional view of the implicit matrix non-stencil field in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     void
-    time_advance_solution_backward_euler_assemble_hypresstruct_all (
+    time_advance_solution_backward_euler_assemble_hypresstruct_full (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<Stencil7> > & A,
@@ -1541,6 +1783,16 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+    /**
+     * @brief Assemble hypre sstruct system implementation (Backward Euler, rhs implementation)
+     *
+     * compute only implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     void
     time_advance_solution_backward_euler_assemble_hypresstruct_rhs (
         const IntVector & id,
@@ -1549,7 +1801,7 @@ protected: // IMPLEMENTATIONS
     );
 
     /**
-     * @brief Assemble hypre system implementation (Crank Nicolson, all implementation)
+     * @brief Assemble hypre system implementation (Crank Nicolson, full implementation)
      *
      * compute both implicit matrix stencil and vector entries at a given grid
      * position using the value of the solution and at previous timestep
@@ -1560,7 +1812,7 @@ protected: // IMPLEMENTATIONS
      * @param[out] b view of the implicit vector field in the new dw
      */
     void
-    time_advance_solution_crank_nicolson_assemble_hypre_all (
+    time_advance_solution_crank_nicolson_assemble_hypre_full (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<Stencil7> > & A,
@@ -1584,8 +1836,20 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+    /**
+     * @brief Assemble hypre sstruct system implementation (Crank Nicolson, full implementation)
+     *
+     * compute both implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] A_additional view of the implicit matrix non-stencil field in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     void
-    time_advance_solution_crank_nicolson_assemble_hypresstruct_all (
+    time_advance_solution_crank_nicolson_assemble_hypresstruct_full (
         const IntVector & id,
         const FDView < ScalarField<const double>, STN > & u_old,
         View < ScalarField<Stencil7> > & A,
@@ -1593,6 +1857,16 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+    /**
+     * @brief Assemble hypre sstruct system implementation (Crank Nicolson, rhs implementation)
+     *
+     * compute only implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
     void
     time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs (
         const IntVector & id,
@@ -1633,7 +1907,8 @@ protected: // IMPLEMENTATIONS
 #endif // HAVE_HYPRE
 
     /**
-     * @brief Advance solution error task (test)
+     * @brief Advance solution error task 
+     * (test, coarsest level implementation)
      *
      * compute error in u approximation at a given grid position using the
      * analytical solution
@@ -1643,12 +1918,11 @@ protected: // IMPLEMENTATIONS
      * @param L domain width
      * @param t simulation time
      * @param u view of the newly computed solution field in the new dw
-     * @param[out] epsilon_u view of the local error (difference between computed and
+     * @param[out] epsilon_u view of the local residual (difference between computed and
      * analytical solution at each grid position)
      * @param[out] error_u interpolation error (L2 norm over the range of each
      * grid position of the difference between computed and
      * analytical solution at each grid position)
-     * @param[out] error_discrete discrete-norm (global) of the solution error vector
      * @param[out] u_norm2_L2 square of L2-norm (global) of the solution vector
      * @param[out] error_norm2_L2 square of L2-norm (global) of the solution error vector
      *
@@ -1667,6 +1941,29 @@ protected: // IMPLEMENTATIONS
         double & error_norm2_L2
     );
 
+    /**
+     * @brief Advance solution error task
+     * (test, refined level implementation)
+     *
+     * compute error in u approximation at a given grid position using the
+     * analytical solution
+     *
+     * @param id grid index
+     * @param patch grid patch
+     * @param patch_finest reference grid patch
+     * @param L domain width
+     * @param t simulation time
+     * @param u view of the newly computed solution field in the new dw
+     * @param u_finest view for evaluating the solution on the reference patch (interpolator)
+     * @param[out] epsilon_u view of the local residual (difference between computed and
+     * analytical solution at each grid position)
+     * @param[out] error_u interpolation error (L2 norm over the range of each
+     * grid position of the difference between computed and
+     * analytical solution at each grid position)
+     * @param[out] u_norm2_L2 square of L2-norm (global) of the solution vector
+     * @param[out] error_norm2_L2 square of L2-norm (global) of the solution error vector
+     *
+     */
     template < bool MG >
     typename std::enable_if < MG, void >::type
     time_advance_solution_error (
@@ -2835,8 +3132,8 @@ void
 Heat<VAR, DIM, STN, AMR, TST>::task_restart_initialize_hypresstruct (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
-    const MaterialSubset *,
-    DataWarehouse * dw_old,
+    const MaterialSubset * /*matls*/,
+    DataWarehouse * /*dw_old*/,
     DataWarehouse * dw_new
 )
 {
@@ -3119,14 +3416,14 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
     double timeStep = timeStepVar;
 
     if ( timeStep == 1 || this->isRegridTimeStep() )
-        task_time_advance_solution_backward_euler_assemble_hypre_all ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_backward_euler_assemble_hypre_full ( myworld, patches, matls, dw_old, dw_new );
     else
         task_time_advance_solution_backward_euler_assemble_hypre_rhs ( myworld, patches, matls, dw_old, dw_new );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assemble_hypre_all
+Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assemble_hypre_full
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -3137,7 +3434,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_backward_euler_assemble_hypre_all ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_backward_euler_assemble_hypre_full ====" );
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -3153,7 +3450,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &A, &b, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypre_all ( {i, j, k}, u_old, A, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &A, &b, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypre_full ( {i, j, k}, u_old, A, b ); } );
         }
     }
 
@@ -3213,14 +3510,14 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
     double timeStep = timeStepVar;
 
     if ( timeStep == 1 || this->isRegridTimeStep() )
-        task_time_advance_solution_backward_euler_assemble_hypresstruct_all ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_backward_euler_assemble_hypresstruct_full ( myworld, patches, matls, dw_old, dw_new );
     else
         task_time_advance_solution_backward_euler_assemble_hypresstruct_rhs ( myworld, patches, matls, dw_old, dw_new );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assemble_hypresstruct_all
+Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assemble_hypresstruct_full
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -3231,7 +3528,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct_all ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct_full ====" );
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -3248,7 +3545,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypresstruct_all ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypresstruct_full ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
         }
 
         _AdditionalEntries additional_entries;
@@ -3313,14 +3610,14 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
     double timeStep = timeStepVar;
 
     if ( timeStep == 1 || this->isRegridTimeStep() )
-        task_time_advance_solution_crank_nicolson_assemble_hypre_all ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_crank_nicolson_assemble_hypre_full ( myworld, patches, matls, dw_old, dw_new );
     else
         task_time_advance_solution_crank_nicolson_assemble_hypre_rhs ( myworld, patches, matls, dw_old, dw_new );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assemble_hypre_all
+Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assemble_hypre_full
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -3331,7 +3628,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_crank_nicolson_assemble_hypre_all ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_crank_nicolson_assemble_hypre_full ====" );
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -3347,7 +3644,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &A, &b, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypre_all ( {i, j, k}, u_old, A, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &A, &b, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypre_full ( {i, j, k}, u_old, A, b ); } );
         }
     }
 
@@ -3407,14 +3704,14 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
     double timeStep = timeStepVar;
 
     if ( timeStep == 1 || this->isRegridTimeStep() )
-        task_time_advance_solution_crank_nicolson_assemble_hypresstruct_all ( myworld, patches, matls, dw_old, dw_new );
+        task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full ( myworld, patches, matls, dw_old, dw_new );
     else
         task_time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs ( myworld, patches, matls, dw_old, dw_new );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_all
+Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
@@ -3425,7 +3722,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
 {
     int myrank = myworld->myRank();
 
-    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_all ====" );
+    DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full ====" );
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -3442,7 +3739,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypresstruct_all ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
+            parallel_for ( p.get_range(), [&u_old, &A_stencil, &A_additional, &b, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypresstruct_full ( {i, j, k}, u_old, A_stencil, A_additional, b ); } );
         }
 
         _AdditionalEntries additional_entries;
@@ -4218,7 +4515,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_forward_euler (
 #ifdef HAVE_HYPRE
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_backward_euler_assemble_hypre_all
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_backward_euler_assemble_hypre_full
 (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,
@@ -4255,7 +4552,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_backward_euler_assemble_hyp
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_backward_euler_assemble_hypresstruct_all
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_backward_euler_assemble_hypresstruct_full
 (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,
@@ -4300,7 +4597,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_backward_euler_assemble_hyp
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_crank_nicolson_assemble_hypre_all
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_crank_nicolson_assemble_hypre_full
 (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,
@@ -4337,7 +4634,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_crank_nicolson_assemble_hyp
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_crank_nicolson_assemble_hypresstruct_all
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_crank_nicolson_assemble_hypresstruct_full
 (
     const IntVector & id,
     const FDView < ScalarField<const double>, STN > & u_old,

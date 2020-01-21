@@ -91,17 +91,37 @@ struct AMRInterface
         return detail::amr_interface0<V>::get_finer ( l, i );
     }
 
+    /**
+     * @brief check if the finer level overlaps the grid element at the
+     * given index (cell-centered implementation)
+     *
+     * @tparam V type of variable, thus grid element (cell or node)
+     * @param l coarse level
+     * @param p coarse patch (unused)
+     * @param i coarse grid index
+     * @return whether the given region is refined
+     */
     template <VarType V = VAR>
     static inline typename std::enable_if<V==CC, bool>::type
     is_refined (
         const Level * l,
-        const Patch * p,
+        const Patch * _DOXYARG ( p ),
         const IntVector & i
     )
     {
         return l->hasFinerLevel() && l->getFinerLevel()->containsCell ( l->mapCellToFiner ( i ) );
     }
 
+    /**
+     * @brief check if the finer level overlaps the grid element at the
+     * given index (node centered implementation)
+     *
+     * @tparam V type of variable, thus grid element (cell or node)
+     * @param l coarse level
+     * @param p coarse patch
+     * @param i coarse grid index
+     * @return whether the given region is refined
+     */
     template <VarType V = VAR>
     static inline typename std::enable_if<V==NC, bool>::type
     is_refined (

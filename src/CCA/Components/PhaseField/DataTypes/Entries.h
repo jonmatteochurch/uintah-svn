@@ -90,7 +90,7 @@ public: // CONSTRUCTORS
     {}
 
     /// Default move constructor
-    Entries ( Entries<T> && copy ) = default;
+    Entries ( Entries<T> && ) = default;
 
 public: // MODIFIERS
 

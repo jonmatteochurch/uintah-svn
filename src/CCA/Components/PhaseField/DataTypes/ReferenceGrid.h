@@ -123,6 +123,7 @@ public: // METHODS
      * skipped level
      *
      * @param k number of refinements between the finest available and the reference levels
+     * @return pointer to new reference level
      */
     Level *
     addFinestLevel (
@@ -146,6 +147,7 @@ public: // METHODS
      *
      * @param patch grid patch
      * @param index index of the patch's level
+     * @return pointer to reference virtual patch
      */
     Patch *
     addFinestPatch (

@@ -150,6 +150,15 @@ private: // MEMBERS
 
 private: // INDEXED CONSTRUCTOR
 
+    /**
+     * @brief Indexed vertial view creator
+     * (2+ faces implementation)
+     *
+     * Instantiate a new vertical angle view
+     *
+     * @tparam FP filtered list of BC, FC, and Patch::Face packs
+     * @return new bc_vertical_angle_view instance
+     */
     template < BCF... FP >
     typename std::enable_if < (sizeof...(FP)>1), view<Field> * >::type
     create_va_view ()
@@ -157,13 +166,23 @@ private: // INDEXED CONSTRUCTOR
         return scinew bc_vertical_angle_view < Field, STN, FP... > ( m_dw_view.get(), m_fd_view );
     }
 
+    /**
+     * @brief Indexed vertial view creator
+     * (less than 2 faces implementation)
+     *
+     * Do nothing
+     *
+     * @tparam FP filtered list of BC, FC, and Patch::Face packs
+     * @return nullptr
+     */
     template < BCF... FP >
     typename std::enable_if < (sizeof...(FP)<2), view<Field> * >::type
     create_va_view ()
     {
         return nullptr;
     }
-/**
+
+    /**
      * @brief Indexed constructor
      *
      * Instantiate a copy of a given view

@@ -83,6 +83,7 @@ private: // TYPES
     /// Type of field
     using Field = VectorField<T, N>;
 
+    /// Type for component sub indices
     template <size_t J>
     using SubIndex = index_sequence<I..., J>;
 
@@ -92,6 +93,17 @@ private: // TYPES
 
 private: // SINGLE INDEX METHODS
 
+    /**
+     * @brief Create amr_interpolator view for a given component
+     *
+     * Instantiate a view without gathering info from the DataWarehouse
+     *
+     * @tparam J component index
+     * @param label label of variable in the DataWarehouse
+     * @param subproblems_label label of subproblems in the DataWarehouse
+     * @param material index of material in the DataWarehouse
+     * @return pointer to the newly created view
+     */
     template<size_t J>
     void * create_element (
         const typename Field::label_type & label,
@@ -102,6 +114,20 @@ private: // SINGLE INDEX METHODS
         return this->m_view_ptr[J] = scinew View<J> ( label[J], subproblems_label, material );
     }
 
+    /**
+     * @brief Create amr_interpolator view for a given component
+     *
+     * Instantiate a view and gather info from dw
+     *
+     * @tparam J component index
+     * @param dw DataWarehouse from which data is retrieved
+     * @param label label of variable in the DataWarehouse
+     * @param subproblems_label label of subproblems in the DataWarehouse
+     * @param material index of material in the DataWarehouse
+     * @param patch grid patch on which data is retrieved
+     * @param use_ghosts if ghosts value are to be retrieved
+     * @return pointer to the newly created view
+     */
     template<size_t J>
     void * create_element (
         DataWarehouse * dw,
@@ -117,6 +143,17 @@ private: // SINGLE INDEX METHODS
 
 private: // INDEXED CONSTRUCTOR
 
+    /**
+     * @brief Indexed constructor
+     *
+     * Instantiate a view without gathering info from the DataWarehouse
+     *
+     * @tparam J indices for boundary views
+     * @param unused to allow template argument deduction
+     * @param label label of variable in the DataWarehouse
+     * @param subproblems_label label of subproblems in the DataWarehouse
+     * @param material index of material in the DataWarehouse
+     */
     template<size_t... J>
     amr_interpolator (
         index_sequence<J...> _DOXYARG ( unused ),
@@ -128,6 +165,20 @@ private: // INDEXED CONSTRUCTOR
         std::array<void *, N> {{ create_element<J> ( label, subproblems_label, material )... }};
     }
 
+    /**
+     * @brief Indexed constructor
+     *
+     * Instantiate a view and gather info from dw
+     *
+     * @tparam J indices for boundary views
+     * @param unused to allow template argument deduction
+     * @param dw DataWarehouse from which data is retrieved
+     * @param label label of variable in the DataWarehouse
+     * @param subproblems_label label of subproblems in the DataWarehouse
+     * @param material index of material in the DataWarehouse
+     * @param patch grid patch
+     * @param use_ghosts if ghosts value are to be retrieved
+     */
     template<size_t... J>
     amr_interpolator (
         index_sequence<J...> _DOXYARG ( unused ),

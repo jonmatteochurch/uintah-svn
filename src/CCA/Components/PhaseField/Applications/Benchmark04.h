@@ -64,7 +64,7 @@ namespace PhaseField
  * and with periodic boundary conditions.
  *
  * The model parameters are:
- * - \f$ \epsilon = \tfrac{\pi}{100} \sqrt{\tfrac{2}{5} \f$ interface width
+ * - \f$ \epsilon = \tfrac{\pi}{100} \sqrt{\tfrac{2}{5}} \f$ interface width
  *
  * @tparam VAR type of variable representation
  * @tparam STN finite-difference stencil

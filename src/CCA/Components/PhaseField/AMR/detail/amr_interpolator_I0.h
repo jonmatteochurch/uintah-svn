@@ -259,7 +259,7 @@ public: // VIEW METHODS
         const Level * level,
         const IntVector & low,
         const IntVector & high,
-        bool _DOXYARG(use_ghosts) = use_ghosts_dflt
+        bool _DOXYARG ( use_ghosts ) = use_ghosts_dflt
     ) override
     {
         m_support.clear();

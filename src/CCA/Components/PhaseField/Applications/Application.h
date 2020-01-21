@@ -97,8 +97,10 @@ protected: // STATIC MEMBERS
     /// Restriction type for coarsening
     static constexpr FCIType F2C = ( VAR == CC ) ? I1 : I0; // TODO make template parameter
 
+    /// Number of ghost elements required by intepolation scheme
     static constexpr int IGN = C2F - 1;
 
+    /// Type of ghost elements required by intepolation scheme
     static constexpr Ghost::GhostType IGT = IGN ? VAR == CC ? Ghost::AroundCells : Ghost::AroundNodes : Ghost::None;
 
 protected: // MEMBERS
