@@ -155,7 +155,7 @@ class PureMetal
     static constexpr size_t PSI = 0; ///< Index for phase-field
     static constexpr size_t U = 1;   ///< Index for non-dimensional temperature field
     static constexpr size_t A2 = 2;  ///< Index for the square of the anisotropy function
-    static constexpr size_t B = 3;   ///< Index for the anisotropy terms B_ij
+    static constexpr size_t B = 3;   ///< Index for the anisotropy terms \f$ B_ij \f$
 
 public: // STATIC MEMBERS
 
@@ -194,7 +194,7 @@ protected: // MEMBERS
     /// Non-dimensional thermal diffusivity
     double alpha;
 
-    /// Anisotropy strength
+    /// Anisotropy strength (\f$ \epsilon<0 \f$ favours growth along I bisector instead of along \f$ x \f$ axis
     double epsilon;
 
     /// Initial phase field interface width
