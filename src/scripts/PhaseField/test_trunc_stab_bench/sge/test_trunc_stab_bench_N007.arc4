@@ -1,0 +1,60 @@
+#$ -cwd -V
+#$ -m be -M scjmc@leeds.ac.uk
+#$ -l nodes=7
+#$ -l h_rt=00:20:00
+if [ -z "$UPATH" ]; then
+    UPATH=$HOME/uintah/trunk
+fi
+
+SUS=$UPATH/arc4/build/StandAlone/sus
+INP=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab_bench
+MPIRUN=/apps/developers/compilers/intel/19.0.4/1/default/impi/2019.4.243/intel64/bin/mpirun
+
+FN=benchmark01_cc_2d_fe_3_0
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_3_1
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_3_2
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_3_3
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_3_4
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_3_5
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_3_6
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_0
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_1
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_2
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_3
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_4
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_5
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_6
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_7
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_nc_2d_fe_3_8
+mpirun -np 256 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
