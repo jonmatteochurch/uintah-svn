@@ -2,7 +2,7 @@
 #
 #  The MIT License
 #
-#  Copyright (c) 1997-2019 The University of Utah
+#  Copyright (c) 1997-2020 The University of Utah
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to
@@ -38,11 +38,13 @@ DIRs=(x y z)
 SIGNs=(minus plus)
 BCs=(Dirichlet Neumann)
 C2Fs=(FC0 FC1 FCSimple FCLinear FCBilinear)
+FIELD=-1
 
 SS=""
 VV=""
 CC=""
 PP=""
+FLD=""
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -74,6 +76,11 @@ case $key in
     ;;
     -B|--no-bc)
     BCs=()
+    shift # past argument
+    ;;
+    -f|--field)
+    FIELD="$2"
+    FLD="-$2"
     shift # past argument
     ;;
     *)    # unknown option
@@ -136,14 +143,14 @@ for ((pp=0; pp<${#PPPs[@]}; pp++)); do
   done
 done
 
-SRC=${0%-bld.sh}${PP}${VV}${SS}${CC}-bld.cc
+SRC=${0%-bld.sh}${PP}${VV}${SS}${CC}${FLD}-bld.cc
 
 echo "generating $SRC"
 
 echo '/*' > $SRC
 echo ' * The MIT License' >> $SRC
 echo ' *' >> $SRC
-echo ' * Copyright (c) 1997-2019 The University of Utah' >> $SRC
+echo ' * Copyright (c) 1997-2020 The University of Utah' >> $SRC
 echo ' *' >> $SRC
 echo ' * Permission is hereby granted, free of charge, to any person obtaining a copy' >> $SRC
 echo ' * of this software and associated documentation files (the "Software"), to' >> $SRC
@@ -183,7 +190,15 @@ for VAR in ${VARs[@]}; do
       PP="${PPs[n]}"
       NF="${NFs[n]}"
       PB="$PP<$VAR, $STN>"
-      for ((f=0; f<$NF; f++)); do
+
+      if [[ $FIELD -eq -1 ]]; then
+        FF=`seq 0 $NF`
+      else
+        FF="$FIELD"
+      fi
+      for f in $FF; do
+#     for ((f=0; f<$NF; f++)); do
+
         I=$f
 
         for ((d0=0; d0<$DIM; d0++)); do
@@ -306,7 +321,15 @@ for VAR in ${VARs[@]}; do
     for ((n=0; n<${#PPs[@]}; n++)); do
       PB="${PPs[n]}<$VAR, $STN>"
       NF="${NFs[n]}"
-      for ((f=0; f<$NF; f++)); do
+
+      if [[ $FIELD -eq -1 ]]; then
+        FF=`seq 0 $NF`
+      else
+        FF=("$FIELD")
+      fi
+      for f in "${FF[@]}"; do
+#     for ((f=0; f<$NF; f++)); do
+
         I=$f
 
         for ((d0=0; d0<$DIM; d0++)); do

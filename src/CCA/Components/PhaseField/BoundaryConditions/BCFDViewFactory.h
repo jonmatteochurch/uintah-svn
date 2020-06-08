@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -38,7 +38,6 @@
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 #include <CCA/Components/PhaseField/Views/FDView.h>
 
-// #include <Core/Util/Factory/Base.h>
 #include <Core/Util/Factory/Factory.h>
 #include <Core/Exceptions/ProblemSetupException.h>
 
@@ -49,9 +48,6 @@ namespace PhaseField
 
 /// Factory creator for BCFDView
 template<typename Field, StnType STN> using BCFactoryFDView = Factory < FDView<Field, STN>, const typename Field::label_type &, const VarLabel *, int, const Level *, const std::vector< BCInfo<Field> > & >;
-
-/// Factory base for BCFDView
-// template<typename Field, StnType STN> using BCBaseFDView = Base< FDView<Field, STN> >;
 
 /**
  * @brief Factory creator implementation for BCFDView

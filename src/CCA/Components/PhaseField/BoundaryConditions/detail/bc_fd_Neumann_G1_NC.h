@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -32,6 +32,7 @@
 #define Packages_Uintah_CCA_Components_PhaseField_BoundaryConditions_detail_bc_fd_Neumann_G1_NC_h
 
 #include <CCA/Components/PhaseField/Util/Definitions.h>
+#include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 
 namespace Uintah
 {
@@ -129,7 +130,7 @@ protected: // COPY CONSTRUCTOR
      */
     bc_fd (
         const bc_fd * copy,
-        bool deep
+        bool _DOXYARG ( deep )
     ) : m_view ( copy->m_view ),
         m_value ( copy->m_value ),
         m_level ( copy->m_level ),
@@ -154,7 +155,7 @@ protected: // COPY CONSTRUCTOR
     bc_fd (
         const view<Field> * view,
         const bc_fd * copy,
-        bool deep
+        bool _DOXYARG ( deep )
     ) : m_view ( view ),
         m_value ( copy->m_value ),
         m_level ( copy->m_level ),
@@ -377,7 +378,7 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, T >::type
     d (
-        const IntVector & id
+        const IntVector & _DOXYARG ( id )
     ) const VIRT;
 
     /**
@@ -394,7 +395,7 @@ public: // BC FD MEMBERS
     template <DirType DIR >
     inline typename std::enable_if < D == DIR, T >::type
     d (
-        const IntVector & id
+        const IntVector & _DOXYARG ( id )
     ) const
     {
         return m_value;
@@ -415,7 +416,7 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, T >::type
     d2 (
-        const IntVector & id
+        const IntVector & _DOXYARG ( id )
     ) const VIRT;
 
     /**
@@ -443,63 +444,63 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_sys_hypre (
-        const IntVector & id,
-        S & stencil_entries,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        S & _DOXYARG ( stencil_entries ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_sys_hypre (
-        const IntVector &,
-        S & stencil_entries,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        S & _DOXYARG ( stencil_entries ),
+        V & _DOXYARG ( rhs )
     ) const TODO
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_rhs_hypre (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypre (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const TODO
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_sys_hypresstruct (
-        const IntVector & id,
-        S & stencil_entries,
-        A & additional_entries,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        S & _DOXYARG ( stencil_entries ),
+        A & _DOXYARG ( additional_entries ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_sys_hypresstruct (
         const IntVector &,
-        S & stencil_entries,
-        A & additional_entries,
-        V & rhs
+        S & _DOXYARG ( stencil_entries ),
+        A & _DOXYARG ( additional_entries ),
+        V & _DOXYARG ( rhs )
     ) const TODO
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_rhs_hypresstruct (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypresstruct (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const TODO
 #endif
 

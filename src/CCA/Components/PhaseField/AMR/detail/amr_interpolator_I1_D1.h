@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -307,7 +307,7 @@ public: // VIEW METHODS
         m_level_fine = level;
         m_level_coarse = m_level_fine->getCoarserLevel().get_rep();
         Region fine_region = use_ghosts ? compute_fine_region ( low, high ) : Region(low, high);
-        m_view_coarse.set ( dw, level, fine_region.low(), fine_region.high() );
+        m_view_coarse->set ( dw, level, fine_region.low(), fine_region.high() );
         m_support.emplace_back ( low, high );
     };
 

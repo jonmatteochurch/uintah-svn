@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -302,7 +302,7 @@ private: // SINGLE INDEX METHODS
     template < size_t J, BC B = get_bcf< Q[J] >::bc, FC C2F = get_bcf< Q[J] >::c2f >
     typename std::enable_if < B == BC::FineCoarseInterface, view<Field> * >::type
     get_value (
-        const std::vector < BCInfo<Field> > & bc
+        const std::vector < BCInfo<Field> > & _DOXYARG ( bc )
     )
     {
         return scinew amr_interpolator < Field, Problem, Index, get_fc<C2F>::fci, DIM > ( m_label, m_subproblems_label, m_material ); // deleted by bc_fd_FineCoarseInterface destructor
@@ -503,13 +503,13 @@ public: // CONSTRUCTOR
      * @param use_ghosts if ghosts value are to be retrieved
      */
     bcs_basic_fd_view (
-        DataWarehouse * dw,
+        DataWarehouse * _DOXYARG ( dw ),
         const typename Field::label_type & label,
         const VarLabel * subproblems_label,
         int material,
-        const Patch * patch,
-        const std::vector < BCInfo<Field> > & bcs,
-        bool use_ghosts
+        const Patch * _DOXYARG ( patch ),
+        const std::vector < BCInfo<Field> > & _DOXYARG ( bcs ),
+        bool _DOXYARG ( use_ghosts )
     ) : m_label ( label ),
         m_subproblems_label ( subproblems_label ),
         m_material ( material )

@@ -24,4 +24,4 @@
 #
 
 SCRIPT="`dirname \"$0\"`"/AMRFDView-bld.sh
-${SCRIPT} -p HeatTestProblem -v CC -s P7 -c FC0New
+${SCRIPT} -p HeatTestProblem -v NC -s P7 -c FC0 -f 0

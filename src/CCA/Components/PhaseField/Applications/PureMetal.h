@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -38,6 +38,8 @@
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 #include <CCA/Components/PhaseField/Applications/Application.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorFactory.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessor.h>
 #include <CCA/Components/PhaseField/Views/View.h>
 #include <CCA/Components/PhaseField/Views/FDView.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
@@ -51,6 +53,8 @@
 #include <Core/Grid/SimpleMaterial.h>
 #include <Core/Parallel/UintahParallelComponent.h>
 #include <Core/Grid/Variables/PerPatchVars.h>
+#include <Core/Grid/Variables/ReductionVariable.h>
+#include <forward_list>
 
 namespace Uintah
 {
@@ -59,6 +63,7 @@ namespace PhaseField
 
 /// Debugging stream for component schedulings
 static constexpr bool dbg_pure_metal_scheduling = false;
+static constexpr bool dbg_pure_metal_postprocess = false;
 
 /**
  * @brief PureMetal PhaseField applications
@@ -76,21 +81,21 @@ static constexpr bool dbg_pure_metal_scheduling = false;
  * \f[
  * \tau_0 A^2 \dot \psi = \psi (1-\psi^2) - \lambda u (\psi^2 - 1)^2
  *                      + W_0^2 A^2 \nabla^2 \psi
- *                      + W_0^2 (A^2_x - \partial_y B_{xy} - \partial_y B_{xz} \psi_x
- *                      + W_0^2 (A^2_y + \partial_y B_{xy} - \partial_y B_{yz} \psi_y
- *                      + W_0^2 (A^2_y + \partial_y B_{xz} + \partial_y B_{yz} \psi_z
+ *                      + W_0^2 (A^2_x - \partial_y B_{xy} - \partial_y B_{xz}) \psi_x
+ *                      + W_0^2 (A^2_y + \partial_y B_{xy} - \partial_y B_{yz}) \psi_y
+ *                      + W_0^2 (A^2_z + \partial_y B_{xz} + \partial_y B_{yz}) \psi_z
  * \f]
  * (for 3D problems all quantities with \f$z\f$ in the subscript are null)
  *
  * non-dimensional temperature equation for \f$u:\Omega \to \mathbb R\f$
  * \f[
- * \dot u = \alpha \nabla^2 u + 1/2 \dot \psi
+ * \dot u = \alpha \nabla^2 u + \frac 12 \dot \psi
  * \f]
  *
  * with the following anisotropy functions
  * \f[ A    = 1 - 3 \epsilon + 4\epsilon \sum n_i^4 \f]
- * \f[ B_ij = 16 \epsilon A \psi_i \psi_j (\psi_i^2-\psi_j^2) / |\nabla\psi|^4 \f]
- * where \f$ n=\nabla\psi/|\nabla\psi \f$
+ * \f[ B_{ij} = 16 \epsilon A \psi_i \psi_j (\psi_i^2-\psi_j^2) / |\nabla\psi|^4 \f]
+ * where \f$ n=\frac{\nabla\psi}{|\nabla\psi|} \f$
  *
  * The model parameters are:
  * - \f$ \lambda \f$  coupling parameter
@@ -100,7 +105,7 @@ static constexpr bool dbg_pure_metal_scheduling = false;
  * - \f$ \epsilon \f$ anisotropy strength
  * - \f$ \alpha \f$   thermal diffusivity
  *
- * The following no-dimensionalizations are performed
+ * The following non-dimensionalizations are performed
  * - \f$ x \mapsto x/W_0 \f$
  * - \f$ t \mapsto t/\tau_0 \f$
  * - \f$ \alpha \mapsto \alpha\tau_0/W_0^2 \f$
@@ -184,6 +189,11 @@ protected: // MEMBERS
 
     /// Label for anisotropy fields B in the DataWarehouse
     std::array<const VarLabel *, BSZ> b_label;
+
+    ArmPostProcessor<VAR, DIM> * arm_postproc;
+    const VarLabel * tip_position_label;
+    const VarLabel * tip_velocity_label;
+    const VarLabel * tip_curvatures_label;
 
     /// Time step size
     double delt;
@@ -471,6 +481,20 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_postprocess (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_postprocess (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
     /**
      * @brief Schedule the refinement tasks
      *
@@ -524,7 +548,7 @@ protected: // SCHEDULINGS
         Task * task = scinew Task ( "PureMetal::task_communicate_psi", this, &PureMetal::task_communicate_psi );
         task->requires ( Task::NewDW, psi_label, CGT, CGN );
         task->modifies ( psi_label );
-        sched->addTask ( task, sched->getLoadBalancer()->getPerProcessorPatchSet(level), this->m_materialManager->allMaterials() );
+        sched->addTask ( task, sched->getLoadBalancer()->getPerProcessorPatchSet ( level ), this->m_materialManager->allMaterials() );
     }
 
     /**
@@ -791,6 +815,15 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+    void
+    task_time_advance_postprocess (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
     /**
      * @brief Refine solution task
      *
@@ -885,10 +918,10 @@ protected: // TASKS
      */
     void
     task_communicate_psi (
-        const ProcessorGroup * ,
-        const PatchSubset * ,
-        const MaterialSubset * ,
-        DataWarehouse * ,
+        const ProcessorGroup *,
+        const PatchSubset *,
+        const MaterialSubset *,
+        DataWarehouse *,
         DataWarehouse *
     )
     {}
@@ -1082,12 +1115,16 @@ PureMetal<VAR, DIM, STN, AMR>::PureMetal (
         b_label[YZ] = VarLabel::create ( "Byz", Variable<VAR, double>::getTypeDescription() );
     }
 
-//     boundary_labels = { psi_label, u_label, a2_label, b_label };
+    tip_position_label = VarLabel::create ( "tip_position", max_vartype::getTypeDescription() );
+    tip_velocity_label = VarLabel::create ( "tip_velocity", max_vartype::getTypeDescription() );
+    tip_curvatures_label = VarLabel::create ( "tip_curvatures", maxvec_vartype::getTypeDescription() );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 PureMetal<VAR, DIM, STN, AMR>::~PureMetal()
 {
+    delete arm_postproc;
+
     VarLabel::destroy ( psi_label );
     VarLabel::destroy ( u_label );
     VarLabel::destroy ( grad_psi_norm2_label );
@@ -1097,6 +1134,9 @@ PureMetal<VAR, DIM, STN, AMR>::~PureMetal()
         VarLabel::destroy ( grad_psi_label[d] );
     for ( size_t d = 0; d < BSZ; ++d )
         VarLabel::destroy ( b_label[d] );
+    VarLabel::destroy ( tip_position_label );
+    VarLabel::destroy ( tip_velocity_label );
+    VarLabel::destroy ( tip_curvatures_label );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1119,6 +1159,10 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     pure_metal->require ( "epsilon", epsilon );
     pure_metal->getWithDefault ( "gamma_psi", gamma_psi, 1. );
     pure_metal->getWithDefault ( "gamma_u", gamma_u, 1. );
+
+    // read arm postprocessor parameters
+    ProblemSpecP postproc = params->findBlock ( "ArmPostProcessor" );
+    arm_postproc = ArmPostProcessorFactory<VAR, DIM>::create ( postproc, epsilon, this->m_dbg_lvl4 );
 
     // coupling parameter
     lambda = alpha / 0.6267;
@@ -1162,6 +1206,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize (
 {
     scheduleInitialize_solution<AMR> ( level, sched );
     scheduleInitialize_grad_psi<AMR> ( level, sched );
+    scheduleTimeAdvance_postprocess<AMR> ( level, sched );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1259,6 +1304,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance (
     scheduleTimeAdvance_grad_psi<AMR> ( level, sched );
     scheduleTimeAdvance_anisotropy_terms ( level, sched );
     scheduleTimeAdvance_solution<AMR> ( level, sched );
+    scheduleTimeAdvance_postprocess<AMR> ( level, sched );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1362,6 +1408,40 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
         task->computes ( u_label );
         sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
     }
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < ! MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_postprocess (
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    {
+        Task * task = scinew Task ( "PureMetal::task_time_advance_postprocess", this,
+                                    &PureMetal::task_time_advance_postprocess );
+        task->requires ( Task::NewDW, psi_label, get_var<VAR>::ghost_type, 1 );
+        task->requires ( Task::OldDW, tip_position_label );
+        task->computes ( tip_position_label );
+        task->computes ( tip_velocity_label );
+        task->computes ( tip_curvatures_label );
+        task->setType ( Task::OncePerProc );
+        task->usesMPI ( true );
+
+        sched->addTask ( task, sched->getLoadBalancer()->getPerProcessorPatchSet ( level ), this->m_materialManager->allMaterials() );
+    }
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_postprocess (
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    if ( !level->hasFinerLevel() ) scheduleTimeAdvance_postprocess < !MG > ( level, sched );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1605,7 +1685,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_initialize_grad_psi (
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_new );
 
             // Compute psi derivatives on subproblem range
-            parallel_for ( p.get_range(), [patch, &psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
+            parallel_for ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
         }
     }
 
@@ -1657,7 +1737,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_grad_psi (
         {
             DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_old );
-            parallel_for ( p.get_range(), [patch, &psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
+            parallel_for ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
         }
     }
 
@@ -1739,6 +1819,112 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_postprocess (
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset *,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_time_advance_postprocess ====" );
+
+    const Level * level = getLevel ( patches );
+    arm_postproc->setLevel ( level );
+
+    arm_postproc->initializeLocations();
+
+    std::forward_list< std::tuple<IntVector, IntVector, std::reference_wrapper< View < ScalarField<const double> > > > > list;
+    auto iter = list.before_begin();
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );;
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
+
+            IntVector const & low = p.get_low();
+            IntVector const & high = p.get_high();
+            View < ScalarField<const double> > & psi = p.template get_fd_view<PSI> ( dw_new );
+
+            arm_postproc->setLocations ( low, high, psi );
+
+            iter = list.emplace_after ( iter, low, high, psi );
+        }
+    }
+
+    std::stringstream ss;
+
+    DOUT ( this->m_dbg_lvl2,  myrank );
+
+    if ( dbg_pure_metal_postprocess )
+    {
+        arm_postproc->printLocations ( ss << myrank << ": " );
+        DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
+        ss.str ( "" );
+        ss.clear();
+    }
+
+    arm_postproc->reduceLocations ( myworld );
+
+    if ( dbg_pure_metal_postprocess )
+    {
+        DOUT ( this->m_dbg_lvl2,  myrank );
+        arm_postproc->printLocations ( ss << myrank << ": " );
+        DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
+        ss.str ( "" );
+        ss.clear();
+    }
+
+    arm_postproc->initializeData();
+
+    for ( const auto & it : list )
+    {
+        arm_postproc->setData ( std::get<0> ( it ), std::get<1> ( it ), std::get<2> ( it ) );
+    }
+
+    if ( dbg_pure_metal_postprocess )
+    {
+        arm_postproc->printData ( ss << myrank << ": " );
+        DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
+        ss.str ( "" );
+        ss.clear();
+    }
+
+    arm_postproc->reduceData ( myworld );
+
+    if ( myrank == 0 )
+    {
+        if ( dbg_pure_metal_postprocess )
+        {
+            arm_postproc->printData ( ss << myrank << ": " );
+            DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
+        }
+        max_vartype old_position ( r0 );
+        if ( dw_old )
+            dw_old->get ( old_position, tip_position_label );
+        else
+            old_position.setData ( r0 );
+
+        double tip_position = old_position;
+        double tip_curvatures[3];
+        arm_postproc->computeTipInfo ( tip_position, tip_curvatures, gamma_psi );
+        dw_new->put ( max_vartype ( tip_position ), tip_position_label );
+        dw_new->put ( max_vartype ( ( tip_position - old_position ) / delt ), tip_velocity_label );
+        dw_new->put ( maxvec_vartype ( { tip_curvatures[0], tip_curvatures[1], tip_curvatures[2] } ), tip_curvatures_label );
+    }
+
+    DOUT ( this->m_dbg_lvl2,  myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
 PureMetal<VAR, DIM, STN, AMR>::task_refine_solution
 (
     const ProcessorGroup * myworld,
@@ -1799,7 +1985,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_refine_grad_psi
         {
             DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_new );
-            parallel_for ( p.get_range(), [patch_fine, &psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
+            parallel_for ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, this] ( int i, int j, int k )->void { time_advance_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2 ); } );
         }
     }
 
@@ -1882,7 +2068,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_error_estimate_grad_psi
         {
             DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_new );
-            parallel_reduce_sum ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, &refine_flag, &refine_patch, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2, refine_flag, refine_patch ); }, refine_patch );
+            parallel_reduce_sum ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, &refine_flag, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2, refine_flag, refine_patch ); }, refine_patch );
         }
 
         if ( refine_patch )
@@ -1969,7 +2155,7 @@ void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms (
 
         double tmp4 = 0.;
         double grad[DIM], grad2[DIM];
-        for ( size_t d = 0; d < BSZ; ++d )
+        for ( size_t d = 0; d < DIM; ++d )
         {
             grad[d] = grad_psi[d][id];
             grad2[d] = grad[d] * grad[d];

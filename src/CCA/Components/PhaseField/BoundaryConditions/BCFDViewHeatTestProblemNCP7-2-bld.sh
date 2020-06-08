@@ -23,5 +23,5 @@
 #  IN THE SOFTWARE.
 #
 
-SCRIPT="`dirname \"$0\"`"/AMRFDView-bld.sh
-${SCRIPT} -p HeatTestProblem -v NC -s P7 -c FC0
+SCRIPT="`dirname \"$0\"`"/BCFDView-bld.sh
+${SCRIPT} -p HeatTestProblem -v NC -s P7 -f 2

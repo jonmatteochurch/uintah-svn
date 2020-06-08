@@ -1,7 +1,7 @@
 #
 #  The MIT License
 #
-#  Copyright (c) 1997-2019 The University of Utah
+#  Copyright (c) 1997-2020 The University of Utah
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to
@@ -36,9 +36,15 @@ SRCS += \
   $(SRCDIR)/BCFDViewScalarProblemNCP5-bld.cc \
   $(SRCDIR)/BCFDViewScalarProblemNCP7-bld.cc \
   $(SRCDIR)/BCFDViewHeatTestProblemCCP5-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-0-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-1-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-2-bld.cc \
   $(SRCDIR)/BCFDViewHeatTestProblemNCP5-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-0-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-1-bld.cc \
+  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-2-bld.cc \
+  $(SRCDIR)/BCFDViewPureMetalProblemCCP5-bld.cc \
+  $(SRCDIR)/BCFDViewPureMetalProblemNCP5-bld.cc \
 
 BLDDIR := $(SRCTOP)/$(SRCDIR)
 
@@ -49,6 +55,12 @@ BLDSRCS += \
   $(BLDDIR)/BCFDViewScalarProblemNCP5-bld.cc \
   $(BLDDIR)/BCFDViewScalarProblemNCP7-bld.cc \
   $(BLDDIR)/BCFDViewHeatTestProblemCCP5-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-0-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-1-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-2-bld.cc \
   $(BLDDIR)/BCFDViewHeatTestProblemNCP5-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-0-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-1-bld.cc \
+  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-2-bld.cc \
+  $(BLDDIR)/BCFDViewPureMetalProblemCCP5-bld.cc \
+  $(BLDDIR)/BCFDViewPureMetalProblemNCP5-bld.cc \

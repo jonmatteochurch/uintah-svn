@@ -24,4 +24,4 @@
 #
 
 SCRIPT="`dirname \"$0\"`"/BCFDView-bld.sh
-${SCRIPT} -p HeatTestProblem -v NC -s P7
+${SCRIPT} -p HeatTestProblem -v CC -s P7 -f 2

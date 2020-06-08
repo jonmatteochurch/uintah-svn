@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -1938,7 +1938,7 @@ Benchmark01<VAR, STN, AMR>::task_time_advance_solution_forward_euler (
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [patch, &u_old, &u_new, this] ( int i, int j, int k )->void { time_advance_solution_forward_euler ( {i, j, k}, u_old, u_new ); } );
+            parallel_for ( p.get_range(), [&u_old, &u_new, this] ( int i, int j, int k )->void { time_advance_solution_forward_euler ( {i, j, k}, u_old, u_new ); } );
         }
     }
 

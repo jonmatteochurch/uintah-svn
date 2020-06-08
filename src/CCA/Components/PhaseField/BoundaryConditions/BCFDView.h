@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -140,4 +140,4 @@ public: // CONSTRUCTOR
 } // namespace PhaseField
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_PhaseField_BoundaryConditions_BCFDView_h
+#endif // Packages_Uintah_CCA_Components_PhaseField_BoundaryConditions_BCFDView_h_h

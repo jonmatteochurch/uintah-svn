@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -528,8 +528,8 @@ Benchmark02<VAR, STN>::scheduleInitialize (
 template<VarType VAR, StnType STN>
 void
 Benchmark02<VAR, STN>::scheduleRestartInitialize (
-    const LevelP & level,
-    SchedulerP & sched
+    const LevelP & /*level*/,
+    SchedulerP & /*sched*/
 )
 {
 }
@@ -679,7 +679,7 @@ void Benchmark02<VAR, STN>::task_time_advance_v (
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );;
 
-        parallel_for ( range, [patch, &u_old, &v_new, this] ( int i, int j, int k )->void { time_advance_v ( {i, j, k}, u_old, v_new ); } );
+        parallel_for ( range, [&u_old, &v_new, this] ( int i, int j, int k )->void { time_advance_v ( {i, j, k}, u_old, v_new ); } );
     }
 
     DOUT ( this->m_dbg_lvl2, myrank );;
@@ -709,7 +709,7 @@ void Benchmark02<VAR, STN>::task_time_advance_u (
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );;
 
-        parallel_for ( range, [patch, &u_old, &v_new, &u_new, this] ( int i, int j, int k )->void { time_advance_u ( {i, j, k}, u_old, v_new, u_new ); } );
+        parallel_for ( range, [&u_old, &v_new, &u_new, this] ( int i, int j, int k )->void { time_advance_u ( {i, j, k}, u_old, v_new, u_new ); } );
     }
 
     DOUT ( this->m_dbg_lvl2, myrank );;
@@ -721,7 +721,7 @@ Benchmark02<VAR, STN>::task_time_advance_postprocess (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset *,
-    DataWarehouse * dw_old,
+    DataWarehouse * /*dw_old*/,
     DataWarehouse * dw_new
 )
 {

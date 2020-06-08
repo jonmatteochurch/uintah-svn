@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -679,7 +679,7 @@ public: // VARIABLE METHODS
         const IntVector & _DOXYARG ( h ),
         ProblemSpecP _DOXYARG ( varnode ),
         bool _DOXYARG ( outputDoubleAsFloat )
-    )
+    ) override
     {
         SCI_THROW ( InternalError ( "Cannot yet write SubProblems!\n", __FILE__, __LINE__ ) );
     }
@@ -696,7 +696,7 @@ public: // VARIABLE METHODS
     readNormal (
         std::istream & _DOXYARG ( in ),
         bool _DOXYARG ( swapBytes )
-    )
+    ) override
     {
         SCI_THROW ( InternalError ( "Cannot yet read SubProblems!\n", __FILE__, __LINE__ ) );
     }

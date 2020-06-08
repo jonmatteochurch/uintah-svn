@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -267,9 +267,9 @@ public: // VIEW METHODS
      */
     virtual void
     set (
-        DataWarehouse * dw,
-        const Patch * patch,
-        bool use_ghosts
+        DataWarehouse * _DOXYARG ( dw ),
+        const Patch * _DOXYARG ( patch ),
+        bool _DOXYARG ( use_ghosts )
     ) override VIRT;
 
     /**
@@ -417,4 +417,4 @@ public: // VIEW METHODS
 } // namespace PhaseField
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_PhaseField_BoundaryConditions_detail_bcs_basic_fd_view_h
+#endif // Packages_Uintah_CCA_Components_PhaseField_BoundaryConditions_detail_bc_vertical_angle_view_h

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -78,7 +78,6 @@
 /**
  * @brief Enable derivatives variables for debugging
  *
- * FIXME
  * When not null the following variable are made available to be saved
  * and debugged
  * - ux, uy, uz: component of the gradient of u
@@ -511,7 +510,7 @@ protected: // SCHEDULINGS
     template < bool MG, bool T >
     typename std::enable_if < !T, void >::type
     scheduleTimeAdvance_dbg_derivatives_error (
-        const LevelP & ,
+        const LevelP &,
         SchedulerP &
     ) {};
 
@@ -846,7 +845,7 @@ protected: // SCHEDULINGS
     template < bool MG, bool T >
     typename std::enable_if < !T, void >::type
     scheduleTimeAdvance_solution_error (
-        const LevelP & ,
+        const LevelP &,
         SchedulerP &
     ) {};
 
@@ -1060,7 +1059,7 @@ protected: // TASKS
     /**
      * @brief Initialize hypre sstruct structures on restart task
      *
-     * Allocate and save variables for non-stencil variables for each 
+     * Allocate and save variables for non-stencil variables for each
      * one of the patches and save them to dw_new
      *
      * @param myworld data structure to manage mpi processes
@@ -1907,7 +1906,7 @@ protected: // IMPLEMENTATIONS
 #endif // HAVE_HYPRE
 
     /**
-     * @brief Advance solution error task 
+     * @brief Advance solution error task
      * (test, coarsest level implementation)
      *
      * compute error in u approximation at a given grid position using the
@@ -2250,7 +2249,7 @@ Heat<VAR, DIM, STN, AMR, TST>::problemSetup (
             fci->getAttribute ( "var", var );
             c2f[label] = str_to_fc ( var );
         }
-        while ( fci = fci->findNextBlock ( "FCIType" ) );
+        while ( ( fci = fci->findNextBlock ( "FCIType" ) ) );
 
         this->setC2F ( c2f );
     }
@@ -3217,7 +3216,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives (
         {
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [patch, &u_old, &du, &ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives ( {i, j, k}, u_old, du, ddu ); } );
+            parallel_for ( p.get_range(), [&u_old, &du, &ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives ( {i, j, k}, u_old, du, ddu ); } );
         }
     }
 
@@ -3271,11 +3270,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
 
-        parallel_reduce_sum (
-            range,
-            [patch, &simTime, &L, &du, &ddu, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, simTime, L[0], du, ddu, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); },
-            norms
-        );
+        parallel_reduce_sum ( range, [patch, &simTime, &L, &du, &ddu, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, simTime, L[0], du, ddu, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
     }
 
     dw_new->put ( sum_vartype ( norms[0] ), u_norm2_H10_label );
@@ -3347,11 +3342,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
 
-        parallel_reduce_sum (
-            range,
-            [patch, patch_finest, &simTime, &L, &du, &ddu, &du_finest, &ddu_finest, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, patch_finest, simTime, L[0], du, ddu, du_finest, ddu_finest, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); },
-            norms
-        );
+        parallel_reduce_sum ( range, [patch, patch_finest, &simTime, &L, &du, &ddu, &du_finest, &ddu_finest, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, patch_finest, simTime, L[0], du, ddu, du_finest, ddu_finest, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
     }
 
     grid_finest.removeReference();
@@ -3392,7 +3383,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_forward_euler (
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
 
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [patch, &u_old, &u_new, this] ( int i, int j, int k )->void { time_advance_solution_forward_euler ( {i, j, k}, u_old, u_new ); } );
+            parallel_for ( p.get_range(), [&u_old, &u_new, this] ( int i, int j, int k )->void { time_advance_solution_forward_euler ( {i, j, k}, u_old, u_new ); } );
         }
     }
 
@@ -3521,7 +3512,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
-    const MaterialSubset * matls,
+    const MaterialSubset * /*matls*/,
     DataWarehouse * dw_old,
     DataWarehouse * dw_new
 )
@@ -3715,7 +3706,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
 (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
-    const MaterialSubset * matls,
+    const MaterialSubset * /*matls*/,
     DataWarehouse * dw_old,
     DataWarehouse * dw_new
 )
@@ -3821,7 +3812,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_update_dbg_matrix
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
-        parallel_for ( range, [&A , &Ap, &Aw, &Ae, &As, &An, &Ab, &At, this] ( int i, int j, int k )->void { time_advance_update_dbg_matrix ( {i, j, k}, A, Ap, Aw, Ae, As, An, Ab, At ); } );
+        parallel_for ( range, [&A, &Ap, &Aw, &Ae, &As, &An, &Ab, &At, this] ( int i, int j, int k )->void { time_advance_update_dbg_matrix ( {i, j, k}, A, Ap, Aw, Ae, As, An, Ab, At ); } );
     }
 
     DOUT ( this->m_dbg_lvl2, myrank );
@@ -4052,7 +4043,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_error_estimate_solution
         {
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
             FDView < ScalarField<const double>, STN > & u = p.template get_fd_view<U> ( dw_new );
-            parallel_reduce_sum ( p.get_range(), [&u, &refine_flag, &refine_patch, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_solution<VAR> ( {i, j, k}, u, refine_flag, refine_patch ); }, refine_patch );
+            parallel_reduce_sum ( p.get_range(), [&u, &refine_flag, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_solution<VAR> ( {i, j, k}, u, refine_flag, refine_patch ); }, refine_patch );
         }
 
         if ( refine_patch )

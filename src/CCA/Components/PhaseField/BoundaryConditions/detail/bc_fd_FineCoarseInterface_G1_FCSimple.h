@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 1997-2019 The University of Utah
+ * Copyright (c) 1997-2020 The University of Utah
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -32,6 +32,7 @@
 #define Packages_Uintah_CCA_Components_PhaseField_BoundaryConditions_detail_bc_fd_FineCoarseInterface_G1_FCSimple_h
 
 #include <CCA/Components/PhaseField/DataWarehouse/detail/dw_fd.h>
+#include <CCA/Components/PhaseField/Views/detail/basic_fd_view.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWInterface.h>
 #include <CCA/Components/PhaseField/AMR/AMRInterface.h>
 
@@ -363,7 +364,7 @@ public: // VIEW METHODS
      */
     virtual T &
     operator[] (
-        const IntVector & id
+        const IntVector & _DOXYARG ( id )
     ) override VIRT;
 
     /**
@@ -517,7 +518,7 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, T >::type
     d (
-        const IntVector & id
+        const IntVector & _DOXYARG ( id )
     ) const VIRT;
 
     /**
@@ -556,7 +557,7 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, T >::type
     d2 (
-        const IntVector & id
+        const IntVector & _DOXYARG ( id )
     ) const VIRT;
 
     /**
@@ -586,40 +587,40 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_sys_hypre (
-        const IntVector & id,
-        S & stencil_entries,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        S & _DOXYARG ( stencil_entries ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_sys_hypre (
-        const IntVector &,
-        S & stencil_entries,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        S & _DOXYARG ( stencil_entries ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_rhs_hypre (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypre (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_sys_hypresstruct (
-        const IntVector & id,
-        S & stencil_entries,
-        A & additional_entries,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        S & _DOXYARG ( stencil_entries ),
+        A & _DOXYARG ( additional_entries ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
@@ -672,15 +673,15 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D != DIR, void >::type
     add_d2_rhs_hypresstruct (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const VIRT;
 
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypresstruct (
-        const IntVector & id,
-        V & rhs
+        const IntVector & _DOXYARG ( id ),
+        V & _DOXYARG ( rhs )
     ) const
     {
     };

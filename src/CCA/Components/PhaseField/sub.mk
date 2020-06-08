@@ -1,7 +1,7 @@
 #
 #  The MIT License
 #
-#  Copyright (c) 1997-2019 The University of Utah
+#  Copyright (c) 1997-2020 The University of Utah
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to
@@ -38,6 +38,7 @@ SUBDIRS := \
   $(SRCDIR)/AMR \
   $(SRCDIR)/Applications \
   $(SRCDIR)/Exceptions \
+  $(SRCDIR)/PostProcess \
 
 SRCS += \
 
@@ -61,6 +62,11 @@ PSELIBS :=                   \
 LIBS := $(M_LIBRARY)
 
 INCLUDES := $(INCLUDES)
+
+ifeq ($(HAVE_LAPACK),yes)
+  SUBDIRS += $(SRCDIR)/Lapack
+  LIBS += $(LAPACK_LIBRARY)
+endif
 
 include $(SCIRUN_SCRIPTS)/recurse.mk
 
