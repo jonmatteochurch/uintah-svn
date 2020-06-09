@@ -39,14 +39,15 @@
 
 #ifdef HAVE_LAPACK
 #   include <CCA/Components/PhaseField/Lapack/Poly.h>
-#   include <CCA/Components/PhaseField/Lapack/Tanh.h>
+#   include <CCA/Components/PhaseField/Lapack/Tanh1.h>
+#   include <CCA/Components/PhaseField/Lapack/Tanh2.h>
 #endif
 
 #include <numeric>
 #include <functional>
 #include <CCA/Components/PhaseField/Views/View.h>
 
-#define DBG_PRINT 1
+#define DBG_PRINT 0
 
 namespace Uintah
 {

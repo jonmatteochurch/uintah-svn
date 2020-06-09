@@ -46,8 +46,8 @@
 #include <functional>
 #include <CCA/Components/PhaseField/Views/View.h>
 
-#define ONLY_EVEN 1
-#define DBG_PRINT 1
+#define ONLY_EVEN 0
+#define DBG_PRINT 0
 
 namespace Uintah
 {

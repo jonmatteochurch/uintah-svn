@@ -1,0 +1,103 @@
+<Uintah_specification>
+  <Meta>
+    <title>karma_03_cn_diagonal_tanh</title>
+  </Meta>
+  <SimulationComponent type="phasefield"/>
+  <PhaseField type="pure_metal">
+    <var>cn</var>
+    <dim>2</dim>
+    <verbosity>0</verbosity>
+    <delt>0.016</delt>
+    <alpha>3.</alpha> <!--D-->
+    <R0>16.</R0> <!--40 lattice units-->
+    <Delta>0.55</Delta>
+    <epsilon>-0.05</epsilon>
+  </PhaseField>
+  <ArmPostProcessor type="tanh" />
+  <Time>
+    <maxTime>2000.0</maxTime>
+    <initTime>0.</initTime>
+    <delt_min>0.</delt_min>
+    <delt_max>1.</delt_max>
+    <timestep_multiplier>1.</timestep_multiplier>
+  </Time>
+  <Grid>
+    <Level>
+      <Box label="1">
+        <lower>[0., 0., 0.]</lower>
+        <upper>[180,180, 1.]</upper>
+        <patches>[9,9,1]</patches>
+      </Box>
+      <spacing>[.4,.4,1.]</spacing>
+    </Level>
+    <BoundaryConditions>
+      <Face side="x-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="y-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="x+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>-0.65</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Dirichlet">
+          <value>-1.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Dirichlet">
+          <value>1.1025</value>
+        </BCType>
+      </Face>
+      <Face side="y+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>-0.65</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Dirichlet">
+          <value>-1.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Dirichlet">
+          <value>1.1025</value>
+        </BCType>
+      </Face>
+    </BoundaryConditions>
+  </Grid>
+  <DataArchiver>
+    <filebase>karma_03_cn_diagonal_tanh.uda</filebase>
+    <outputInitTimestep />
+    <outputTimestepInterval>250</outputTimestepInterval>
+    <checkpoint cycle="2" timestepInterval="100"/>
+    <save label="psi"/>
+    <save label="u"/>
+    <save label="tip_position"/>
+    <save label="tip_velocity"/>
+    <save label="tip_curvatures"/>
+  </DataArchiver>
+</Uintah_specification>

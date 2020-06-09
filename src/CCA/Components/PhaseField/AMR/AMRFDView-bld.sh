@@ -192,13 +192,12 @@ for VAR in ${VARs[@]}; do
       PB="$PP<$VAR, $STN>"
 
       if [[ $FIELD -eq -1 ]]; then
-        FF=`seq 0 $NF`
+        FF=`seq 0 $((NF-1))`
       else
         FF="$FIELD"
       fi
-      for f in $FF; do
-#     for ((f=0; f<$NF; f++)); do
 
+      for f in $FF; do
         I=$f
 
         for ((d0=0; d0<$DIM; d0++)); do
@@ -323,13 +322,12 @@ for VAR in ${VARs[@]}; do
       NF="${NFs[n]}"
 
       if [[ $FIELD -eq -1 ]]; then
-        FF=`seq 0 $NF`
+        FF=`seq 0 $((NF-1))`
       else
-        FF=("$FIELD")
+        FF="$FIELD"
       fi
-      for f in "${FF[@]}"; do
-#     for ((f=0; f<$NF; f++)); do
 
+      for f in $FF; do
         I=$f
 
         for ((d0=0; d0<$DIM; d0++)); do

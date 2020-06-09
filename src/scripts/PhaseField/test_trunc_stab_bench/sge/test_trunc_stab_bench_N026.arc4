@@ -7,7 +7,7 @@ if [ -z "$UPATH" ]; then
 fi
 
 SUS=$UPATH/arc4/build/StandAlone/sus
-INP=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab_bench
+INP=/home/home02/scjmc/uintah/trunk/src/StandAlone/inputs/PhaseField/test_trunc_stab_bench
 MPIRUN=/apps/developers/compilers/intel/19.0.4/1/default/impi/2019.4.243/intel64/bin/mpirun
 
 FN=benchmark01_cc_2d_fe_4_0
@@ -29,6 +29,12 @@ FN=benchmark01_cc_2d_fe_4_5
 $MPIRUN -np 1024 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
 FN=benchmark01_cc_2d_fe_4_6
+$MPIRUN -np 1024 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_4_7
+$MPIRUN -np 1024 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=benchmark01_cc_2d_fe_4_8
 $MPIRUN -np 1024 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
 FN=benchmark01_nc_2d_fe_4_0
@@ -57,5 +63,3 @@ $MPIRUN -np 1024 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
 FN=benchmark01_nc_2d_fe_4_8
 $MPIRUN -np 1024 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
->>>>>>> d9d5b0ad4 (added test_trunc_stab_bench)
-

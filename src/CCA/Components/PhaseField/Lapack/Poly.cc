@@ -54,7 +54,7 @@ using namespace Uintah;
 using namespace PhaseField;
 using namespace Lapack;
 
-static constexpr bool dbg_fit = true;
+static constexpr bool dbg_fit = false;
 
 Poly::Poly ( int d ) :
     raw ( scinew double[d + 1] ),

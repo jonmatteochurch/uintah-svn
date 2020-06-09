@@ -1,0 +1,15 @@
+#$ -cwd -V
+#$ -m be -M scjmc@leeds.ac.uk
+#$ -pe ib 9
+#$ -l h_rt=00:40:00
+
+if [ -z "$UPATH" ]; then
+    UPATH=$HOME/uintah/trunk
+fi
+
+MPIRUN=/apps/developers/compilers/intel/19.0.4/1/default/impi/2019.4.243/intel64/bin/mpirun
+SUS=$UPATH/arc4/build/StandAlone/sus
+INP=$UPATH/src/StandAlone/inputs/PhaseField/pure_metal/karma98
+
+FN=karma_03_cc_parallel_poly
+$MPIRUN $SUS $INP/$FN.ups > $FN.log 2> $FN.err

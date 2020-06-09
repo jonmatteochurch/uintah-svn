@@ -1,180 +1,265 @@
 #$ -cwd -V
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -l nodes=1
+#$ -l h_rt=48:00:00
 
 if [ -z "$UPATH" ]; then
     UPATH=$HOME/uintah/trunk
 fi
 
-SUS=$UPATH/arc4/StandAlone/sus
+SUS=$UPATH/arc4/build/StandAlone/sus
+INP=/home/home02/scjmc/uintah/trunk/src/StandAlone/inputs/PhaseField/test_trunc_stab
+MPIRUN=/apps/developers/compilers/intel/19.0.4/1/default/impi/2019.4.243/intel64/bin/mpirun
 
-INP=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField
+FN=heat_test_cc_2d_fe_0_0
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_0.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_0_1
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_1.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_0_2
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_2.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_0_3
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_3.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_0_4
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_4.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_0_5
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_5.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_0_6
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_6.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_1_0
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_0.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_1_1
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_1.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_1_2
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_2.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_1_3
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_3.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_1_4
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_4.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_1_5
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_5.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_1_6
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_6.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_2_0
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_0.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_2_1
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_1.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_2_2
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_2.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_2_3
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_3.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_2_4
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_4.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_2_5
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_5.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_2_6
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_0_6.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_3_0
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_0.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_3_1
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_1.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_3_2
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_2.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_3_3
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_3.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_3_4
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_4.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_3_5
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_5.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_2d_fe_3_6
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_2d_fe_1_6.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_0_0
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_0_0.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_0_1
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_0_1.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_0_2
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_0_2.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_0_3
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_0_3.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_0_4
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_0_4.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_0_5
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_0_5.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_0_6
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_0_6.ups
-mpirun -np 4 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_1_0
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_1_0.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_1_1
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_1_1.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_1_2
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_1_2.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_1_3
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_1_3.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_1_4
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_1_4.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_1_5
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_1_5.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_1_6
+$MPIRUN -np 2 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_2d_fe_1_6.ups
-mpirun -np 16 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_2_0
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_0_0.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_2_1
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_0_1.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_2_2
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_0_2.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_2_3
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_0_3.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_2_4
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_0_4.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_2_5
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_0_5.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_2_6
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_cc_3d_fe_0_6.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_3_0
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_0_0.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_3_1
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_0_1.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_3_2
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_0_2.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_3_3
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_0_3.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_3_4
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_0_4.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_3_5
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_0_5.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_nc_2d_fe_3_6
+$MPIRUN -np 32 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 
-FN=Developer/uintah/trunk/src//StandAlone/inputs/PhaseField/test_trunc_stab/heat_test_nc_3d_fe_0_6.ups
-mpirun -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+FN=heat_test_cc_3d_fe_0_0
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_0_1
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_0_2
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_0_3
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_0_4
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_0_5
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_0_6
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_1_0
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_1_1
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_1_2
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_1_3
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_1_4
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_1_5
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_cc_3d_fe_1_6
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_0_0
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_0_1
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_0_2
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_0_3
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_0_4
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_0_5
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_0_6
+$MPIRUN -np 1 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_1_0
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_1_1
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_1_2
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_1_3
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_1_4
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_1_5
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+
+FN=heat_test_nc_3d_fe_1_6
+$MPIRUN -np 8 $SUS $INP/$FN.ups > $FN.log 2> $FN.err
 

@@ -46,7 +46,7 @@
 #include <functional>
 #include <CCA/Components/PhaseField/Views/View.h>
 
-#define DBG_PRINT 1
+#define DBG_PRINT 0
 
 namespace Uintah
 {

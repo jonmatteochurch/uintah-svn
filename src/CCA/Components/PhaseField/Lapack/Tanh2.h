@@ -57,7 +57,7 @@ class Tanh2
     static constexpr int A = 0, B = 1, C = 2, D = 3;
     static constexpr int N = 4;
 
-    static constexpr bool dbg_fit = true;
+    static constexpr bool dbg_fit = false;
     static constexpr int verbosity = 0;
 
     static std::string
