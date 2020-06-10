@@ -61,7 +61,7 @@
       </Face>
       <Face side="x+">
         <BCType id="0" label="u" var="Dirichlet">
-          <value>-0.65</value>
+          <value>-0.45</value>
         </BCType>
         <BCType id="0" label="psi" var="Dirichlet">
           <value>-1.</value>
@@ -75,7 +75,7 @@
       </Face>
       <Face side="y+">
         <BCType id="0" label="u" var="Dirichlet">
-          <value>-0.65</value>
+          <value>-0.45</value>
         </BCType>
         <BCType id="0" label="psi" var="Dirichlet">
           <value>-1.</value>
