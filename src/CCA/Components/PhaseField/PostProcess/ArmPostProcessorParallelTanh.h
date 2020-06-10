@@ -345,8 +345,8 @@ public:
 
         for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
 
-        m_data_n0 = i;
-        m_data_size -= i;
+        m_data_n0 = i - 1;
+        m_data_size -= m_data_n0;
 
         m_data_t = scinew double[m_n0 * m_data_size];
         m_data_z = scinew double[m_n0 * m_data_size];

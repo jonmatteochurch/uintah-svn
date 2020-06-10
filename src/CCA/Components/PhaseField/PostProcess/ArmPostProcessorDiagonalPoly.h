@@ -411,8 +411,8 @@ public:
 
         for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
 
-        m_data_n0 = i;
-        m_data_size -= i;
+        m_data_n0 = i - 1;
+        m_data_size -= m_data_n0;
 
         m_data_t = scinew double[m_n0 * m_data_size];
         m_data_z = scinew double[m_n0 * m_data_size];
@@ -450,7 +450,7 @@ public:
 
         int n_ = -1, t_; // tip candidates
 
-        for ( in = std::max ( m_data_n0, n_ind ( low ) ); in < n_ind ( high ); ++in )
+        for ( in = std::max ( m_data_n0, n_ind ( low ) - m_n0h ); in < n_ind ( high ); ++in )
         {
             t_ = m_locations[ in - m_location_n0 ];
             if ( t_ < INT_MAX )
