@@ -1,10 +1,10 @@
 <Uintah_specification>
   <Meta>
-    <title>karma_04_cn_parallel_poly</title>
+    <title>karma_04_nc_parallel_poly</title>
   </Meta>
   <SimulationComponent type="phasefield"/>
   <PhaseField type="pure_metal">
-    <var>cn</var>
+    <var>nc</var>
     <dim>2</dim>
     <verbosity>0</verbosity>
     <delt>0.016</delt>
@@ -90,7 +90,7 @@
     </BoundaryConditions>
   </Grid>
   <DataArchiver>
-    <filebase>karma_04_cn_parallel_poly.uda</filebase>
+    <filebase>karma_04_nc_parallel_poly.uda</filebase>
     <outputInitTimestep />
     <outputTimestepInterval>250</outputTimestepInterval>
     <checkpoint cycle="2" timestepInterval="100"/>

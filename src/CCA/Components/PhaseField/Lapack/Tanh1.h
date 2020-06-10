@@ -162,7 +162,7 @@ class Tanh1
     static constexpr int N = 3;
 
     static constexpr bool dbg_fit = false;
-    static constexpr int verbosity = 2;
+    static constexpr int verbosity = 0;
 
     static std::string
     termination_message ( unsigned status )
