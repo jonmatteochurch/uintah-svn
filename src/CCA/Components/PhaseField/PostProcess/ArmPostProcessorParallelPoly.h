@@ -363,8 +363,8 @@ public:
 
         for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
 
-        m_data_n0 = i;
-        m_data_size -= i;
+        m_data_n0 = i - 1;
+        m_data_size -= m_data_n0;
 
         m_data_t = scinew double[m_n0 * m_data_size];
         m_data_z = scinew double[m_n0 * m_data_size];
@@ -460,7 +460,7 @@ public:
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
                         {
-                            n_ = in + dn;
+                            n_ = in + dn - m_data_n0;
                             break;
                         }
                     }
@@ -474,7 +474,7 @@ public:
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
                         {
-                            n_ = in + dn;
+                            n_ = in + dn - m_data_n0;
                             break;
                         }
                     }
@@ -822,5 +822,7 @@ public:
 
 } // namespace PhaseField
 } // namespace Uintah
+
+#undef DBG_PRINT
 
 #endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelPoly_h

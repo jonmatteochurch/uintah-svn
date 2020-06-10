@@ -442,7 +442,7 @@ public:
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
                         {
-                            n_ = in + dn;
+                            n_ = in + dn - m_data_n0;
                             break;
                         }
                     }
@@ -456,7 +456,7 @@ public:
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
                         {
-                            n_ = in + dn;
+                            n_ = in + dn - m_data_n0;
                             break;
                         }
                     }
@@ -743,5 +743,7 @@ public:
 
 } // namespace PhaseField
 } // namespace Uintah
+
+#undef DBG_PRINT
 
 #endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelTanh_h

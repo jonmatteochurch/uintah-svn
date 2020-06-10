@@ -557,7 +557,7 @@ public:
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
                         {
-                            n_ = in + dn;
+                            n_ = in + dn - m_data_n0;
                             break;
                         }
                     }
@@ -571,7 +571,7 @@ public:
                     int i = n_ + 1;
                     for ( ; i < imax; ++i )
                         if ( m_locations[i] < INT_MAX )
-                            n_ = i;
+                            n_ = i - m_data_n0;
                     for ( ; i < m_locations_size; ++i )
                         if ( m_locations[i] < INT_MAX )
                         {
@@ -1058,5 +1058,8 @@ public:
 
 } // namespace PhaseField
 } // namespace Uintah
+
+#undef ONLY_EVEN
+#undef DBG_PRINT
 
 #endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPoly_h
