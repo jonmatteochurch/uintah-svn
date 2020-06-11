@@ -85,6 +85,7 @@ protected: // MEMBERS
 
     const int m_nn;  // size of tip data
     const int m_nt;  // size of tip data
+
     const int m_nnl; // no of pts left of tip
     const int m_nnh; // no of pts right of tip
 
@@ -313,7 +314,9 @@ public:
                 {
                     int ind = n_ind ( id ) - m_location_n0;
                     if ( t_ind ( id ) < m_locations[ind] )
+                    {
                         m_locations[ind] = t_ind ( id );
+                    }
                     break;
                 }
         }
@@ -324,7 +327,10 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 ) return;
+        if ( myworld->nRanks() <= 1 )
+        {
+            return;
+        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
 
@@ -346,9 +352,13 @@ public:
     {
         for ( int i = 0; i < m_locations_size; ++i )
             if ( m_locations[i] == INT_MAX )
+            {
                 out << "___ ";
+            }
             else
+            {
                 out << std::setw ( 3 ) << m_locations[i] << " ";
+            }
     }
 
     virtual void
@@ -388,7 +398,10 @@ public:
         DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::setData: " << low << high << " " );
 
         // arm contour not here
-        if ( n_ind ( high ) < m_data_n0 - m_nnl ) return;
+        if ( n_ind ( high ) < m_data_n0 - m_nnl )
+        {
+            return;
+        }
 
         IntVector id, sym;
         int it0, it1;
@@ -415,7 +428,10 @@ public:
 
                 // symmetry on y axis
                 sym = { id[0], m_origin[1] - id[1], 0 };
-                if ( VAR == CC ) --sym[1];
+                if ( VAR == CC )
+                {
+                    --sym[1];
+                }
 
                 for ( ; id[1] < m_origin[1]; ++it, ++id[1], --sym[1], ++t_ )
                     if ( low[1] <= sym[1] && sym[1] < high[1] )
@@ -455,7 +471,7 @@ public:
                 if ( n_ < 0 ) // move back from low[0] at most m_nnh steps
                 {
                     in = n_ind ( low ) - m_location_n0;
-                    int dn0 = std::max ( m_nnh, -in );
+                    int dn0 = std::max ( -m_nnh, -in );
                     for ( int dn = - 1; dn >= dn0; --dn )
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
@@ -488,7 +504,9 @@ public:
                     int i = n_ + 1;
                     for ( ; i < imax; ++i )
                         if ( m_locations[i] < INT_MAX )
+                        {
                             n_ = i;
+                        }
                     for ( ; i < m_locations_size; ++i )
                         if ( m_locations[i] < INT_MAX )
                         {
@@ -523,23 +541,32 @@ public:
                 if ( id[0] < m_origin[0] )
                 {
                     sym = { m_origin[0] - id[0], 0, 0 };
-                    if ( VAR == CC ) sym[0] -= 1;
+                    if ( VAR == CC )
+                    {
+                        sym[0] -= 1;
+                    }
                     for ( n_ = 0; n_ < in0; ++n_, ++id[0], --sym[0] )
                         if ( low[0] <= sym[0] && sym[0] < high[0] )
                         {
                             sym[1] = m_origin[1] + it0;
                             for ( t_ = it0; t_ < it1; ++t_, ++sym[1] )
+                            {
                                 tip_z ( t_, n_ ) = psi[sym];
+                            }
                         }
                 }
                 else
+                {
                     id[0] += in0;
+                }
 
                 for ( n_ = in0; n_ < in1; ++n_, ++id[0] )
                 {
                     id[1] = m_origin[1] + it0;
                     for ( t_ = it0; t_ < it1; ++t_, ++id[1] )
+                    {
                         tip_z ( t_, n_ ) = psi[id];
+                    }
                 }
             }
         }
@@ -550,7 +577,10 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 ) return;
+        if ( myworld->nRanks() <= 1 )
+        {
+            return;
+        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
 
@@ -586,9 +616,13 @@ public:
             out << "tip_data: ";
             for ( int i = 0; i < m_nn; ++i )
                 if ( tip_z ( j, i ) == -DBL_MAX )
+                {
                     out << "_________ ";
+                }
                 else
+                {
                     out << std::setw ( 9 ) << tip_z ( j, i ) << " ";
+                }
             out << "\n";
         }
 
@@ -597,9 +631,13 @@ public:
             out << "t: ";
             for ( int j = 0; j < m_data_size; ++j )
                 if ( data_t ( j, i ) == -DBL_MAX )
+                {
                     out << "___ ";
+                }
                 else
+                {
                     out << std::setw ( 3 ) << data_t ( j, i ) << " ";
+                }
             out << "\n";
         }
         for ( int i = m_n0 - 1; i >= 0; --i )
@@ -607,9 +645,13 @@ public:
             out << "z: ";
             for ( int j = 0; j < m_data_size; ++j )
                 if ( data_z ( j, i ) == -DBL_MAX )
+                {
                     out << "_________ ";
+                }
                 else
+                {
                     out << std::setw ( 9 ) << data_z ( j, i ) << " ";
+                }
             out << "\n";
         }
     }
@@ -638,7 +680,9 @@ public:
             p0.fit ( m_n0, data_t ( i ), data_z ( i ) );
             p0.roots();
             if ( !p0.root_in_range ( 0., data_t ( i, m_n0 - 1 ), t ) )
+            {
                 SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalPoly::computeTipInfo: can't find root\n", __FILE__, __LINE__ ) );
+            }
 
             arm_n[i] = n;
             arm_t2[i] = t * t;
@@ -657,7 +701,9 @@ public:
         int dz = n0 - m_tip_n + m_nnl;
 
         for ( int i = 0; i < m_n0; ++i )
+        {
             tip_n[i] = n_coord ( n0 + i );
+        }
 
         for ( int j = 0; j < m_n2; ++j )
         {
@@ -717,7 +763,9 @@ public:
         for ( int i = 0; i < m_n3; ++i )
         {
             for ( int j = 0; j < m_n1; ++j )
+            {
                 psi[j] = tip_z ( j, i + i0 );
+            }
 
             p1.fit ( m_n1, tip_t2, psi );
 
@@ -748,7 +796,10 @@ public:
         // 7. Evaluate parabolic curvatue using full 0-level
 
         int skip = 0;
-        while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 ) ++skip;
+        while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 )
+        {
+            ++skip;
+        }
 
         Lapack::Poly parabola ( 1 );
         double kn, kd;
@@ -772,11 +823,16 @@ public:
         {
             const double & t2 = arm_t2[arm_size - 1];
             const double & tn = tip_position - arm_n[arm_size - 1];
-            if ( t2 < tn * tn ) break;
+            if ( t2 < tn * tn )
+            {
+                break;
+            }
         }
 
         if ( arm_size - skip < 2 )
+        {
             tip_curvatures[2] = NAN;
+        }
         else
         {
             parabola.fit ( arm_size - skip, arm_t2 + skip, arm_n + skip );

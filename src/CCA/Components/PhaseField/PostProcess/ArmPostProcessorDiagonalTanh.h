@@ -282,6 +282,11 @@ public:
 
         // first entry with given n
         IntVector start = Max ( low, m_origin );
+        if ( start[0] < start[1] )
+        {
+            start[0] = start[1];
+        }
+
         int iy0 = m_origin[1]; // symmetric
         int ix1 = m_high[0] - 1; // extend
 
@@ -320,7 +325,9 @@ public:
                     // extends to -1
                     if ( psi[id] >= 0. )
                         if ( it < m_locations[in - m_location_n0] )
+                        {
                             m_locations[in - m_location_n0] = it;
+                        }
                 }
                 else if ( id[1] == iy0 )
                 {
@@ -328,7 +335,9 @@ public:
                     IntVector sym { id[0] + 1, id[1] + ( VAR == NC ? 1 : 0 ), 0 };
                     if ( sym[0] < high[0] && psi[id] * psi[sym] <= 0. )
                         if ( it < m_locations[in - m_location_n0] )
+                        {
                             m_locations[in - m_location_n0] = it;
+                        }
                 }
             }
 
@@ -336,8 +345,14 @@ public:
             // - first along left edge till I bisector or top edge
             // - then if I bisector intersect patch along it
             // - then along top edge
-            if ( start[1] < start[0] && start[1] < high[1] - 1 ) ++start[1];
-            else ++start[0];
+            if ( start[1] < start[0] && start[1] < high[1] - 1 )
+            {
+                ++start[1];
+            }
+            else
+            {
+                ++start[0];
+            }
         }
         while ( start[0] < high[0] );
     }
@@ -347,7 +362,10 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 ) return;
+        if ( myworld->nRanks() <= 1 )
+        {
+            return;
+        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
 
@@ -369,9 +387,13 @@ public:
     {
         for ( int i = 0; i < m_locations_size; ++i )
             if ( m_locations[i] == INT_MAX )
+            {
                 out << "___ ";
+            }
             else
+            {
                 out << std::setw ( 3 ) << m_locations[i] << " ";
+            }
     }
 
     virtual void
@@ -411,7 +433,10 @@ public:
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalTanh::setData: " << low << high << " " );
 
         // arm contour not here
-        if ( n_ind ( high ) < m_data_n0 - m_nnl ) return;
+        if ( n_ind ( high ) < m_data_n0 - m_nnl )
+        {
+            return;
+        }
 
         int ix0 = m_origin[0]; // symmetric
         int iy0 = m_origin[1]; // symmetric
@@ -462,7 +487,10 @@ public:
 
                 // symmetry on x axis
                 sym = { m_origin[0] - id[0], id[1], 0 };
-                if ( VAR == CC ) --sym[0];
+                if ( VAR == CC )
+                {
+                    --sym[0];
+                }
                 for ( ; id[0] < ix0; it += 2, id += et, --sym[0], --sym[1], ++t_ )
                     if ( sym[0] >= low[0] && sym[1] >= high[1] )
                     {
@@ -482,7 +510,10 @@ public:
 
                 // symmetry on y axis
                 sym = { id[0], m_origin[1] - id[1], 0 };
-                if ( VAR == CC ) --sym[1];
+                if ( VAR == CC )
+                {
+                    --sym[1];
+                }
                 for ( ; id[0] < ix1 && t_ < m_n0; it += 2, id += et, ++t_, ++sym[0], ++sym[1] )
                     if ( sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
                     {
@@ -542,7 +573,9 @@ public:
                     int i = n_ + 1;
                     for ( ; i < imax; ++i )
                         if ( m_locations[i] < INT_MAX )
+                        {
                             n_ = i;
+                        }
                     for ( ; i < m_locations_size; ++i )
                         if ( m_locations[i] < INT_MAX )
                         {
@@ -591,7 +624,9 @@ public:
 
                     // extend psi to -1 out computational boundary
                     for ( ; n_ < m_nn && id[0] < -ix1 + 1; in += 2, id += en, ++n_ )
+                    {
                         tip_z ( t_, n_ ) = -1.;
+                    }
 
                     // symmetry on x+y axes
                     sym = { m_origin[0] - id[0], m_origin[1] - id[1], 0 };
@@ -602,20 +637,26 @@ public:
                     }
                     for ( ; n_ < m_nn && id[0] < ix0; in += 2, id += en, ++n_, sym -= en )
                         if ( sym[0] >= low[0] && sym[1] >= high[1] )
+                        {
                             tip_z ( t_, n_ ) = psi[sym];
+                        }
 
                     // symmetry on y axis
                     sym = { id[0], m_origin[1] - id[1], 0 };
                     for ( ; n_ < m_nn && id[1] < iy0; in += 2, id += en, ++n_, sym += et )
                         if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                        {
                             tip_z ( t_, n_ ) = psi[sym];
+                        }
 
                     // skip non patch region
                     for ( ; n_ < m_nn && in < in0; in += 2, id += en, ++n_ );
 
                     // set patch data
                     for ( ; n_ < m_nn && in < in1; in += 2, id += en, ++n_ )
+                    {
                         tip_z ( t_, n_ ) = psi[id];
+                    }
 
                     // skip non patch region
                     for ( ; n_ < m_nn && id[0] < ix1; in += 2, id += en, ++n_ );
@@ -625,11 +666,19 @@ public:
 
                     // extend psi to -1 out computational boundary
                     for ( ; n_ < m_nn; in += 2, id += en, ++n_ )
+                    {
                         tip_z ( t_, n_ ) = -1.;
+                    }
 
                     // increment t
-                    if ( ( it + tr ) % 2 ) --start[1];
-                    else ++start[0];
+                    if ( ( it + tr ) % 2 )
+                    {
+                        --start[1];
+                    }
+                    else
+                    {
+                        ++start[0];
+                    }
                 }
             }
         }
@@ -640,7 +689,10 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 ) return;
+        if ( myworld->nRanks() <= 1 )
+        {
+            return;
+        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
 
@@ -676,9 +728,13 @@ public:
             out << "tip_data: ";
             for ( int i = 0; i < m_nn; ++i )
                 if ( tip_z ( j, i ) == -DBL_MAX )
+                {
                     out << "_________ ";
+                }
                 else
+                {
                     out << std::setw ( 9 ) << tip_z ( j, i ) << " ";
+                }
             out << "\n";
         }
 
@@ -687,9 +743,13 @@ public:
             out << "t: ";
             for ( int j = 0; j < m_data_size; ++j )
                 if ( data_t ( j, i ) == -DBL_MAX )
+                {
                     out << "___ ";
+                }
                 else
+                {
                     out << std::setw ( 3 ) << data_t ( j, i ) << " ";
+                }
             out << "\n";
         }
         for ( int i = m_n0 - 1; i >= 0; --i )
@@ -697,9 +757,13 @@ public:
             out << "z: ";
             for ( int j = 0; j < m_data_size; ++j )
                 if ( data_z ( j, i ) == -DBL_MAX )
+                {
                     out << "_________ ";
+                }
                 else
+                {
                     out << std::setw ( 9 ) << data_z ( j, i ) << " ";
+                }
             out << "\n";
         }
     }
@@ -745,10 +809,10 @@ public:
 
         for ( int i = 0; i < m_nt; ++i )
         {
-            int j0 = (n0 + i) % 2;
-            for ( int j = j0; j < 2*m_nn; j+=2 )
+            int j0 = ( n0 + i ) % 2;
+            for ( int j = j0; j < 2 * m_nn; j += 2 )
             {
-                tip_n[m_nn * i + j/2] = n_coord ( n0 + j );
+                tip_n[m_nn * i + j / 2] = n_coord ( n0 + j );
             }
             std::fill ( tip_t + m_nn * i, tip_t + m_nn * ( i + 1 ), t_coord ( i ) );
         }
@@ -781,7 +845,10 @@ public:
         // 3. Evaluate parabolic curvatue using full 0-level
 
         int skip = 0;
-        while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 ) ++skip;
+        while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 )
+        {
+            ++skip;
+        }
 
         Lapack::Poly parabola ( 1 );
         double kn, kd;
@@ -805,11 +872,16 @@ public:
         {
             const double & t2 = arm_t2[arm_size - 1];
             const double & tn = tip_position - arm_n[arm_size - 1];
-            if ( t2 < tn * tn ) break;
+            if ( t2 < tn * tn )
+            {
+                break;
+            }
         }
 
         if ( arm_size - skip < 2 )
+        {
             tip_curvatures[2] = NAN;
+        }
         else
         {
             parabola.fit ( arm_size - skip, arm_t2 + skip, arm_n + skip );
@@ -839,7 +911,7 @@ class ArmPostProcessorDiagonalTanh < VAR, D3 >
     : public ArmPostProcessor < VAR, D3 >
 {
 public:
-    ArmPostProcessorDiagonalTanh ( Lapack::TrustRegionSetup psetup, int npts, int , int ntip, bool dbg ) {}
+    ArmPostProcessorDiagonalTanh ( Lapack::TrustRegionSetup psetup, int npts, int, int ntip, bool dbg ) {}
     virtual ~ArmPostProcessorDiagonalTanh() {};
     virtual void setLevel ( const Level * level ) {}
     virtual void initializeLocations () {};

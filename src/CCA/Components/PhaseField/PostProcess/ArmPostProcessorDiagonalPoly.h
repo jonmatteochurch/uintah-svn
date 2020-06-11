@@ -86,6 +86,7 @@ protected: // MEMBERS
 
     const int m_nn;  // size of tip data
     const int m_nt;  // size of tip data
+
     const int m_nnl; // no of pts left of tip
     const int m_nnh; // no of pts right of tip
 
@@ -103,7 +104,7 @@ protected: // MEMBERS
     int m_locations_size;
     int m_location_n0;
     int * m_locations;
- 
+
     int m_data_size;
     int m_data_n0;
 
@@ -307,6 +308,11 @@ public:
 
         // first entry with given n
         IntVector start = Max ( low, m_origin );
+        if ( start[0] < start[1] )
+        {
+            start[0] = start[1];
+        }
+
         int iy0 = m_origin[1]; // symmetric
         int ix1 = m_high[0] - 1; // extend
 
@@ -345,7 +351,9 @@ public:
                     // extends to -1
                     if ( psi[id] >= 0. )
                         if ( it < m_locations[in - m_location_n0] )
+                        {
                             m_locations[in - m_location_n0] = it;
+                        }
                 }
                 else if ( id[1] == iy0 )
                 {
@@ -353,7 +361,9 @@ public:
                     IntVector sym { id[0] + 1, id[1] + ( VAR == NC ? 1 : 0 ), 0 };
                     if ( sym[0] < high[0] && psi[id] * psi[sym] <= 0. )
                         if ( it < m_locations[in - m_location_n0] )
+                        {
                             m_locations[in - m_location_n0] = it;
+                        }
                 }
             }
 
@@ -361,8 +371,14 @@ public:
             // - first along left edge till I bisector or top edge
             // - then if I bisector intersect patch along it
             // - then along top edge
-            if ( start[1] < start[0] && start[1] < high[1] - 1 ) ++start[1];
-            else ++start[0];
+            if ( start[1] < start[0] && start[1] < high[1] - 1 )
+            {
+                ++start[1];
+            }
+            else
+            {
+                ++start[0];
+            }
         }
         while ( start[0] < high[0] );
     }
@@ -372,7 +388,10 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 ) return;
+        if ( myworld->nRanks() <= 1 )
+        {
+            return;
+        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
 
@@ -394,9 +413,13 @@ public:
     {
         for ( int i = 0; i < m_locations_size; ++i )
             if ( m_locations[i] == INT_MAX )
+            {
                 out << "___ ";
+            }
             else
+            {
                 out << std::setw ( 3 ) << m_locations[i] << " ";
+            }
     }
 
     virtual void
@@ -436,7 +459,10 @@ public:
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::setData: " << low << high << " " );
 
         // arm contour not here
-        if ( n_ind ( high ) < m_data_n0 - m_nnl ) return;
+        if ( n_ind ( high ) < m_data_n0 - m_nnl )
+        {
+            return;
+        }
 
         int ix0 = m_origin[0]; // symmetric
         int iy0 = m_origin[1]; // symmetric
@@ -487,7 +513,10 @@ public:
 
                 // symmetry on x axis
                 sym = { m_origin[0] - id[0], id[1], 0 };
-                if ( VAR == CC ) --sym[0];
+                if ( VAR == CC )
+                {
+                    --sym[0];
+                }
                 for ( ; id[0] < ix0; it += 2, id += et, --sym[0], --sym[1], ++t_ )
                     if ( sym[0] >= low[0] && sym[1] >= high[1] )
                     {
@@ -507,7 +536,10 @@ public:
 
                 // symmetry on y axis
                 sym = { id[0], m_origin[1] - id[1], 0 };
-                if ( VAR == CC ) --sym[1];
+                if ( VAR == CC )
+                {
+                    --sym[1];
+                }
                 for ( ; id[0] < ix1 && t_ < m_n0; it += 2, id += et, ++t_, ++sym[0], ++sym[1] )
                     if ( sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
                     {
@@ -543,7 +575,7 @@ public:
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
                         {
-                            n_ = in + dn;
+                            n_ = in + dn - m_data_n0;
                             break;
                         }
                     }
@@ -571,7 +603,9 @@ public:
                     int i = n_ + 1;
                     for ( ; i < imax; ++i )
                         if ( m_locations[i] < INT_MAX )
-                            n_ = i - m_data_n0;
+                        {
+                            n_ = i;
+                        }
                     for ( ; i < m_locations_size; ++i )
                         if ( m_locations[i] < INT_MAX )
                         {
@@ -624,7 +658,9 @@ public:
 
                     // extend psi to -1 out computational boundary
                     for ( ; n_ < m_nn && id[0] < -ix1 + 1; in += 2, id += en, ++n_ )
+                    {
                         tip_z ( t_, n_ ) = -1.;
+                    }
 
                     // symmetry on x+y axes
                     sym = { m_origin[0] - id[0], m_origin[1] - id[1], 0 };
@@ -635,20 +671,26 @@ public:
                     }
                     for ( ; n_ < m_nn && id[0] < ix0; in += 2, id += en, ++n_, sym -= en )
                         if ( sym[0] >= low[0] && sym[1] >= high[1] )
+                        {
                             tip_z ( t_, n_ ) = psi[sym];
+                        }
 
                     // symmetry on y axis
                     sym = { id[0], m_origin[1] - id[1], 0 };
                     for ( ; n_ < m_nn && id[1] < iy0; in += 2, id += en, ++n_, sym += et )
                         if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                        {
                             tip_z ( t_, n_ ) = psi[sym];
+                        }
 
                     // skip non patch region
                     for ( ; n_ < m_nn && in < in0; in += 2, id += en, ++n_ );
 
                     // set patch data
                     for ( ; n_ < m_nn && in < in1; in += 2, id += en, ++n_ )
+                    {
                         tip_z ( t_, n_ ) = psi[id];
+                    }
 
                     // skip non patch region
                     for ( ; n_ < m_nn && id[0] < ix1; in += 2, id += en, ++n_ );
@@ -658,14 +700,22 @@ public:
 
                     // extend psi to -1 out computational boundary
                     for ( ; n_ < m_nn; in += 2, id += en, ++n_ )
+                    {
                         tip_z ( t_, n_ ) = -1.;
+                    }
 
                     // increment t
 #if ONLY_EVEN
                     start += et;
 #else
-                    if ( ( it + tr ) % 2 ) --start[1];
-                    else ++start[0];
+                    if ( ( it + tr ) % 2 )
+                    {
+                        --start[1];
+                    }
+                    else
+                    {
+                        ++start[0];
+                    }
 #endif
                 }
             }
@@ -677,7 +727,10 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 ) return;
+        if ( myworld->nRanks() <= 1 )
+        {
+            return;
+        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
 
@@ -713,9 +766,13 @@ public:
             out << "tip_data: ";
             for ( int i = 0; i < m_nn; ++i )
                 if ( tip_z ( j, i ) == -DBL_MAX )
+                {
                     out << "_________ ";
+                }
                 else
+                {
                     out << std::setw ( 9 ) << tip_z ( j, i ) << " ";
+                }
             out << "\n";
         }
 
@@ -724,9 +781,13 @@ public:
             out << "t: ";
             for ( int j = 0; j < m_data_size; ++j )
                 if ( data_t ( j, i ) == -DBL_MAX )
+                {
                     out << "___ ";
+                }
                 else
+                {
                     out << std::setw ( 3 ) << data_t ( j, i ) << " ";
+                }
             out << "\n";
         }
         for ( int i = m_n0 - 1; i >= 0; --i )
@@ -734,9 +795,13 @@ public:
             out << "z: ";
             for ( int j = 0; j < m_data_size; ++j )
                 if ( data_z ( j, i ) == -DBL_MAX )
+                {
                     out << "_________ ";
+                }
                 else
+                {
                     out << std::setw ( 9 ) << data_z ( j, i ) << " ";
+                }
             out << "\n";
         }
     }
@@ -765,7 +830,9 @@ public:
             p0.fit ( m_n0, data_t ( i ), data_z ( i ) );
             p0.roots();
             if ( !p0.root_in_range ( 0., data_t ( i, m_n0 - 1 ), t ) )
+            {
                 SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalPoly::computeTipInfo: can't find root\n", __FILE__, __LINE__ ) );
+            }
 
             arm_n[i] = n;
             arm_t2[i] = t * t;
@@ -783,10 +850,12 @@ public:
 
 #if ONLY_EVEN
         // Even t's
-        int dz = m_nnl/2 - m_n0l;
+        int dz = m_nnl / 2 - m_n0l;
 
         for ( int i = 0; i < m_n0; ++i )
+        {
             tip_n[i] = n_coord ( 2 * ( m_tip_n / 2 - m_n0l + i ) );
+        }
 
         for ( int j = 0; j < m_n2; ++j )
         {
@@ -807,11 +876,13 @@ public:
         }
 #else
         // Even t's
-        int n0 =  2*(m_tip_n/2 - m_n0l);
-        int dz = (n0 - m_tip_n + m_nnl)/2;
+        int n0 =  2 * ( m_tip_n / 2 - m_n0l );
+        int dz = ( n0 - m_tip_n + m_nnl ) / 2;
 
         for ( int i = 0; i < m_n0; ++i )
-            tip_n[i] = n_coord ( n0 + 2*i );
+        {
+            tip_n[i] = n_coord ( n0 + 2 * i );
+        }
 
         for ( int j = 0; j < m_n2; j += 2 )
         {
@@ -832,11 +903,13 @@ public:
         }
 
         // Odd t's
-        n0 =  2*((m_tip_n+1)/2 - m_n0l) - 1;
-        dz = (n0 - m_tip_n + m_nnl)/2;
+        n0 =  2 * ( ( m_tip_n + 1 ) / 2 - m_n0l ) - 1;
+        dz = ( n0 - m_tip_n + m_nnl ) / 2;
 
         for ( int i = 0; i < m_n0; ++i )
-            tip_n[i] = n_coord ( n0 + 2*i );
+        {
+            tip_n[i] = n_coord ( n0 + 2 * i );
+        }
 
         for ( int j = 1; j < m_n2; j += 2 )
         {
@@ -896,7 +969,7 @@ public:
 
 #if ONLY_EVEN
         int n0 = 2 * ( m_tip_n / 2 - m_n3l );
-        int i0 = m_nnl/2 - m_n3l;
+        int i0 = m_nnl / 2 - m_n3l;
 
         for ( int j = 0; j < m_n1; ++j )
         {
@@ -907,7 +980,9 @@ public:
         for ( int i = 0; i < m_n3; ++i )
         {
             for ( int j = 0; j < m_n1; ++j )
+            {
                 psi[j] = tip_z ( j, i + i0 );
+            }
 
             p1.fit ( m_n1, tip_t2, psi );
 
@@ -931,7 +1006,9 @@ public:
         for ( int i = 0; i < m_n3; i += 2 )
         {
             for ( int j = j0; j < 2 * m_n1; j += 2 )
+            {
                 psi[j / 2] = tip_z ( j, ( i + i0 ) / 2 );
+            }
 
             p1.fit ( m_n1, tip_t2, psi );
 
@@ -952,7 +1029,9 @@ public:
         for ( int i = 1; i < m_n3; i += 2 )
         {
             for ( int j = j0; j < 2 * m_n1; j += 2 )
+            {
                 psi[j / 2] = tip_z ( j, ( i + i0 ) / 2 );
+            }
 
             p1.fit ( m_n1, tip_t2, psi );
 
@@ -984,7 +1063,10 @@ public:
         // 7. Evaluate parabolic curvatue using full 0-level
 
         int skip = 0;
-        while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 ) ++skip;
+        while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 )
+        {
+            ++skip;
+        }
 
         Lapack::Poly parabola ( 1 );
         double kn, kd;
@@ -1008,11 +1090,16 @@ public:
         {
             const double & t2 = arm_t2[arm_size - 1];
             const double & tn = tip_position - arm_n[arm_size - 1];
-            if ( t2 < tn * tn ) break;
+            if ( t2 < tn * tn )
+            {
+                break;
+            }
         }
 
         if ( arm_size - skip < 2 )
+        {
             tip_curvatures[2] = NAN;
+        }
         else
         {
             parabola.fit ( arm_size - skip, arm_t2 + skip, arm_n + skip );
