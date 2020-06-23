@@ -105,6 +105,18 @@ Poly::root_in_range ( double min, double max, double & r ) const
             r = rr[i];
             return true;
         }
+
+    // if almost tangent to y=0 return 0
+    if ( abs ( raw[d] ) < 1e-3 )
+    {
+        r = 0.;
+        return min <= r && r <= max;
+    }
+
+    DOUT ( dbg_fit, "range: [" << min << "," << max << "]" );
+    for ( int i = 0; i < nr; ++i )
+        DOUT ( dbg_fit, "root i: " << rr[i] << " + " << ri[i] << "i" );
+
     return false;
 }
 
@@ -121,7 +133,7 @@ double
 Poly::dx ( double x0 ) const
 {
     double b = d * raw[0];
-    for ( int i = 1; i <= d-1; ++i )
+    for ( int i = 1; i <= d - 1; ++i )
         b = ( d - i ) * raw[i] + b * x0;
     return b;
 }
@@ -129,7 +141,7 @@ Poly::dx ( double x0 ) const
 double
 Poly::ddx ( double x0 ) const
 {
-    double b = d * (d-1) * raw[0];
+    double b = d * ( d - 1 ) * raw[0];
     for ( int i = 1; i <= d - 2; ++i )
         b = ( d - i ) * ( d - i - 1 ) * raw[i] + b * x0;
     return b;
@@ -159,7 +171,7 @@ Poly::fit ( int m, const double * x, const double * y )
     }
 
     // Construct the Vandermonde matrix.
-   DMat a = DMat::Vander ( m, d + 1, x );
+    DMat a = DMat::Vander ( m, d + 1, x );
     DVec b = DVec ( m, y );
 
     // Solve by QR decomposition.

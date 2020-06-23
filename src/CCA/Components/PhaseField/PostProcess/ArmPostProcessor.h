@@ -58,7 +58,7 @@ public:
     virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) = 0;
     virtual void reduceData ( const ProcessorGroup * myworld ) = 0;
     virtual void printData ( std::ostream & out ) const = 0;
-    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3], const double & gamma_psi = 0 ) = 0;
+    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) = 0;
 };
 
 } // namespace PhaseField

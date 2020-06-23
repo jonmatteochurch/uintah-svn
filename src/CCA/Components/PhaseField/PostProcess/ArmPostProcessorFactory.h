@@ -69,25 +69,25 @@ public:
             int npts0 = 6;
             spec->getWithDefault ( "npts0", npts0, npts0 );
 
-            int npts1 = npts0 / 2 + 1;
+            int npts1 = 5;
             spec->getWithDefault ( "npts1", npts1, npts1 );
 
             int npts2 = npts1;
             spec->getWithDefault ( "npts2", npts2, npts2 );
 
-            int npts3 = npts1;
+            int npts3 = npts0;
             spec->getWithDefault ( "npts3", npts3, npts3 );
 
             int deg0 = npts0 - 1;
             spec->getWithDefault ( "deg0", deg0, deg0 );
 
-            int deg1 = npts1 - 1;
+            int deg1 = 1;
             spec->getWithDefault ( "deg1", deg1, deg1 );
 
-            int deg2 = std::min ( deg1, npts2 - 1 );
+            int deg2 = npts2 - 1;
             spec->getWithDefault ( "deg2", deg2, deg2 );
 
-            int deg3 = std::min ( deg1, npts3 - 1 );
+            int deg3 = npts3 - 1;
             spec->getWithDefault ( "deg3", deg3, deg3 );
 
             if ( deg0 >= npts0 )
@@ -96,13 +96,16 @@ public:
                 SCI_THROW ( ProblemSetupException ( "Cannot use polynomial interpolation with deg1 >= npts1.", __FILE__, __LINE__ ) );
             if ( deg2 >= npts2 )
                 SCI_THROW ( ProblemSetupException ( "Cannot use polynomial interpolation with deg2 >= npts2.", __FILE__, __LINE__ ) );
-            if ( deg3 >= 2*npts0 )
+            if ( deg3 >= npts3 )
                 SCI_THROW ( ProblemSetupException ( "Cannot use polynomial interpolation with deg3 >= npts3.", __FILE__, __LINE__ ) );
 
+            double alpha = 1.;
+            spec->getWithDefault ( "alpha", alpha, alpha );
+
             if ( epsilon < 0 )
-                return scinew ArmPostProcessorDiagonalPoly<VAR, DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, dbg );
+                return scinew ArmPostProcessorDiagonalPoly<VAR, DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
             else
-                return scinew ArmPostProcessorParallelPoly<VAR, DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, dbg );
+                return scinew ArmPostProcessorParallelPoly<VAR, DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
         }
         if ( type == "tanh" )
         {
@@ -122,10 +125,13 @@ public:
             spec->getWithDefault ( "max_nfev", max_nfev, max_nfev );
             spec->getWithDefault ( "max_triter", max_triter, max_triter );
 
+            double alpha = 1.;
+            spec->getWithDefault ( "alpha", alpha, alpha );
+
             if ( epsilon < 0 )
-                return scinew ArmPostProcessorDiagonalTanh<VAR, DIM> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts1, npts3, dbg );
+                return scinew ArmPostProcessorDiagonalTanh<VAR, DIM> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts1, npts3, alpha, dbg );
             else
-                return scinew ArmPostProcessorParallelTanh<VAR, DIM> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts1, npts3, dbg );
+                return scinew ArmPostProcessorParallelTanh<VAR, DIM> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts1, npts3, alpha, dbg );
         }
 
         SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessor of type '" + type + "'", __FILE__, __LINE__ ) );

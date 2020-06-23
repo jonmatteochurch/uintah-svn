@@ -74,6 +74,8 @@ protected: // MEMBERS
 
     const bool m_dbg;
 
+    const double m_alpha;
+
     const int m_n0; // no. of psi values for computation of 0-level, and psi_n
 
     const int m_n0l;
@@ -218,8 +220,10 @@ public: // CONSTRUCTORS/DESTRUCTOR
         int n0,
         int nn,
         int nt,
+        double alpha,
         bool dbg
     ) : m_dbg ( dbg ),
+        m_alpha ( alpha ),
         m_n0 ( n0 ),
         m_n0l ( ( m_n0 - 1 ) / 2 ),
         m_n0h ( m_n0 - m_n0l ),
@@ -540,7 +544,7 @@ public:
                 if ( n_ < 0 ) // move back from low[0] at most m_nnh steps
                 {
                     in = n_ind ( low ) - m_location_n0;
-                    int dn0 = std::max ( m_nnh, -in );
+                    int dn0 = std::max ( -m_nnh, -in );
                     for ( int dn = - 1; dn >= dn0; --dn )
                     {
                         if ( m_locations[in  + dn] < INT_MAX )
@@ -771,8 +775,7 @@ public:
     virtual void
     computeTipInfo (
         double & tip_position,
-        double tip_curvatures[3],
-        const double & gamma_psi = 0
+        double tip_curvatures[3]
     ) override
     {
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalTanh::computeTipInfo " );
@@ -783,20 +786,23 @@ public:
 
         // 1. Compute 0-level using data_t/data_z (first m_data_size points)
 
-        Lapack::Tanh1 tanh1 ( gamma_psi, tip_position, m_psetup );
+        Lapack::Tanh1 tanh1 ( m_psetup );
         double n, t;
         for ( int i = 0; i < m_data_size; ++i )
         {
             n = n_coord ( m_data_n0 + i );
 
-            tanh1.fit ( m_n0, data_t ( i ), data_z ( i ), gamma_psi * n * n );
+            tanh1.fit ( m_n0, data_t ( i ), data_z ( i ) );
             t = tanh1.zero();
 
             arm_n[i] = n;
             arm_t2[i] = t * t;
 
-            DOUT ( DBG_PRINT, "plot3(" << n << "+0*x,x,y,'-ok')" );
+            DOUT ( DBG_PRINT, "plot3(" << n << "+0*x,x,y,'ok')" );
             DOUT ( DBG_PRINT && i == 0, "hold on" );
+            DOUT ( DBG_PRINT, "yy=linspace(x(1),x(end));" );
+            DOUT ( DBG_PRINT, "zz=-tanh(beta(1)+beta(2)*yy+beta(3)*yy.^2);" );
+            DOUT ( DBG_PRINT, "plot3(" << n << "+0*yy,yy,zz,'-k')\n" );
             DOUT ( DBG_PRINT, "plot3(" << n << "," << t << ",0,'*k')\n" );
         }
 
@@ -817,12 +823,13 @@ public:
             std::fill ( tip_t + m_nn * i, tip_t + m_nn * ( i + 1 ), t_coord ( i ) );
         }
 
-        Lapack::Tanh2 tanh2 ( gamma_psi, tip_position, m_psetup );
+        Lapack::Tanh2 tanh2 ( m_psetup );
         tanh2.fit ( m_nn * m_nt, tip_n, tip_t, tip_z ( 0 ) );
 
-        DOUT ( DBG_PRINT, "nn=" << m_nn << "; nt=" <<  m_nt << ";" );
-        DOUT ( DBG_PRINT, "plot3(reshape(x,nn,nt),reshape(y,nn,nt),reshape(z,nn,nt),'bo-')" );
-        DOUT ( DBG_PRINT, "plot3(reshape(x,nn,nt)',reshape(y,nn,nt)',reshape(z,nn,nt)','bo-')" );
+        DOUT ( DBG_PRINT, "plot3 (x,y,z,'bo');" );
+        DOUT ( DBG_PRINT, "[X,Y]=meshgrid(linspace(x(1),x(end),10),linspace(y(1),y(end),10));" );
+        DOUT ( DBG_PRINT, "Z=-tanh(beta(1)+beta(2)*X+beta(3)*X.^2+beta(4)*Y.^2);" );
+        DOUT ( DBG_PRINT, "mesh(X,Y,Z);" );
 
         for ( int i = 0; i < m_nt; ++i )
         {
@@ -835,7 +842,7 @@ public:
         }
 
         tip_position = tanh2.zero ( 0. );
-        tip_curvatures[0] = 1. / tanh2.r0();
+        tip_curvatures[0] = - ( tanh2.dxx0() + 3. * tanh2.dyy0() ) / ( 4. * tanh2.dx0() );
 
         DOUT ( DBG_PRINT, "plot3(" << tip_position << ",0,0,'o','LineWidth',2,'MarkerEdgeColor','k','MarkerFaceColor','y','MarkerSize',10)" );
 
@@ -849,6 +856,8 @@ public:
         {
             ++skip;
         }
+        std::cout << "skip: " << skip << std::endl;
+        std::cout << "data size: " << m_data_size << std::endl;
 
         Lapack::Poly parabola ( 1 );
         double kn, kd;
@@ -870,9 +879,10 @@ public:
         int arm_size = m_data_size;
         for ( ; arm_size > 0; --arm_size )
         {
-            const double & t2 = arm_t2[arm_size - 1];
-            const double & tn = tip_position - arm_n[arm_size - 1];
-            if ( t2 < tn * tn )
+            const double & tt2 = arm_t2[arm_size - 1];
+            double dt2 = arm_t2[arm_size - 1] - arm_t2[arm_size - 2];
+            double dn = arm_n[arm_size - 1] - arm_n[arm_size - 2];
+            if ( -dt2 < m_alpha * tt2 * dn )
             {
                 break;
             }
@@ -911,7 +921,7 @@ class ArmPostProcessorDiagonalTanh < VAR, D3 >
     : public ArmPostProcessor < VAR, D3 >
 {
 public:
-    ArmPostProcessorDiagonalTanh ( Lapack::TrustRegionSetup psetup, int npts, int, int ntip, bool dbg ) {}
+    ArmPostProcessorDiagonalTanh ( Lapack::TrustRegionSetup psetup, int npts, int, int ntip, double, bool dbg ) {}
     virtual ~ArmPostProcessorDiagonalTanh() {};
     virtual void setLevel ( const Level * level ) {}
     virtual void initializeLocations () {};
@@ -922,7 +932,7 @@ public:
     virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) {};
     virtual void reduceData ( const ProcessorGroup * myworld ) {};
     virtual void printData ( std::ostream & out ) const {};
-    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3], const double & gamma_psi ) {};
+    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) {};
 }; // class ArmPostProcessorDiagonalTanhD3
 
 } // namespace PhaseField

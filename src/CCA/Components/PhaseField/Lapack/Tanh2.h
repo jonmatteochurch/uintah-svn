@@ -94,8 +94,6 @@ class Tanh2
 
 public:
     Tanh2 (
-        const double & gamma0,
-        const double & r0,
         const TrustRegionSetup & setup = { 1e-8, 1e-8, 1e-8, 1e-2, 200, 10 }
     ) : m_S2tol ( setup.ftol ),
         m_betatol2 ( setup.xtol * setup.xtol ),
@@ -103,10 +101,10 @@ public:
         m_trtol2 ( setup.trtol * setup.trtol ),
         m_max_nfev ( setup.max_nfev ),
         m_max_triter ( setup.max_triter ),
-        m_a ( -gamma0 * r0 * r0 ),
+        m_a ( 0. ),
         m_b ( 0. ),
-        m_c ( gamma0 ),
-        m_d ( gamma0 )
+        m_c ( 0. ),
+        m_d ( 0. )
     {}
 
     double operator() ( const double & x, const double & y ) const
@@ -119,9 +117,19 @@ public:
         return ( std::sqrt ( m_b * m_b - 4. * m_c * ( m_a + m_d * y * y ) ) - m_b ) / ( 2. * m_c );
     }
 
-    double r0() const
+    double dx0() const
     {
-        return ( m_b * m_b - 4. * m_a * m_c ) / ( 2. * m_d );
+        return - std::sqrt ( m_b * m_b - 4. * m_a * m_c );
+    }
+
+    double dxx0() const
+    {
+        return -2. * m_c;
+    }
+
+    double dyy0() const
+    {
+        return -2. * m_d;
     }
 
     bool fit ( int m, double * x, double * y, double * z )

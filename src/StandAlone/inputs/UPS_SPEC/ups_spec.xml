@@ -1108,6 +1108,7 @@
     <trtol                spec="OPTIONAL DOUBLE 'positive'" />
     <max_nfev             spec="OPTIONAL INTEGER 'positive'" />
     <max_triter           spec="OPTIONAL INTEGER 'positive'" />
+    <alpha                spec="OPTIONAL DOUBLE 'positive'" />
   </ArmPostProcessor>
 
   <!--__________________________________-->

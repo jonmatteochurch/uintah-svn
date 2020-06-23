@@ -194,12 +194,10 @@ class Tanh1
 
     double m_S2tol, m_betatol2, m_gtol, m_trtol2;
     int m_max_nfev, m_max_triter;
-    double m_a0, m_a, m_b, m_c;
+    double m_a, m_b, m_c;
 
 public:
     Tanh1 (
-        const double & gamma0,
-        const double & r0,
         const TrustRegionSetup & setup = { 1e-8, 1e-8, 1e-8, 1e-2, 200, 10 }
     ) : m_S2tol ( setup.ftol ),
         m_betatol2 ( setup.xtol * setup.xtol ),
@@ -207,10 +205,9 @@ public:
         m_trtol2 ( setup.trtol * setup.trtol ),
         m_max_nfev ( setup.max_nfev ),
         m_max_triter ( setup.max_triter ),
-        m_a0 ( 0 ),
-        m_a ( -r0 * r0 ),
+        m_a ( 0. ),
         m_b ( 0. ),
-        m_c ( gamma0 )
+        m_c ( 0. )
     {}
 
     double operator() ( const double & x ) const
@@ -223,11 +220,8 @@ public:
         return ( std::sqrt ( m_b * m_b - 4. * m_a * m_c ) - m_b ) / ( 2. * m_c );
     }
 
-    bool fit ( int m, double * x, double * z, double a0 )
+    bool fit ( int m, double * x, double * z )
     {
-        m_a += a0 - m_a0;
-        m_a0 = a0;
-
         if ( dbg_fit )
         {
             std::stringstream ss;

@@ -73,6 +73,8 @@ protected: // MEMBERS
 
     const bool m_dbg;
 
+    const double m_alpha;
+
     const int m_n0; // no. of psi values for computation of 0-level, and psi_n
     const int m_n1; // no. of psi values computation of psi_tt
     const int m_n2; // no. of 0-level, and psi_n values for interpolation at tip
@@ -229,8 +231,10 @@ public: // CONSTRUCTORS/DESTRUCTOR
         int d1,
         int d2,
         int d3,
+        double alpha,
         bool dbg
     ) : m_dbg ( dbg ),
+        m_alpha ( alpha ),
         m_n0 ( n0 ),
         m_n1 ( n1 ),
         m_n2 ( n2 ),
@@ -300,17 +304,19 @@ public:
     {
         DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::setLocations: " << low << high << " " );
 
-        // first entry with given n
-        IntVector start = Max ( low, m_origin );
+        IntVector inf = Max ( low, m_origin );
+        IntVector sup = Min ( high, m_high - 1 );
+
         IntVector id {0, 0, 0};
 
         // move along increasing n
-        for ( id[0] = start[0]; id[0] < high[0]; ++id[0] )
+        for ( id[0] = inf[0]; id[0] < sup[0]; ++id[0] )
         {
             // move along increasing t
-            int end1 = ( VAR == CC ) ? std::min ( high[1] - 1, id[0] ) : std::min ( high[1] - 1, id[0] + 1 );
-            for ( id[1] = start[1]; id[1] < end1; ++id[1] )
-                if ( psi[id]*psi[id + et] <= 0. )
+            int end1 = ( VAR == CC ) ? std::min ( sup[1], id[0] ) : std::min ( sup[1], id[0] + 1 );
+
+            for ( id[1] = inf[1]; id[1] < end1; ++id[1] )
+                if ( psi[id] * psi[id + et] <= 0. )
                 {
                     int ind = n_ind ( id ) - m_location_n0;
                     if ( t_ind ( id ) < m_locations[ind] )
@@ -371,7 +377,8 @@ public:
         for ( i = m_locations_size; i > 0 && m_locations[i - 1] == INT_MAX; --i );
         m_data_size = i--;
 
-        for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
+        for ( ; i > 1 &&  m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
+        for ( ; i > 1 &&  m_locations[i - 2] < INT_MAX; --i );
 
         m_data_n0 = i - 1;
         m_data_size -= m_data_n0;
@@ -659,8 +666,7 @@ public:
     virtual void
     computeTipInfo (
         double & tip_position,
-        double tip_curvatures[3],
-        const double & /*gamma_psi*/ = 0
+        double tip_curvatures[3]
     ) override
     {
         DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::computeTipInfo " );
@@ -800,6 +806,8 @@ public:
         {
             ++skip;
         }
+        std::cout << "skip: " << skip << std::endl;
+        std::cout << "data size: " << m_data_size << std::endl;
 
         Lapack::Poly parabola ( 1 );
         double kn, kd;
@@ -819,11 +827,12 @@ public:
         // 8. Evaluate parabolic curvatue excluding tip neighbour
 
         int arm_size = m_data_size;
-        for ( ; arm_size > 0; --arm_size )
+        for ( ; arm_size > 1; --arm_size )
         {
-            const double & t2 = arm_t2[arm_size - 1];
-            const double & tn = tip_position - arm_n[arm_size - 1];
-            if ( t2 < tn * tn )
+            const double & tt2 = arm_t2[arm_size-1];
+            double dt2 = arm_t2[arm_size-1] - arm_t2[arm_size - 2];
+            double dn = arm_n[arm_size-1] - arm_n[arm_size - 2];
+            if ( -dt2 < m_alpha * tt2 * dn )
             {
                 break;
             }
@@ -862,7 +871,7 @@ class ArmPostProcessorParallelPoly < VAR, D3 >
     : public ArmPostProcessor < VAR, D3 >
 {
 public:
-    ArmPostProcessorParallelPoly ( int n0, int n1, int n2, int n3, int d0, int d1, int d2, int d3, bool dbg ) {}
+    ArmPostProcessorParallelPoly ( int n0, int n1, int n2, int n3, int d0, int d1, int d2, int d3, double, bool dbg ) {}
     virtual ~ArmPostProcessorParallelPoly () {};
     virtual void setLevel ( const Level * level ) {}
     virtual void initializeLocations () {};
@@ -873,7 +882,7 @@ public:
     virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) {};
     virtual void reduceData ( const ProcessorGroup * myworld ) {};
     virtual void printData ( std::ostream & out ) const {};
-    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3], const double & gamma_psi ) {};
+    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) {};
 }; // class ArmPostProcessorParallelPolyD3
 
 } // namespace PhaseField

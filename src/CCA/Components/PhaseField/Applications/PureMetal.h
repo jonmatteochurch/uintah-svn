@@ -1914,7 +1914,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_postprocess (
 
         double tip_position = old_position;
         double tip_curvatures[3];
-        arm_postproc->computeTipInfo ( tip_position, tip_curvatures, gamma_psi );
+        arm_postproc->computeTipInfo ( tip_position, tip_curvatures );
         dw_new->put ( max_vartype ( tip_position ), tip_position_label );
         dw_new->put ( max_vartype ( ( tip_position - old_position ) / delt ), tip_velocity_label );
         dw_new->put ( maxvec_vartype ( { tip_curvatures[0], tip_curvatures[1], tip_curvatures[2] } ), tip_curvatures_label );
