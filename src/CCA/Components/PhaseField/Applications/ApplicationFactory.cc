@@ -42,6 +42,7 @@ UintahParallelComponent *
 ApplicationFactory::create (
     const ProcessorGroup * myWorld,
     const MaterialManagerP materialManager,
+    const std::string & uda,
     ProblemSpecP probSpec,
     bool doAMR
 )
@@ -74,7 +75,7 @@ ApplicationFactory::create (
     int verbosity;
     probSpec->getWithDefault ( "verbosity", verbosity, 0 );
 
-    UintahParallelComponent * ptr = UintahParallelComponentFactory::Create ( application, myWorld, materialManager, verbosity );
+    UintahParallelComponent * ptr = UintahParallelComponentFactory::Create ( application, myWorld, materialManager, uda, verbosity );
 
     if ( !ptr )
         SCI_THROW ( ProblemSetupException ( "Cannot Create PhaseField Application '" + application + "'", __FILE__, __LINE__ ) );

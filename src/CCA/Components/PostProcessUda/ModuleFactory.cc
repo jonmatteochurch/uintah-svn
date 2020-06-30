@@ -77,6 +77,9 @@ ModuleFactory::create(const ProblemSpecP& prob_spec,
       else if ( module == "spatioTemporalAvg" ) {
         modules.push_back ( scinew postProcess::spatioTemporalAvg( module_ps, materialManager, dataArchiver, dataArchive) );
       }
+      else if ( module == "arm" ) {
+//         modules.push_back ( scinew postProcess::arm( module_ps, materialManager, dataArchiver, dataArchive) );
+      }
       else if ( module == "reduceUda" ) {
         // do nothing
       }      

@@ -24,4 +24,4 @@
 #
 
 SCRIPT="`dirname \"$0\"`"/AMRFDView-bld.sh
-${SCRIPT} -p PureMetalProblem -v NC -s P5 -c FC1 -B
+${SCRIPT} -p PureMetalProblem -v NC -s P5 -c FC1

@@ -45,7 +45,7 @@ namespace PhaseField
 {
 
 /// Factory class for UintahParallelComponent
-using UintahParallelComponentFactory = Factory<UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>;
+using UintahParallelComponentFactory = Factory<UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int>;
 
 /**
  * @brief Factory class for different PhaseField applications
@@ -71,6 +71,7 @@ public:
     static UintahParallelComponent * create (
         const ProcessorGroup * myWorld,
         const MaterialManagerP materialManager,
+        const std::string & uda,
         ProblemSpecP probSpec,
         bool doAMR
     );

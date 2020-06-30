@@ -298,14 +298,14 @@ ApplicationFactory::create(       ProblemSpecP     & prob_spec
 
   if (sim_comp == "smpmice" || sim_comp == "shellmpmice" || sim_comp == "SHELLMPMICE") {
     return scinew MPMICE(myworld, materialManager, SHELL_MPMICE, doAMR);
-  } 
+  }
   else {
     turned_on_options += "shellmpmice ";
   }
 
   if (sim_comp == "rmpmice" || sim_comp == "rigidmpmice" || sim_comp == "RIGIDMPMICE") {
     return scinew MPMICE(myworld, materialManager, RIGID_MPMICE, doAMR);
-  } 
+  }
   else {
     turned_on_options += "rigidmpmice ";
   }
@@ -315,7 +315,7 @@ ApplicationFactory::create(       ProblemSpecP     & prob_spec
 
 #ifndef NO_PHASEFIELD
   if ( sim_comp == "phasefield" || sim_comp == "PHASEFIELD" ) {
-    return PhaseField::ApplicationFactory::create ( myworld, materialManager, prob_spec->findBlock ( "PhaseField" ), doAMR );
+    return PhaseField::ApplicationFactory::create ( myworld, materialManager, uda, prob_spec->findBlock ( "PhaseField" ), doAMR );
   }
 #endif
 

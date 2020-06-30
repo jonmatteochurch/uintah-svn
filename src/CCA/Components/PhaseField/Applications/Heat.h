@@ -134,7 +134,7 @@ static constexpr bool dbg_heat_scheduling = false;
 template<VarType VAR, DimType DIM, StnType STN, bool AMR = false, bool TST = false>
 class Heat
     : public Application< HeatProblem<VAR, STN, TST>, AMR >
-    , public Implementation< Heat<VAR, DIM, STN, AMR, TST>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
+    , public Implementation< Heat<VAR, DIM, STN, AMR, TST>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int >
 {
 
 private: // STATIC MEMBERS
@@ -311,6 +311,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
     Heat (
         const ProcessorGroup * myWorld,
         const MaterialManagerP materialManager,
+        const std::string & uda,
         int verbosity = 0
     );
 
@@ -2059,10 +2060,11 @@ protected: // IMPLEMENTATIONS
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 Heat<VAR, DIM, STN, AMR, TST>::Heat (
-    const ProcessorGroup * myworld,
+    const ProcessorGroup * myWorld,
     const MaterialManagerP materialManager,
+    const std::string &,
     int verbosity
-) : Application< HeatProblem<VAR, STN, TST>, AMR > ( myworld, materialManager, verbosity )
+) : Application< HeatProblem<VAR, STN, TST>, AMR > ( myWorld, materialManager, verbosity )
 {
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
     u_norm2_L2_label = VarLabel::create ( "u_norm2_L2", sum_vartype::getTypeDescription() );

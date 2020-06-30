@@ -73,7 +73,7 @@ namespace PhaseField
 template < VarType VAR, StnType STN >
 class Benchmark02
     : public Application< Problem<VAR, STN> >
-    , public Implementation<Benchmark02<VAR, STN>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
+    , public Implementation<Benchmark02<VAR, STN>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int >
 {
 private: // STATIC MEMBERS
 
@@ -131,6 +131,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
     Benchmark02 (
         const ProcessorGroup * myworld,
         const MaterialManagerP materialManager,
+        const std::string & uda,
         int verbosity = 0
     );
 
@@ -472,10 +473,11 @@ protected: // IMPLEMENTATIONS
 
 template<VarType VAR, StnType STN>
 Benchmark02<VAR, STN>::Benchmark02 (
-    const ProcessorGroup * myworld,
+    const ProcessorGroup * myWorld,
     const MaterialManagerP materialManager,
+    const std::string &,
     int verbosity
-) : Application< Problem<VAR, STN> > ( myworld, materialManager, verbosity )
+) : Application< Problem<VAR, STN> > ( myWorld, materialManager, verbosity )
 {
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
     v_label = VarLabel::create ( "v", Variable<VAR, double>::getTypeDescription() );

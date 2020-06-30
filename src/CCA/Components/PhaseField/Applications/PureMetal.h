@@ -38,8 +38,7 @@
 #include <CCA/Components/PhaseField/DataTypes/ScalarField.h>
 #include <CCA/Components/PhaseField/DataTypes/VectorField.h>
 #include <CCA/Components/PhaseField/Applications/Application.h>
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorFactory.h>
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessor.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessModule.h>
 #include <CCA/Components/PhaseField/Views/View.h>
 #include <CCA/Components/PhaseField/Views/FDView.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
@@ -54,7 +53,6 @@
 #include <Core/Parallel/UintahParallelComponent.h>
 #include <Core/Grid/Variables/PerPatchVars.h>
 #include <Core/Grid/Variables/ReductionVariable.h>
-#include <forward_list>
 
 namespace Uintah
 {
@@ -63,7 +61,6 @@ namespace PhaseField
 
 /// Debugging stream for component schedulings
 static constexpr bool dbg_pure_metal_scheduling = false;
-static constexpr bool dbg_pure_metal_postprocess = false;
 
 /**
  * @brief PureMetal PhaseField applications
@@ -118,8 +115,10 @@ static constexpr bool dbg_pure_metal_postprocess = false;
 template<VarType VAR, DimType DIM, StnType STN, bool AMR = false>
 class PureMetal
     : public Application< PureMetalProblem<VAR, STN>, AMR >
-    , public Implementation < PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
+    , public Implementation < PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string & , int>
 {
+public:
+
     /// Problem material index (only one SimpleMaterial)
     static constexpr int material = 0;
 
@@ -134,6 +133,14 @@ class PureMetal
 
     /// Index for anisotropy functions B
     static constexpr size_t YZ = 2;
+
+    /// Index of variables within PureMetalProblem
+    static constexpr size_t PSI = 0; ///< Index for phase-field
+    static constexpr size_t U = 1;   ///< Index for non-dimensional temperature field
+    static constexpr size_t A2 = 2;  ///< Index for the square of the anisotropy function
+    static constexpr size_t B = 3;   ///< Index for the anisotropy terms \f$ B_ij \f$
+
+private:
 
     /// Number of ghost elements required by STN (on the same level)
     using Application< PureMetalProblem<VAR, STN> >::FGN;
@@ -155,12 +162,6 @@ class PureMetal
 
     /// If grad_psi_norm2 is less than tol than psi is considered constant when computing anisotropy terms
     static constexpr double tol = 1.e-6;
-
-    /// Index of variables within PureMetalProblem
-    static constexpr size_t PSI = 0; ///< Index for phase-field
-    static constexpr size_t U = 1;   ///< Index for non-dimensional temperature field
-    static constexpr size_t A2 = 2;  ///< Index for the square of the anisotropy function
-    static constexpr size_t B = 3;   ///< Index for the anisotropy terms \f$ B_ij \f$
 
 public: // STATIC MEMBERS
 
@@ -190,11 +191,6 @@ protected: // MEMBERS
     /// Label for anisotropy fields B in the DataWarehouse
     std::array<const VarLabel *, BSZ> b_label;
 
-    ArmPostProcessor<VAR, DIM> * arm_postproc;
-    const VarLabel * tip_position_label;
-    const VarLabel * tip_velocity_label;
-    const VarLabel * tip_curvatures_label;
-
     /// Time step size
     double delt;
 
@@ -222,6 +218,8 @@ protected: // MEMBERS
     /// Threshold for AMR
     double refine_threshold;
 
+    ArmPostProcessModule<VAR, DIM, STN, AMR> * post_process;
+
 public: // CONSTRUCTORS/DESTRUCTOR
 
     /**
@@ -236,6 +234,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
     PureMetal (
         const ProcessorGroup * myWorld,
         const MaterialManagerP materialManager,
+        const std::string & uda,
         int verbosity = 0
     );
 
@@ -477,20 +476,6 @@ protected: // SCHEDULINGS
     template < bool MG >
     typename std::enable_if < MG, void >::type
     scheduleTimeAdvance_solution (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    template < bool MG >
-    typename std::enable_if < !MG, void >::type
-    scheduleTimeAdvance_postprocess (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    template < bool MG >
-    typename std::enable_if < MG, void >::type
-    scheduleTimeAdvance_postprocess (
         const LevelP & level,
         SchedulerP & sched
     );
@@ -815,15 +800,6 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
-    void
-    task_time_advance_postprocess (
-        const ProcessorGroup * myworld,
-        const PatchSubset * patches,
-        const MaterialSubset * matls,
-        DataWarehouse * dw_old,
-        DataWarehouse * dw_new
-    );
-
     /**
      * @brief Refine solution task
      *
@@ -1091,10 +1067,12 @@ protected: // IMPLEMENTATIONS
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 PureMetal<VAR, DIM, STN, AMR>::PureMetal (
-    const ProcessorGroup * myworld,
-    MaterialManagerP const materialManager,
+    const ProcessorGroup * my_world,
+    MaterialManagerP const material_manager,
+    const std::string &,
     int verbosity
-) : Application< PureMetalProblem<VAR, STN>, AMR > ( myworld, materialManager, verbosity )
+) : Application< PureMetalProblem<VAR, STN>, AMR > ( my_world, material_manager, verbosity ),
+    post_process ( nullptr )
 {
     psi_label = VarLabel::create ( "psi", Variable<VAR, double>::getTypeDescription() );
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
@@ -1114,16 +1092,12 @@ PureMetal<VAR, DIM, STN, AMR>::PureMetal (
         b_label[XZ] = VarLabel::create ( "Bxz", Variable<VAR, double>::getTypeDescription() );
         b_label[YZ] = VarLabel::create ( "Byz", Variable<VAR, double>::getTypeDescription() );
     }
-
-    tip_position_label = VarLabel::create ( "tip_position", max_vartype::getTypeDescription() );
-    tip_velocity_label = VarLabel::create ( "tip_velocity", max_vartype::getTypeDescription() );
-    tip_curvatures_label = VarLabel::create ( "tip_curvatures", maxvec_vartype::getTypeDescription() );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 PureMetal<VAR, DIM, STN, AMR>::~PureMetal()
 {
-    delete arm_postproc;
+    delete post_process;
 
     VarLabel::destroy ( psi_label );
     VarLabel::destroy ( u_label );
@@ -1134,9 +1108,6 @@ PureMetal<VAR, DIM, STN, AMR>::~PureMetal()
         VarLabel::destroy ( grad_psi_label[d] );
     for ( size_t d = 0; d < BSZ; ++d )
         VarLabel::destroy ( b_label[d] );
-    VarLabel::destroy ( tip_position_label );
-    VarLabel::destroy ( tip_velocity_label );
-    VarLabel::destroy ( tip_curvatures_label );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1160,9 +1131,8 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     pure_metal->getWithDefault ( "gamma_psi", gamma_psi, 1. );
     pure_metal->getWithDefault ( "gamma_u", gamma_u, 1. );
 
-    // read arm postprocessor parameters
-    ProblemSpecP postproc = params->findBlock ( "ArmPostProcessor" );
-    arm_postproc = ArmPostProcessorFactory<VAR, DIM>::create ( postproc, epsilon, this->m_dbg_lvl4 );
+    post_process = scinew ArmPostProcessModule<VAR, DIM, STN, AMR> ( this, params, psi_label );
+    post_process->problemSetup();
 
     // coupling parameter
     lambda = alpha / 0.6267;
@@ -1206,7 +1176,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize (
 {
     scheduleInitialize_solution<AMR> ( level, sched );
     scheduleInitialize_grad_psi<AMR> ( level, sched );
-    scheduleTimeAdvance_postprocess<AMR> ( level, sched );
+    post_process->scheduleInitialize ( sched, level );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1304,7 +1274,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance (
     scheduleTimeAdvance_grad_psi<AMR> ( level, sched );
     scheduleTimeAdvance_anisotropy_terms ( level, sched );
     scheduleTimeAdvance_solution<AMR> ( level, sched );
-    scheduleTimeAdvance_postprocess<AMR> ( level, sched );
+    post_process->scheduleDoAnalysis ( sched, level );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1408,40 +1378,6 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
         task->computes ( u_label );
         sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
     }
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-template < bool MG >
-typename std::enable_if < ! MG, void >::type
-PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_postprocess (
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    {
-        Task * task = scinew Task ( "PureMetal::task_time_advance_postprocess", this,
-                                    &PureMetal::task_time_advance_postprocess );
-        task->requires ( Task::NewDW, psi_label, get_var<VAR>::ghost_type, 1 );
-        task->requires ( Task::OldDW, tip_position_label );
-        task->computes ( tip_position_label );
-        task->computes ( tip_velocity_label );
-        task->computes ( tip_curvatures_label );
-        task->setType ( Task::OncePerProc );
-        task->usesMPI ( true );
-
-        sched->addTask ( task, sched->getLoadBalancer()->getPerProcessorPatchSet ( level ), this->m_materialManager->allMaterials() );
-    }
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-template < bool MG >
-typename std::enable_if < MG, void >::type
-PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_postprocess (
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    if ( !level->hasFinerLevel() ) scheduleTimeAdvance_postprocess < !MG > ( level, sched );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1815,112 +1751,6 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
     }
 
     DOUT ( this->m_dbg_lvl2,  myrank );;
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void
-PureMetal<VAR, DIM, STN, AMR>::task_time_advance_postprocess (
-    const ProcessorGroup * myworld,
-    const PatchSubset * patches,
-    const MaterialSubset *,
-    DataWarehouse * dw_old,
-    DataWarehouse * dw_new
-)
-{
-    int myrank = myworld->myRank();
-    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_time_advance_postprocess ====" );
-
-    const Level * level = getLevel ( patches );
-    arm_postproc->setLevel ( level );
-
-    arm_postproc->initializeLocations();
-
-    std::forward_list< std::tuple<IntVector, IntVector, std::reference_wrapper< View < ScalarField<const double> > > > > list;
-    auto iter = list.before_begin();
-
-    for ( int p = 0; p < patches->size(); ++p )
-    {
-        const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );;
-
-        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
-
-        for ( const auto & p : subproblems )
-        {
-            DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
-
-            IntVector const & low = p.get_low();
-            IntVector const & high = p.get_high();
-            View < ScalarField<const double> > & psi = p.template get_fd_view<PSI> ( dw_new );
-
-            arm_postproc->setLocations ( low, high, psi );
-
-            iter = list.emplace_after ( iter, low, high, psi );
-        }
-    }
-
-    std::stringstream ss;
-
-    DOUT ( this->m_dbg_lvl2,  myrank );
-
-    if ( dbg_pure_metal_postprocess )
-    {
-        arm_postproc->printLocations ( ss << myrank << ": " );
-        DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
-        ss.str ( "" );
-        ss.clear();
-    }
-
-    arm_postproc->reduceLocations ( myworld );
-
-    if ( dbg_pure_metal_postprocess )
-    {
-        DOUT ( this->m_dbg_lvl2,  myrank );
-        arm_postproc->printLocations ( ss << myrank << ": " );
-        DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
-        ss.str ( "" );
-        ss.clear();
-    }
-
-    arm_postproc->initializeData();
-
-    for ( const auto & it : list )
-    {
-        arm_postproc->setData ( std::get<0> ( it ), std::get<1> ( it ), std::get<2> ( it ) );
-    }
-
-    if ( dbg_pure_metal_postprocess )
-    {
-        arm_postproc->printData ( ss << myrank << ": " );
-        DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
-        ss.str ( "" );
-        ss.clear();
-    }
-
-    arm_postproc->reduceData ( myworld );
-
-    if ( myrank == 0 )
-    {
-        if ( dbg_pure_metal_postprocess )
-        {
-            arm_postproc->printData ( ss << myrank << ": " );
-            DOUTR ( dbg_pure_metal_postprocess, ss.str().c_str() );
-        }
-        max_vartype old_position ( r0 );
-        if ( dw_old )
-            dw_old->get ( old_position, tip_position_label );
-        else
-            old_position.setData ( r0 );
-
-        double tip_position = old_position;
-        double tip_curvatures[3];
-        arm_postproc->computeTipInfo ( tip_position, tip_curvatures );
-        dw_new->put ( max_vartype ( tip_position ), tip_position_label );
-        dw_new->put ( max_vartype ( ( tip_position - old_position ) / delt ), tip_velocity_label );
-        dw_new->put ( maxvec_vartype ( { tip_curvatures[0], tip_curvatures[1], tip_curvatures[2] } ), tip_curvatures_label );
-    }
-
-    DOUT ( this->m_dbg_lvl2,  myrank );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>

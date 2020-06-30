@@ -103,7 +103,7 @@ protected: // STATIC MEMBERS
     /// Type of ghost elements required by intepolation scheme
     static constexpr Ghost::GhostType IGT = IGN ? VAR == CC ? Ghost::AroundCells : Ghost::AroundNodes : Ghost::None;
 
-protected: // MEMBERS
+public: // MEMBERS
 
     /// Verbosity level 1
     const bool m_dbg_lvl1;
@@ -116,6 +116,8 @@ protected: // MEMBERS
 
     /// Verbosity level 3
     const bool m_dbg_lvl4;
+
+protected: // MEMBERS
 
 #ifdef HAVE_HYPRE
     /// Time advance scheme
