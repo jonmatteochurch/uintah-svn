@@ -424,6 +424,40 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
+#ifdef PhaseField_Heat_DBG_DERIVATIVES
+    /**
+     * @brief Schedule task_time_advance_dbg_derivatives (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which updates the
+     * solution derivatives allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleInitialize_dbg_derivatives (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_dbg_derivatives (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which updates the
+     * solution derivatives allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleInitialize_dbg_derivatives (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+#endif // PhaseField_Heat_DBG_DERIVATIVES
+
     /**
      * @brief Schedule the initialization tasks for restarting a simulation
      *
@@ -2269,6 +2303,12 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleInitialize (
     DOUTR ( dbg_heat_scheduling, "scheduleInitialize on level " << level->getIndex() << " " );
 
     scheduleInitialize_solution<AMR> ( level, sched );
+    scheduleTimeAdvance_solution_error<AMR, TST> ( level, sched );
+
+#ifdef PhaseField_Heat_DBG_DERIVATIVES
+    scheduleInitialize_dbg_derivatives<AMR> ( level, sched );
+    scheduleTimeAdvance_dbg_derivatives_error<AMR, TST> ( level, sched );
+#endif
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -2301,16 +2341,74 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleInitialize_solution (
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_heat_scheduling, "scheduleInitialize_solution on level " << level->getIndex() << " " );
-
     // since the SimulationController is calling this scheduler starting from
     // the finest level we schedule only on the finest level
     if ( level->hasFinerLevel() ) return;
+
+    DOUTR ( dbg_heat_scheduling, "scheduleInitialize_solution on all levels " );
 
     GridP grid = level->getGrid();
     for ( int l = 0; l < grid->numLevels(); ++l )
         scheduleInitialize_solution < !MG > ( grid->getLevel ( l ), sched );
 }
+
+#ifdef PhaseField_Heat_DBG_DERIVATIVES
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::scheduleInitialize_dbg_derivatives (
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_heat_scheduling, "scheduleInitialize_dbg_derivatives on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives", this, &Heat::task_time_advance_dbg_derivatives );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::NewDW, u_label, FGT, FGN );
+    for ( size_t D = 0; D < DIM; ++D )
+    {
+        task->computes ( du_label[D] );
+        task->computes ( ddu_label[D] );
+    }
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::scheduleInitialize_dbg_derivatives (
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    // all tasks must be sent to the scheduler before the first dbg_derivatives_error task
+    if ( level->hasFinerLevel() ) return;
+
+    DOUTR ( dbg_heat_scheduling, "scheduleInitialize_dbg_derivatives on all levels " );
+    GridP grid = level->getGrid();
+
+    scheduleInitialize_dbg_derivatives < !MG > ( grid->getLevel ( 0 ), sched );
+    for ( int l = 1; l < grid->numLevels(); ++l )
+    {
+        DOUTR ( dbg_heat_scheduling, "scheduleInitialize_dbg_derivatives on level " << l << " " );
+
+        Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives", this, &Heat::task_time_advance_dbg_derivatives );
+
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        task->requires ( Task::NewDW, u_label, FGT, FGN );
+        task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+
+        for ( size_t D = 0; D < DIM; ++D )
+        {
+            task->computes ( du_label[D] );
+            task->computes ( ddu_label[D] );
+        }
+        sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
+    }
+}
+#endif // PhaseField_Heat_DBG_DERIVATIVES
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
@@ -2375,8 +2473,8 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives (
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives on level " << level->getIndex() << " " );
 
     Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives", this, &Heat::task_time_advance_dbg_derivatives );
-    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
-    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::NewDW, u_label, FGT, FGN );
     for ( size_t D = 0; D < DIM; ++D )
     {
         task->computes ( du_label[D] );
@@ -2399,23 +2497,17 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives (
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives on all levels " );
     GridP grid = level->getGrid();
 
-    scheduleTimeAdvance_dbg_derivatives < !MG > ( level, sched );
+    scheduleTimeAdvance_dbg_derivatives < !MG > ( grid->getLevel ( 0 ), sched );
     for ( int l = 1; l < grid->numLevels(); ++l )
     {
         DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives on level " << l << " " );
 
         Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives", this, &Heat::task_time_advance_dbg_derivatives );
 
-        Task::WhichDW dw_coarse = Task::OldDW;
-#ifdef HAVE_HYPRE
-        if ( this->m_solver  && this->m_solver->getName() == "hypre" )
-            dw_coarse = Task::NewDW;
-#endif
-
-        task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
-        task->requires ( dw_coarse, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-        task->requires ( Task::OldDW, u_label, FGT, FGN );
-        task->requires ( dw_coarse, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        task->requires ( Task::NewDW, u_label, FGT, FGN );
+        task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
 
         for ( size_t D = 0; D < DIM; ++D )
         {
@@ -2462,33 +2554,47 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
     SchedulerP & sched
 )
 {
+    // all tasks must be sent to the scheduler after the last task_time_advance_solution
+    if ( level->hasFinerLevel() ) return;
+
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error on all levels " );
+
     GridP grid = level->getGrid();
-    int k = grid->numLevels() - level->getIndex() - 1;
+    int l = level->getIndex();
 
-    if ( k == 0 )
-        return scheduleTimeAdvance_dbg_derivatives_error < !MG, T > ( level, sched );
-
-    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error on level " << level->getIndex() << " " );
-
-    Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<MG, T> );
-    task->requires ( Task::NewDW, this->getSubProblemsLabel(), IGT, IGN );
-    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
-    for ( size_t D = 0; D < DIM; ++D )
+    if ( this->m_regridder->maxLevels() - l - 1 == 0 )
     {
-        task->requires ( Task::NewDW, du_label[D], IGT, IGN );
-        task->requires ( Task::NewDW, ddu_label[D], IGT, IGN );
-        task->requires ( Task::NewDW, du_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
-        task->requires ( Task::NewDW, ddu_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
-        task->computes ( epsilon_du_label[D] );
-        task->computes ( epsilon_ddu_label[D] );
-        task->computes ( error_du_label[D] );
-        task->computes ( error_ddu_label[D] );
+        scheduleTimeAdvance_dbg_derivatives_error < !MG, T > ( level, sched );
+        --l;
     }
-    task->computes ( u_norm2_H10_label );
-    task->computes ( u_norm2_H20_label );
-    task->computes ( error_norm2_H10_label );
-    task->computes ( error_norm2_H20_label );
-    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+
+    for ( int k = grid->numLevels() - l - 1; l >= 0; --l, ++k )
+    {
+        DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error on level " << level->getIndex() << " " );
+
+        Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<MG, T> );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), IGT, IGN );
+        if ( k ) task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+        for ( size_t D = 0; D < DIM; ++D )
+        {
+            task->requires ( Task::NewDW, du_label[D], IGT, IGN );
+            task->requires ( Task::NewDW, ddu_label[D], IGT, IGN );
+            if ( k )
+            {
+                task->requires ( Task::NewDW, du_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+                task->requires ( Task::NewDW, ddu_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+            }
+            task->computes ( epsilon_du_label[D] );
+            task->computes ( epsilon_ddu_label[D] );
+            task->computes ( error_du_label[D] );
+            task->computes ( error_ddu_label[D] );
+        }
+        task->computes ( u_norm2_H10_label );
+        task->computes ( u_norm2_H20_label );
+        task->computes ( error_norm2_H10_label );
+        task->computes ( error_norm2_H20_label );
+        sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
+    }
 }
 #endif
 
@@ -2915,21 +3021,31 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_error (
 )
 {
     // all tasks must be sent to the scheduler after the last task_time_advance_solution
-    GridP grid = level->getGrid();
-    if ( level->getIndex() < grid->numLevels() - 1 ) return;
+    if ( level->hasFinerLevel() ) return;
 
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error on all levels " );
 
-    scheduleTimeAdvance_solution_error < !MG, T > ( level, sched );
-    for ( int k = 1, l = grid->numLevels() - 2; k < grid->numLevels(); ++k, --l )
+    GridP grid = level->getGrid();
+    int l = level->getIndex();
+
+    if ( this->m_regridder->maxLevels() - l - 1 == 0 )
     {
-        DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error on level " << l << " " );
+        scheduleTimeAdvance_solution_error < !MG, T > ( level, sched );
+        --l;
+    }
+
+    for ( int k = grid->numLevels() - l - 1; l >= 0; --l, ++k )
+    {
+        DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error on level " << l << " " << "k: " << k );
 
         Task * task = scinew Task ( "Heat::task_time_advance_solution_error", this, &Heat::task_time_advance_solution_error<MG, T> );
         task->requires ( Task::NewDW, this->getSubProblemsLabel(), IGT, IGN );
-        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
         task->requires ( Task::NewDW, u_label, IGT, IGN );
-        task->requires ( Task::NewDW, u_label, nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+        if ( k )
+        {
+            task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+            task->requires ( Task::NewDW, u_label, nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+        }
         task->computes ( epsilon_u_label );
         task->computes ( error_u_label );
         task->computes ( u_norm2_L2_label );
@@ -3160,17 +3276,17 @@ Heat<VAR, DIM, STN, AMR, TST>::task_compute_stable_timestep (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset *,
-    DataWarehouse * dw_old,
+    DataWarehouse * /*dw_old*/,
     DataWarehouse * dw_new
 )
 {
     int myrank = myworld->myRank();
     DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_compute_stable_timestep ====" );
 
-    if ( TST && dw_old && dw_old->exists ( u_norm2_L2_label ) )
+    if ( TST && dw_new && dw_new->exists ( u_norm2_L2_label ) )
     {
         sum_vartype u_norm2;
-        dw_old->get ( u_norm2, u_norm2_L2_label );
+        dw_new->get ( u_norm2, u_norm2_L2_label );
 
         BBox box;
         getLevel ( patches )->getGrid()->getSpatialRange ( box );
@@ -3196,7 +3312,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset *,
-    DataWarehouse * dw_old,
+    DataWarehouse * /*dw_old*/,
     DataWarehouse * dw_new
 )
 {
@@ -3217,8 +3333,8 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives (
         for ( const auto & p : subproblems )
         {
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
-            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
-            parallel_for ( p.get_range(), [&u_old, &du, &ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives ( {i, j, k}, u_old, du, ddu ); } );
+            FDView < ScalarField<const double>, STN > & u = p.template get_fd_view<U> ( dw_new );
+            parallel_for ( p.get_range(), [&u, &du, &ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives ( {i, j, k}, u, du, ddu ); } );
         }
     }
 
@@ -3244,8 +3360,17 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     std::array<double, 4> norms {{ 0., 0., 0., 0. }}; // { u_norm2_H10, u_norm2_H20, error_norm2_H10, error_norm2_H20 }
 
     simTime_vartype simTimeVar;
-    dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
-    double simTime = simTimeVar;
+    double simTime;
+    if ( dw_old )
+    {
+        dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar + delt;
+    }
+    else
+    {
+        dw_new->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar;
+    }
 
     BBox box;
     getLevel ( patches )->getGrid()->getSpatialRange ( box );
@@ -3307,8 +3432,17 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     std::array<double, 4> norms {{ 0., 0., 0., 0. }}; // { u_norm2_H10, u_norm2_H20, error_norm2_H10, error_norm2_H20 }
 
     simTime_vartype simTimeVar;
-    dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
-    double simTime = simTimeVar;
+    double simTime;
+    if ( dw_old )
+    {
+        dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar + delt;
+    }
+    else
+    {
+        dw_new->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar;
+    }
 
     BBox box;
     grid->getSpatialRange ( box );
@@ -3841,8 +3975,17 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     std::array<double, 2> norms {{ 0., 0. }}; // { u_norm2_discrete, error_norm2_discrete, u_norm2_L2, error_norm2_L2 }
 
     simTime_vartype simTimeVar;
-    dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
-    double simTime = simTimeVar;
+    double simTime;
+    if ( dw_old )
+    {
+        dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar + delt;
+    }
+    else
+    {
+        dw_new->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar;
+    }
 
     BBox box;
     getLevel ( patches )->getGrid()->getSpatialRange ( box );
@@ -3893,8 +4036,17 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     std::array<double, 2> norms {{ 0., 0. }}; // { u_norm2_L2, error_norm2_L2 }
 
     simTime_vartype simTimeVar;
-    dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
-    double simTime = simTimeVar;
+    double simTime;
+    if ( dw_old )
+    {
+        dw_old->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar + delt;
+    }
+    else
+    {
+        dw_new->get ( simTimeVar, VarLabel::find ( simTime_name ) );
+        simTime = simTimeVar;
+    }
 
     const Level * level = getLevel ( patches );
     Grid * grid = level->getGrid().get_rep();
@@ -4088,22 +4240,22 @@ template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
 Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives (
     const IntVector & id,
-    const FDView < ScalarField<const double>, STN > & u_old,
+    const FDView < ScalarField<const double>, STN > & u,
     View < VectorField<double, DIM> > & du,
     View < VectorField<double, DIM> > & ddu
 )
 {
-    du[X][id] = u_old.dx ( id );
-    ddu[X][id] = u_old.dxx ( id );
+    du[X][id] = u.dx ( id );
+    ddu[X][id] = u.dxx ( id );
     if ( DIM > D1 )
     {
-        du[Y][id] = u_old.dy ( id );
-        ddu[Y][id] = u_old.dyy ( id );
+        du[Y][id] = u.dy ( id );
+        ddu[Y][id] = u.dyy ( id );
     }
     if ( DIM > D2 )
     {
-        du[Z][id] = u_old.dz ( id );
-        ddu[Z][id] = u_old.dzz ( id );
+        du[Z][id] = u.dz ( id );
+        ddu[Z][id] = u.dzz ( id );
     }
 }
 
@@ -4131,7 +4283,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
     double a = M_PI_2 / L;
     double e = a * a * alpha * static_cast<double> ( DIM );
-    double ut = exp ( -e * ( t + delt ) );
+    double ut = exp ( -e * t );
     double duf[DIM], dduf[DIM], lapuf;
     double edu[DIM], eddu[DIM], elapu;
     double du2[] = { 0., 0., 0.}, lapu2 = 0.;
@@ -4253,7 +4405,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
             double a = M_PI_2 / L;
             double e = a * a * alpha * static_cast<double> ( DIM );
-            double ut = exp ( -e * ( t + delt ) );
+            double ut = exp ( -e * t );
             double duf[DIM], dduf[DIM];
             double edu[DIM], eddu[DIM];
             double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.};
@@ -4364,7 +4516,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
         double a = M_PI_2 / L;
         double e = a * a * alpha * static_cast<double> ( DIM );
-        double ut = exp ( -e * ( t + delt ) );
+        double ut = exp ( -e * t );
         double duf[DIM], dduf[DIM], lapuf;
         double edu[DIM], eddu[DIM], elapu;
         double du2[] = { 0., 0., 0.}, lapu2 = 0.;
@@ -4716,7 +4868,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
     double a = M_PI_2 / L;
     double e = a * a * alpha * static_cast<double> ( DIM );
-    double ut = exp ( -e * ( t + delt ) );
+    double ut = exp ( -e * t );
     double uf;
     double eu;
     double u2 = 0.;
@@ -4793,7 +4945,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
             double a = M_PI_2 / L;
             double e = a * a * alpha * static_cast<double> ( DIM );
-            double ut = exp ( -e * ( t + delt ) );
+            double ut = exp ( -e * t );
             double uf;
             double eu;
             double u_err2 = 0.;
@@ -4866,7 +5018,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
         double a = M_PI_2 / L;
         double e = a * a * alpha * static_cast<double> ( DIM );
-        double ut = exp ( -e * ( t + delt ) );
+        double ut = exp ( -e * t );
         double uf;
         double eu;
         double u2 = 0.;

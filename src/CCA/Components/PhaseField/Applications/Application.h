@@ -86,7 +86,7 @@ protected: // STATIC MEMBERS
 
     /// Number of ghost elements required by STN (on coarser level)
     /// @remark this should depend on FCI bc type but if fixed for simplicity
-    static constexpr int CGN = 1;
+    static constexpr int CGN = ( VAR == CC ) ? 1 : 2;
 
     /// Type of ghost elements required by VAR and STN (on coarser level)
     static constexpr Ghost::GhostType CGT = CGN ? get_var<VAR>::ghost_type : Ghost::None;

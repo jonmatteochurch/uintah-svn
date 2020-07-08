@@ -115,7 +115,7 @@ static constexpr bool dbg_pure_metal_scheduling = false;
 template<VarType VAR, DimType DIM, StnType STN, bool AMR = false>
 class PureMetal
     : public Application< PureMetalProblem<VAR, STN>, AMR >
-    , public Implementation < PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string & , int>
+    , public Implementation < PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int>
 {
 public:
 
@@ -1131,7 +1131,7 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     pure_metal->getWithDefault ( "gamma_psi", gamma_psi, 1. );
     pure_metal->getWithDefault ( "gamma_u", gamma_u, 1. );
 
-    post_process = scinew ArmPostProcessModule<VAR, DIM, STN, AMR> ( this, params, psi_label );
+    post_process = scinew ArmPostProcessModule<VAR, DIM, STN, AMR> ( this, this->m_regridder, params, psi_label );
     post_process->problemSetup();
 
     // coupling parameter
@@ -1176,7 +1176,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize (
 {
     scheduleInitialize_solution<AMR> ( level, sched );
     scheduleInitialize_grad_psi<AMR> ( level, sched );
-    post_process->scheduleInitialize ( sched, level );
+    if ( !AMR ) post_process->scheduleInitialize ( sched, level );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1274,7 +1274,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance (
     scheduleTimeAdvance_grad_psi<AMR> ( level, sched );
     scheduleTimeAdvance_anisotropy_terms ( level, sched );
     scheduleTimeAdvance_solution<AMR> ( level, sched );
-    post_process->scheduleDoAnalysis ( sched, level );
+    if ( !AMR ) post_process->scheduleDoAnalysis ( sched, level );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1487,6 +1487,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleErrorEstimate
 )
 {
     scheduleErrorEstimate_grad_psi<AMR> ( level, sched );
+    if ( !level->hasFinerLevel() ) post_process->scheduleDoAnalysis ( sched, level );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1881,18 +1882,18 @@ PureMetal<VAR, DIM, STN, AMR>::task_error_estimate_grad_psi
         const Patch * patch = patches->get ( p );
         DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );;
 
+        DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
+        refine_flag.initialize ( 0 );
+
         PerPatch<PatchFlagP> refine_patch_flag;
         dw_new->get ( refine_patch_flag, this->m_regridder->getRefinePatchFlagLabel(), material, patch );
-
         PatchFlag * patch_flag_refine = refine_patch_flag.get().get_rep();
-
-        bool refine_patch = false;
 
         DWView < ScalarField<double>, VAR, DIM > grad_psi_norm2 ( dw_new, grad_psi_norm2_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > grad_psi ( dw_new, grad_psi_label, material, patch );
-        DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
 
         SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        bool refine_patch = false;
 
         for ( const auto & p : subproblems )
         {
@@ -2102,8 +2103,11 @@ PureMetal<VAR, DIM, STN, AMR>::error_estimate_grad_psi (
     refine = grad_psi_norm2[id] > refine_threshold * refine_threshold;
     if ( VAR == CC ) // static if
     {
-        refine_flag[id] = refine;
-        refine_patch = refine_patch || refine;
+        if ( refine )
+        {
+            refine_patch = true;
+            refine_flag[id] = 1;
+        }
     }
     else
     {

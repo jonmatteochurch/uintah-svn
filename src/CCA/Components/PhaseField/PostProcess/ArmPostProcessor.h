@@ -51,11 +51,11 @@ public:
     virtual ~ArmPostProcessor() = default;
     virtual void setLevel ( const Level * level ) = 0;
     virtual void initializeLocations () = 0;
-    virtual void setLocations ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) = 0;
+    virtual void setLocations ( const Patch * patch, IntVector const & low, IntVector const & high, const std::list<Patch::FaceType> & faces, View < ScalarField<const double> > const & psi ) = 0;
     virtual void reduceLocations ( const ProcessorGroup * myworld ) = 0;
     virtual void printLocations ( std::ostream & out ) const = 0;
     virtual void initializeData () = 0;
-    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) = 0;
+    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi, View< ScalarField<int> > * refine_flag ) = 0;
     virtual void reduceData ( const ProcessorGroup * myworld ) = 0;
     virtual void printData ( std::ostream & out ) const = 0;
     virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) = 0;

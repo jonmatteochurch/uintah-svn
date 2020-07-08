@@ -31,6 +31,7 @@ SRCDIR := CCA/Components/PhaseField/Applications
 
 SRCS += \
   $(SRCDIR)/ApplicationFactory.cc \
-  $(SRCDIR)/PureMetal.cc \
   $(SRCDIR)/Heat.cc \
   $(SRCDIR)/Benchmark.cc \
+  $(SRCDIR)/PureMetal.cc \
+  $(SRCDIR)/PostProcessPureMetal.cc \

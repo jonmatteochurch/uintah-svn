@@ -277,18 +277,28 @@ public:
 
     virtual void
     setLocations (
+        const Patch * patch,
         IntVector const & low,
         IntVector const & high,
+        const std::list<Patch::FaceType> & faces,
         View < ScalarField<const double> > const & psi
     ) override
     {
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalTanh::setLocations: " << low << high << " " );
 
-        // first entry with given n
-        IntVector start = Max ( low, m_origin );
-        if ( start[0] < start[1] )
+        bool fc_yminus = patch->getBCType ( Patch::yminus ) == Patch::Coarse &&
+                         std::find ( faces.begin(), faces.end(), Patch::yminus ) != faces.end();
+        bool fc_xplus = patch->getBCType ( Patch::xplus ) == Patch::Coarse &&
+                        std::find ( faces.begin(), faces.end(), Patch::xplus ) != faces.end();
+
+        IntVector dl {0, fc_yminus ? 1 : 0, 0};
+        IntVector dh {fc_xplus ? 1 : 0, 0, 0};
+        IntVector inf = Max ( low + dl, m_origin );
+        IntVector sup = Min ( high - dh, m_high - 1 );
+
+        if ( inf[0] < inf[1] )
         {
-            start[0] = start[1];
+            inf[0] = inf[1];
         }
 
         int iy0 = m_origin[1]; // symmetric
@@ -299,26 +309,24 @@ public:
         int it1;
         IntVector id;
         int in, it;
-        for (
-            in = n_ind ( start );
-            in < n_ind ( high );
-            ++in
-        )
+        for ( in = n_ind ( inf ); in < n_ind ( sup ); ++in )
         {
             found = false;
             it1 = std::min (
             {
-                in - 2 * low[1], 2 * ( high[0] - 1 ) - in,
+                in - 2 * low[1], 2 * ( sup[0] - 1 ) - in,
                 in - 2 * ( iy0 + 1 ), 2 * ( ix1 - 1 ) - in,
             } );
 
-            id = start;
+            id = inf;
             // move along increasing t
-            for ( it = t_ind ( start ); it <= it1; it += 2, id += et )
+            for ( it = t_ind ( inf ); it <= it1; it += 2, id += et )
                 if ( ( found = psi[id] * psi[id + et] <= 0. ) )
                     if ( it < m_locations[in - m_location_n0] )
                     {
-                        m_locations[in - m_location_n0] = it;
+                        // if convave edge id+et may not be refined
+                        if ( patch->getLevel()->containsCell ( id + et ) )
+                            m_locations[in - m_location_n0] = it;
                         break;
                     }
 
@@ -337,7 +345,7 @@ public:
                 {
                     // symmetry on x
                     IntVector sym { id[0] + 1, id[1] + ( VAR == NC ? 1 : 0 ), 0 };
-                    if ( sym[0] < high[0] && psi[id] * psi[sym] <= 0. )
+                    if ( sym[0] < sup[0] && psi[id] * psi[sym] <= 0. )
                         if ( it < m_locations[in - m_location_n0] )
                         {
                             m_locations[in - m_location_n0] = it;
@@ -349,16 +357,16 @@ public:
             // - first along left edge till I bisector or top edge
             // - then if I bisector intersect patch along it
             // - then along top edge
-            if ( start[1] < start[0] && start[1] < high[1] - 1 )
+            if ( inf[1] < inf[0] && inf[1] < sup[1] - 1 )
             {
-                ++start[1];
+                ++inf[1];
             }
             else
             {
-                ++start[0];
+                ++inf[0];
             }
         }
-        while ( start[0] < high[0] );
+        while ( inf[0] < sup[0] );
     }
 
     virtual void
@@ -410,10 +418,17 @@ public:
         for ( i = m_locations_size; i > 0 && m_locations[i - 1] == INT_MAX; --i );
         m_data_size = i--;
 
-        for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
+        if ( m_data_size )
+        {
+            for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
 
-        m_data_n0 = i - 1;
-        m_data_size -= m_data_n0;
+            m_data_n0 = i - 1;
+            m_data_size -= m_data_n0;
+        }
+        else
+        {
+            m_data_n0 = -1;
+        }
 
         m_data_t = scinew double[m_n0 * m_data_size];
         m_data_z = scinew double[m_n0 * m_data_size];
@@ -431,13 +446,14 @@ public:
     setData (
         const IntVector & low,
         const IntVector & high,
-        View < ScalarField<const double> > const & psi
+        View < ScalarField<const double> > const & psi,
+        View< ScalarField<int> > * refine_flag
     ) override
     {
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalTanh::setData: " << low << high << " " );
 
         // arm contour not here
-        if ( n_ind ( high ) < m_data_n0 - m_nnl )
+        if ( !m_data_size || n_ind ( high ) < m_data_n0 - m_nnl )
         {
             return;
         }
@@ -496,10 +512,11 @@ public:
                     --sym[0];
                 }
                 for ( ; id[0] < ix0; it += 2, id += et, --sym[0], --sym[1], ++t_ )
-                    if ( sym[0] >= low[0] && sym[1] >= high[1] )
+                    if ( sym[0] >= low[0] && sym[1] >= low[1] && sym[1] < high[1] )
                     {
                         data_t ( n_, t_ ) = t_coord ( it );
                         data_z ( n_, t_ ) = psi[sym];
+                        if ( refine_flag ) ( *refine_flag ) [sym] = -2;
                     }
 
                 // skip non patch region
@@ -510,6 +527,7 @@ public:
                 {
                     data_t ( n_, t_ ) = t_coord ( it );
                     data_z ( n_, t_ ) = psi[id];
+                    if ( refine_flag ) ( *refine_flag ) [id] = 2;
                 }
 
                 // symmetry on y axis
@@ -523,6 +541,7 @@ public:
                     {
                         data_t ( n_, t_ ) = t_coord ( it );
                         data_z ( n_, t_ ) = psi[sym];
+                        if ( refine_flag ) ( *refine_flag ) [sym] = -2;
                     }
 
                 // extend psi to -1 out computational boundary
@@ -640,9 +659,10 @@ public:
                         --sym[1];
                     }
                     for ( ; n_ < m_nn && id[0] < ix0; in += 2, id += en, ++n_, sym -= en )
-                        if ( sym[0] >= low[0] && sym[1] >= high[1] )
+                        if ( sym[0] >= low[0] && sym[1] >= low[1] && sym[1] < high[1] )
                         {
                             tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
                         }
 
                     // symmetry on y axis
@@ -651,6 +671,7 @@ public:
                         if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
                         {
                             tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
                         }
 
                     // skip non patch region
@@ -660,6 +681,7 @@ public:
                     for ( ; n_ < m_nn && in < in1; in += 2, id += en, ++n_ )
                     {
                         tip_z ( t_, n_ ) = psi[id];
+                        if ( refine_flag ) ( *refine_flag ) [id] = 3;
                     }
 
                     // skip non patch region
@@ -925,11 +947,11 @@ public:
     virtual ~ArmPostProcessorDiagonalTanh() {};
     virtual void setLevel ( const Level * level ) {}
     virtual void initializeLocations () {};
-    virtual void setLocations ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) {};
+    virtual void setLocations ( const Patch * patch, IntVector const & low, IntVector const & high, const std::list<Patch::FaceType> & faces, View < ScalarField<const double> > const & psi ) {};
     virtual void reduceLocations ( const ProcessorGroup * myworld ) {};
     virtual void printLocations ( std::ostream & out ) const {};
     virtual void initializeData () {};
-    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) {};
+    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi, View< ScalarField<int> > * refine_flag ) {};
     virtual void reduceData ( const ProcessorGroup * myworld ) {};
     virtual void printData ( std::ostream & out ) const {};
     virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) {};

@@ -837,7 +837,7 @@ RegridderCommon::Dilate(const ProcessorGroup*,
       for (CellIterator local_iter(low, high + IntVector(1, 1, 1)); !local_iter.done(); local_iter++) {
         IntVector local_idx(*local_iter);
 
-        if (flaggedCells[local_idx] * (*filter)[local_idx - idx + depth]) {
+        if (patch->getLevel()->containsCell(local_idx) && flaggedCells[local_idx] * (*filter)[local_idx - idx + depth]) {
           flag = 1;
           break;
         }

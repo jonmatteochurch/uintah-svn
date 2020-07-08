@@ -639,20 +639,20 @@ Grid::performConsistencyCheck() const
       //__________________________________
       //  finer level must have a box width that is
       //  an integer of the cell spacing
-      Vector integerTest_min(remainder(Fbox_min.x(),dx_fineLevel.x() ), 
-                             remainder(Fbox_min.y(),dx_fineLevel.y() ),
-                             remainder(Fbox_min.z(),dx_fineLevel.z() ) );
+      Vector integerTest_min(abs(remainder(Fbox_min.x(),dx_fineLevel.x() )),
+                             abs(remainder(Fbox_min.y(),dx_fineLevel.y() )),
+                             abs(remainder(Fbox_min.z(),dx_fineLevel.z() )) );
                              
-      Vector integerTest_max(remainder(Fbox_max.x(),dx_fineLevel.x() ), 
-                             remainder(Fbox_max.y(),dx_fineLevel.y() ),
-                             remainder(Fbox_max.z(),dx_fineLevel.z() ) );
+      Vector integerTest_max(abs(remainder(Fbox_max.x(),dx_fineLevel.x() )),
+                             abs(remainder(Fbox_max.y(),dx_fineLevel.y() )),
+                             abs(remainder(Fbox_max.z(),dx_fineLevel.z() )) );
       
       Vector distance = Fbox_max.asVector() - Fbox_min.asVector();
       
       Vector integerTest_distance(remainder(distance.x(), dx_fineLevel.x() ),
                                   remainder(distance.y(), dx_fineLevel.y() ),
                                   remainder(distance.z(), dx_fineLevel.z() ) );
-      Vector smallNum(1e-14,1e-14,1e-14);
+      Vector smallNum(1e-15,1e-15,1e-15);
       
       if( (integerTest_min >smallNum || integerTest_max > smallNum) && 
            integerTest_distance > smallNum){

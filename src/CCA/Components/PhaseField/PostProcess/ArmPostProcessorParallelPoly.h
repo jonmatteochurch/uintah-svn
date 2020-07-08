@@ -297,15 +297,21 @@ public:
 
     virtual void
     setLocations (
+        const Patch * patch,
         IntVector const & low,
         IntVector const & high,
+        const std::list<Patch::FaceType> & faces,
         View < ScalarField<const double> > const & psi
     ) override
     {
         DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::setLocations: " << low << high << " " );
 
+        bool fc_yplus = patch->getBCType ( Patch::yplus ) == Patch::Coarse &&
+                        std::find ( faces.begin(), faces.end(), Patch::yplus ) != faces.end();
+
+        IntVector dh {0, fc_yplus ? 1 : 0, 0};
         IntVector inf = Max ( low, m_origin );
-        IntVector sup = Min ( high, m_high - 1 );
+        IntVector sup = Min ( high - dh, m_high - 1 );
 
         IntVector id {0, 0, 0};
 
@@ -377,11 +383,17 @@ public:
         for ( i = m_locations_size; i > 0 && m_locations[i - 1] == INT_MAX; --i );
         m_data_size = i--;
 
-        for ( ; i > 1 &&  m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
-        for ( ; i > 1 &&  m_locations[i - 2] < INT_MAX; --i );
+        if ( m_data_size )
+        {
+            for ( ; i > 1 &&  m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
 
-        m_data_n0 = i - 1;
-        m_data_size -= m_data_n0;
+            m_data_n0 = i - ( m_locations[i - 1] < INT_MAX ? 1 : 0 );
+            m_data_size -= m_data_n0;
+        }
+        else
+        {
+            m_data_n0 = -1;
+        }
 
         m_data_t = scinew double[m_n0 * m_data_size];
         m_data_z = scinew double[m_n0 * m_data_size];
@@ -399,13 +411,14 @@ public:
     setData (
         const IntVector & low,
         const IntVector & high,
-        View < ScalarField<const double> > const & psi
+        View < ScalarField<const double> > const & psi,
+        View< ScalarField<int> > * refine_flag
     ) override
     {
         DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::setData: " << low << high << " " );
 
         // arm contour not here
-        if ( n_ind ( high ) < m_data_n0 - m_nnl )
+        if ( !m_data_size || n_ind ( high ) < m_data_n0 - m_nnl )
         {
             return;
         }
@@ -445,6 +458,7 @@ public:
                     {
                         data_t ( n_, t_ ) = t_coord ( it );
                         data_z ( n_, t_ ) = psi[sym];
+                        if ( refine_flag ) ( *refine_flag ) [sym] = -2;
                     }
 
                 // skip non patch region
@@ -455,6 +469,7 @@ public:
                 {
                     data_t ( n_, t_ ) = t_coord ( it );
                     data_z ( n_, t_ ) = psi[id];
+                    if ( refine_flag ) ( *refine_flag ) [id] = 2;
                 }
 
                 // extend psi to -1 out computational boundary
@@ -559,6 +574,7 @@ public:
                             for ( t_ = it0; t_ < it1; ++t_, ++sym[1] )
                             {
                                 tip_z ( t_, n_ ) = psi[sym];
+                                if ( refine_flag ) ( *refine_flag ) [sym] = -3;
                             }
                         }
                 }
@@ -573,6 +589,7 @@ public:
                     for ( t_ = it0; t_ < it1; ++t_, ++id[1] )
                     {
                         tip_z ( t_, n_ ) = psi[id];
+                        if ( refine_flag ) ( *refine_flag ) [id] = 3;
                     }
                 }
             }
@@ -829,9 +846,9 @@ public:
         int arm_size = m_data_size;
         for ( ; arm_size > 1; --arm_size )
         {
-            const double & tt2 = arm_t2[arm_size-1];
-            double dt2 = arm_t2[arm_size-1] - arm_t2[arm_size - 2];
-            double dn = arm_n[arm_size-1] - arm_n[arm_size - 2];
+            const double & tt2 = arm_t2[arm_size - 1];
+            double dt2 = arm_t2[arm_size - 1] - arm_t2[arm_size - 2];
+            double dn = arm_n[arm_size - 1] - arm_n[arm_size - 2];
             if ( -dt2 < m_alpha * tt2 * dn )
             {
                 break;
@@ -875,11 +892,11 @@ public:
     virtual ~ArmPostProcessorParallelPoly () {};
     virtual void setLevel ( const Level * level ) {}
     virtual void initializeLocations () {};
-    virtual void setLocations ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) {};
+    virtual void setLocations ( const Patch * patch, IntVector const & low, IntVector const & high, const std::list<Patch::FaceType> & faces, View < ScalarField<const double> > const & psi ) {};
     virtual void reduceLocations ( const ProcessorGroup * myworld ) {};
     virtual void printLocations ( std::ostream & out ) const {};
     virtual void initializeData () {};
-    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi ) {};
+    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi, View< ScalarField<int> > * refine_flag ) {};
     virtual void reduceData ( const ProcessorGroup * myworld ) {};
     virtual void printData ( std::ostream & out ) const {};
     virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) {};
