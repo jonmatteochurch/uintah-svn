@@ -35,6 +35,7 @@
 #include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorFactory.h>
 #include <CCA/Components/PhaseField/PostProcess/ArmPostProcessor.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
+#include <CCA/Ports/Scheduler.h>
 #include <forward_list>
 
 namespace Uintah
@@ -287,7 +288,8 @@ ArmPostProcessModule<VAR, DIM, STN, AMR>::task_do_analysis_tip (
     int myrank = myworld->myRank();
     DOUT ( d_app->m_dbg_lvl1,  myrank << "==== ArmPostProcessModule::task_do_analysis_tip ====" );
 
-    const Level * level = getLevel ( patches );
+    const Level * level = dw_new->getGrid()->getLevel( dw_new->getGrid()->numLevels() - 1 ).get_rep();
+    ASSERT ( patches->empty() || level == getLevel( patches ) );
     arm_postproc->setLevel ( level );
 
     arm_postproc->initializeLocations();
