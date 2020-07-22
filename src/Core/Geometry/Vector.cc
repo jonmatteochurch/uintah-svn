@@ -55,7 +55,7 @@ string
 Vector::get_string() const
 {
     char buf[100];
-    sprintf(buf, "[%g, %g, %g]", x_, y_, z_);
+    sprintf(buf, "[%g, %g, %g]", m_value[0], m_value[1], m_value[2]);
     return buf;
 }
 
@@ -146,12 +146,12 @@ istream& operator>>( istream& is, Vector& v)
 int
 Vector::operator== ( const Vector& v ) const
 {
-    return v.x_ == x_ && v.y_ == y_ && v.z_ == z_;
+    return v.m_value[0] == m_value[0] && v.m_value[1] == m_value[1] && v.m_value[2] == m_value[2];
 }
 
 int Vector::operator!=(const Vector& v) const
 {
-    return v.x_ != x_ || v.y_ != y_ || v.z_ != z_;
+    return v.m_value[0] != m_value[0] || v.m_value[1] != m_value[1] || v.m_value[2] != m_value[2];
 }
 
 
@@ -166,22 +166,22 @@ Vector::rotz90(const int c)
     case 1:
         // 90 degrees
         {
-            double newx=-y_;
-            y_=x_;
-            x_=newx;
+            double newx=-m_value[1];
+            m_value[1]=m_value[0];
+            m_value[0]=newx;
         }
         break;
     case 2:
         // 180 degrees
-        x_=-x_;
-        y_=-y_;
+        m_value[0]=-m_value[0];
+        m_value[1]=-m_value[1];
         break;
     case 3:
         // 270 degrees
         {
-            double newy=-x_;
-            x_=y_;
-            y_=newy;
+            double newy=-m_value[0];
+            m_value[0]=m_value[1];
+            m_value[1]=newy;
         }
         break;
     }

@@ -43,6 +43,7 @@
 
 #include   <string>
 #include   <iosfwd>
+#include   <cstring>
 
 namespace Uintah {
     
@@ -51,13 +52,14 @@ class RigorousTest;
 class Vector;
 
 class Point {
-  double x_,y_,z_;
+  double m_value[3];
+
 public:
+  inline Point() : m_value{DBL_MAX, DBL_MAX, DBL_MAX} {}
+  inline Point(double x, double y, double z) : m_value{x, y, z} {}
+  inline Point(const Point& p) { std::memcpy(m_value, p.m_value, sizeof m_value); }
   inline explicit Point(const Vector& v);
-  inline Point(double x, double y, double z): x_(x), y_(y), z_(z) {}
   Point(double, double, double, double);
-  inline Point(const Point&);
-  inline Point();
   int operator==(const Point&) const;
   int operator!=(const Point&) const;
   inline Point& operator=(const Point&);
@@ -154,178 +156,164 @@ Point operator+(const Vector &v, const Point &p) {
 namespace Uintah {
 
 inline Point::Point(const Vector& v)
-    : x_(v.x_), y_(v.y_), z_(v.z_)
-{
-}
-
-inline Point::Point(const Point& p)
-{
-    x_=p.x_;
-    y_=p.y_;
-    z_=p.z_;
-}
-
-inline Point::Point() : x_(DBL_MAX), y_(DBL_MAX), z_(DBL_MAX)
-{
-}
-
+ : Point ( v.asPoint() )
+{}
 
 inline Point& Point::operator=(const Point& p)
 {
-    x_=p.x_;
-    y_=p.y_;
-    z_=p.z_;
+    std::memcpy(m_value, p.m_value, sizeof m_value);
     return *this;
 }
 
 inline Vector Point::operator+(const Point& p) const
 {
-    return Vector(x_+p.x_, y_+p.y_, z_+p.z_);
+    return Vector(m_value[0]+p.m_value[0], m_value[1]+p.m_value[1], m_value[2]+p.m_value[2]);
 }
 
 inline Vector Point::operator-(const Point& p) const
 {
-    return Vector(x_-p.x_, y_-p.y_, z_-p.z_);
+    return Vector(m_value[0]-p.m_value[0], m_value[1]-p.m_value[1], m_value[2]-p.m_value[2]);
 }
 
 inline Point Point::operator+(const Vector& v) const
 {
-    return Point(x_+v.x_, y_+v.y_, z_+v.z_);
+    return Point(m_value[0]+v.m_value[0], m_value[1]+v.m_value[1], m_value[2]+v.m_value[2]);
 }
 
 inline Point Point::operator-(const Vector& v) const
 {
-    return Point(x_-v.x_, y_-v.y_, z_-v.z_);
+    return Point(m_value[0]-v.m_value[0], m_value[1]-v.m_value[1], m_value[2]-v.m_value[2]);
 }
 
 inline Point& Point::operator+=(const Vector& v)
 {
-    x_+=v.x_;
-    y_+=v.y_;
-    z_+=v.z_;
+    m_value[0]+=v.m_value[0];
+    m_value[1]+=v.m_value[1];
+    m_value[2]+=v.m_value[2];
     return *this;
 }
 
 inline Point& Point::operator-=(const Vector& v)
 {
-    x_-=v.x_;
-    y_-=v.y_;
-    z_-=v.z_;
+    m_value[0]-=v.m_value[0];
+    m_value[1]-=v.m_value[1];
+    m_value[2]-=v.m_value[2];
     return *this;
 }
 
 inline Point& Point::operator*=(const double d)
 {
-    x_*=d;
-    y_*=d;
-    z_*=d;
+    m_value[0]*=d;
+    m_value[1]*=d;
+    m_value[2]*=d;
     return *this;
 }
 
 inline Point& Point::operator/=(const double d)
 {
-    x_/=d;
-    y_/=d;
-    z_/=d;
+    m_value[0]/=d;
+    m_value[1]/=d;
+    m_value[2]/=d;
     return *this;
 }
 
 inline Point Point::operator-() const
 {
-    return Point(-x_, -y_, -z_);
+    return Point(-m_value[0], -m_value[1], -m_value[2]);
 }
 
 inline Point Point::operator*(double d) const
 {
-    return Point(x_*d, y_*d, z_*d);
+    return Point(m_value[0]*d, m_value[1]*d, m_value[2]*d);
 }
 
 inline Point Point::operator/(const double d) const
 {
-    return Point(x_/d,y_/d,z_/d);
+    return Point(m_value[0]/d,m_value[1]/d,m_value[2]/d);
 }
 
 inline double& Point::operator()(int idx) {
-        return (&x_)[idx];
+        return (&m_value[0])[idx];
 }
 
 inline double Point::operator()(int idx) const {
-        return (&x_)[idx];
+        return (&m_value[0])[idx];
 }
 
 inline void Point::addscaled(const Point& p, const double scale) {
   // this += p * w;
-  x_ += p.x_ * scale;
-  y_ += p.y_ * scale;
-  z_ += p.z_ * scale;
+  m_value[0] += p.m_value[0] * scale;
+  m_value[1] += p.m_value[1] * scale;
+  m_value[2] += p.m_value[2] * scale;
 }
 
 inline void Point::x(const double d)
 {
-    x_=d;
+    m_value[0]=d;
 }
 
 inline double Point::x() const
 {
-    return x_;
+    return m_value[0];
 }
 
 inline void Point::y(const double d)
 {
-    y_=d;
+    m_value[1]=d;
 }
 
 inline double Point::y() const
 {
-    return y_;
+    return m_value[1];
 }
 
 inline void Point::z(const double d)
 {
-    z_=d;
+    m_value[2]=d;
 }
 
 inline double Point::z() const
 {
-    return z_;
+    return m_value[2];
 }
 
 inline Vector &Point::asVector() const
 {
+    static_assert(std::is_standard_layout<Vector>::value);
     return (Vector &)(*this);
 }
 
 inline Vector Point::toVector() const
 {
-  return Vector(x_,y_,z_);
+  return Vector(m_value[0],m_value[1],m_value[2]);
 }
 
 inline Point Min(const Point& p1, const Point& p2)
 {
 
-  double x=Min(p1.x_, p2.x_);
-  double y=Min(p1.y_, p2.y_);
-  double z=Min(p1.z_, p2.z_);
+  double x=Min(p1.m_value[0], p2.m_value[0]);
+  double y=Min(p1.m_value[1], p2.m_value[1]);
+  double z=Min(p1.m_value[2], p2.m_value[2]);
   return Point(x,y,z);
 }
 
 inline Point Max(const Point& p1, const Point& p2)
 {
 
-  double x=Max(p1.x_, p2.x_);
-  double y=Max(p1.y_, p2.y_);
-  double z=Max(p1.z_, p2.z_);
+  double x=Max(p1.m_value[0], p2.m_value[0]);
+  double y=Max(p1.m_value[1], p2.m_value[1]);
+  double z=Max(p1.m_value[2], p2.m_value[2]);
   return Point(x,y,z);
 }
 
 inline double Dot(const Point& p, const Vector& v)
 {
-    return p.x_*v.x_+p.y_*v.y_+p.z_*v.z_;
+    return p.m_value[0]*v.m_value[0]+p.m_value[1]*v.m_value[1]+p.m_value[2]*v.m_value[2];
 }
 
 inline double Dot(const Point& p1, const Point& p2)
 {
-  return p1.x_*p2.x_ + p1.y_*p2.y_ + p1.z_*p2.z_;
+  return p1.m_value[0]*p2.m_value[0] + p1.m_value[1]*p2.m_value[1] + p1.m_value[2]*p2.m_value[2];
 }
 
 const TypeDescription* get_type_description(Point*);

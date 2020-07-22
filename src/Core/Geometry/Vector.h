@@ -43,6 +43,7 @@
 
 #include   <string>
 #include   <iosfwd>
+#include   <cstring>
 
 namespace Uintah {
 
@@ -50,13 +51,13 @@ class Point;
 class TypeDescription;
 
 class Vector {
-  double vals[3];
-  double & x_,y_,z_;
+  double m_value[3];
+
 public:
-  inline Vector() : x_(vals[0]), y_(vals[1]), z_(vals[2]) {};
-  inline Vector(double x, double y, double z): vals{x,y,z}, x_(vals[0]), y_(vals[1]), z_(vals[2]) {};
-  inline Vector(const Vector& v) : Vector ( v.x_, v.y_, v.z_ ) {};
-  inline explicit Vector(double init) : Vector (init, init, init) {};
+  inline Vector() {}
+  inline Vector(double x, double y, double z) : m_value{x, y, z} {}
+  inline Vector(const Vector& v) { std::memcpy(m_value, v.m_value, sizeof m_value); }
+  inline explicit Vector(double init) : m_value{init, init, init} {}
   inline explicit Vector(const Point& p);
   inline double length() const;
   inline double length2() const;
@@ -78,26 +79,26 @@ public:
   //Note vector(0)=vector.x();vector(1)=vector.y();vector(2)=vector.z()
   inline double& operator()(int idx) {
     // Ugly, but works
-    return vals[idx];
+    return m_value[idx];
   }
 
   //Note vector(0)=vector.x();vector(1)=vector.y();vector(2)=vector.z()
   inline double operator()(int idx) const {
     // Ugly, but works
-    return vals[idx];
+    return m_value[idx];
   }
 #endif
 
   //Note vector[0]=vector.x();vector[1]=vector.y();vector[2]=vector.z()
   inline double& operator[](int idx) {
     // Ugly, but works
-    return vals[idx];
+    return m_value[idx];
   }
 
   //Note vector[0]=vector.x();vector[1]=vector.y();vector[2]=vector.z()
   inline double operator[](int idx) const {
     // Ugly, but works
-    return vals[idx];
+    return m_value[idx];
   }
 
   // checks if one vector is exactly the same as another
@@ -154,37 +155,37 @@ public:
   inline const Point &point() const;
   inline Point &asPoint() const;
   inline double minComponent() const {
-    if(x_<y_){
-      if(x_<z_)
-        return x_;
+    if(m_value[0]<m_value[1]){
+      if(m_value[0]<m_value[2])
+        return m_value[0];
       else
-        return z_;
+        return m_value[2];
     } else {
-      if(y_<z_)
-        return y_;
+      if(m_value[1]<m_value[2])
+        return m_value[1];
       else
-        return z_;
+        return m_value[2];
     }
   }
   inline double maxComponent() const {
-    if(x_>y_){
-      if(x_>z_)
-        return x_;
+    if(m_value[0]>m_value[1]){
+      if(m_value[0]>m_value[2])
+        return m_value[0];
       else
-        return z_;
+        return m_value[2];
     } else {
-      if(y_>z_)
-        return y_;
+      if(m_value[1]>m_value[2])
+        return m_value[1];
       else
-        return z_;
+        return m_value[2];
     }
   }
 
   inline void Set(double x, double y, double z)
     { 
-      x_ = x;
-      y_ = y;
-      z_ = z;
+      m_value[0] = x;
+      m_value[1] = y;
+      m_value[2] = z;
     }
       
   friend std::ostream& operator<<(std::ostream& os, const Vector& p);
@@ -205,21 +206,18 @@ std::istream& operator>>(std::istream& os, Vector& p);
 
 namespace Uintah {
 
-
 inline Vector::Vector(const Point& p)
- : Vector ( p.x_, p.y_, p.z_ )
-{};
+: Vector( p.asVector() )
+{}
 
 inline double Vector::length2() const
 {
-    return x_*x_+y_*y_+z_*z_;
+    return m_value[0]*m_value[0]+m_value[1]*m_value[1]+m_value[2]*m_value[2];
 }
 
 inline Vector& Vector::operator=(const Vector& v)
 {
-    x_=v.x_;
-    y_=v.y_;
-    z_=v.z_;
+    std::memcpy(m_value, v.m_value, sizeof m_value);
     return *this;
 }
 
@@ -228,17 +226,17 @@ inline Vector& Vector::operator=(const Vector& v)
 
 inline Vector& Vector::operator=(const double& d)
 {
-  x_ = d;
-  y_ = d;
-  z_ = d;
+  m_value[0] = d;
+  m_value[1] = d;
+  m_value[2] = d;
   return *this;
 }
 
 inline Vector& Vector::operator=(const int& d)
 {
-  x_ = static_cast<int>(d);
-  y_ = static_cast<int>(d);
-  z_ = static_cast<int>(d);
+  m_value[0] = static_cast<int>(d);
+  m_value[1] = static_cast<int>(d);
+  m_value[2] = static_cast<int>(d);
   return *this;
 }
 
@@ -266,14 +264,14 @@ inline bool operator>=(Vector v1, Vector v2)
 
 inline Vector Vector::operator*(const double s) const
 {
-    return Vector(x_*s, y_*s, z_*s);
+    return Vector(m_value[0]*s, m_value[1]*s, m_value[2]*s);
 }
 
 inline Vector& Vector::operator*=(const Vector& v)
 {
-  x_ *= v.x_;
-  y_ *= v.y_;
-  z_ *= v.z_;
+  m_value[0] *= v.m_value[0];
+  m_value[1] *= v.m_value[1];
+  m_value[2] *= v.m_value[2];
   return *this;
 }
 
@@ -285,74 +283,74 @@ inline Vector operator*(const double s, const Vector& v) {
 
 inline Vector Vector::operator/(const double d) const
 {
-    return Vector(x_/d, y_/d, z_/d);
+    return Vector(m_value[0]/d, m_value[1]/d, m_value[2]/d);
 }
 
 inline Vector Vector::operator/(const Vector& v2) const
 {
-    return Vector(x_/v2.x_, y_/v2.y_, z_/v2.z_);
+    return Vector(m_value[0]/v2.m_value[0], m_value[1]/v2.m_value[1], m_value[2]/v2.m_value[2]);
 }
 
 inline Vector Vector::operator+(const Vector& v2) const
 {
-    return Vector(x_+v2.x_, y_+v2.y_, z_+v2.z_);
+    return Vector(m_value[0]+v2.m_value[0], m_value[1]+v2.m_value[1], m_value[2]+v2.m_value[2]);
 }
 
 inline Vector Vector::operator*(const Vector& v2) const
 {
-    return Vector(x_*v2.x_, y_*v2.y_, z_*v2.z_);
+    return Vector(m_value[0]*v2.m_value[0], m_value[1]*v2.m_value[1], m_value[2]*v2.m_value[2]);
 }
 
 inline Vector Vector::operator-(const Vector& v2) const
 {
-    return Vector(x_-v2.x_, y_-v2.y_, z_-v2.z_);
+    return Vector(m_value[0]-v2.m_value[0], m_value[1]-v2.m_value[1], m_value[2]-v2.m_value[2]);
 }
 
 inline Vector Vector::operator-(const Point& v2) const
 {
-    return Vector(x_-v2.x_, y_-v2.y_, z_-v2.z_);
+    return Vector(m_value[0]-v2.m_value[0], m_value[1]-v2.m_value[1], m_value[2]-v2.m_value[2]);
 }
 
 inline Vector& Vector::operator+=(const Vector& v2)
 {
-    x_+=v2.x_;
-    y_+=v2.y_;
-    z_+=v2.z_;
+    m_value[0]+=v2.m_value[0];
+    m_value[1]+=v2.m_value[1];
+    m_value[2]+=v2.m_value[2];
     return *this;
 }
 
 inline Vector& Vector::operator-=(const Vector& v2)
 {
-    x_-=v2.x_;
-    y_-=v2.y_;
-    z_-=v2.z_;
+    m_value[0]-=v2.m_value[0];
+    m_value[1]-=v2.m_value[1];
+    m_value[2]-=v2.m_value[2];
     return *this;
 }
 
 inline Vector Vector::operator-() const
 {
-    return Vector(-x_,-y_,-z_);
+    return Vector(-m_value[0],-m_value[1],-m_value[2]);
 }
 
 inline double Vector::length() const
 {
-    return Sqrt(x_*x_+y_*y_+z_*z_);
+    return Sqrt(m_value[0]*m_value[0]+m_value[1]*m_value[1]+m_value[2]*m_value[2]);
 }
 
 inline Vector Abs(const Vector& v)
 {
-    double x=v.x_<0?-v.x_:v.x_;
-    double y=v.y_<0?-v.y_:v.y_;
-    double z=v.z_<0?-v.z_:v.z_;
+    double x=v.m_value[0]<0?-v.m_value[0]:v.m_value[0];
+    double y=v.m_value[1]<0?-v.m_value[1]:v.m_value[1];
+    double z=v.m_value[2]<0?-v.m_value[2]:v.m_value[2];
     return Vector(x,y,z);
 }
 
 inline Vector Cross(const Vector& v1, const Vector& v2)
 {
     return Vector(
-        v1.y_*v2.z_-v1.z_*v2.y_,
-        v1.z_*v2.x_-v1.x_*v2.z_,
-        v1.x_*v2.y_-v1.y_*v2.x_);
+        v1.m_value[1]*v2.m_value[2]-v1.m_value[2]*v2.m_value[1],
+        v1.m_value[2]*v2.m_value[0]-v1.m_value[0]*v2.m_value[2],
+        v1.m_value[0]*v2.m_value[1]-v1.m_value[1]*v2.m_value[0]);
 }
 
 inline Vector Interpolate(const Vector& v1, const Vector& v2,
@@ -360,118 +358,118 @@ inline Vector Interpolate(const Vector& v1, const Vector& v2,
 {
     double weight1=1.0-weight;
     return Vector(
-        v2.x_*weight+v1.x_*weight1,
-        v2.y_*weight+v1.y_*weight1,
-        v2.z_*weight+v1.z_*weight1);
+        v2.m_value[0]*weight+v1.m_value[0]*weight1,
+        v2.m_value[1]*weight+v1.m_value[1]*weight1,
+        v2.m_value[2]*weight+v1.m_value[2]*weight1);
 }
 
 inline Vector& Vector::operator*=(const double d)
 {
-    x_*=d;
-    y_*=d;
-    z_*=d;
+    m_value[0]*=d;
+    m_value[1]*=d;
+    m_value[2]*=d;
     return *this;
 }
 
 inline Vector& Vector::operator/=(const double d)
 {
-    x_/=d;
-    y_/=d;
-    z_/=d;
+    m_value[0]/=d;
+    m_value[1]/=d;
+    m_value[2]/=d;
     return *this;
 }
 
 inline void Vector::x(double d)
 {
-    x_=d;
+    m_value[0]=d;
 }
 
 inline double Vector::x() const
 {
-    return x_;
+    return m_value[0];
 }
 
 inline void Vector::y(double d)
 {
-    y_=d;
+    m_value[1]=d;
 }
 
 inline double Vector::y() const
 {
-    return y_;
+    return m_value[1];
 }
 
 inline void Vector::z(double d)
 {
-    z_=d;
+    m_value[2]=d;
 }
 
 inline double Vector::z() const
 {
-    return z_;
+    return m_value[2];
 }
 
 
 
 inline void Vector::u(double d)
 {
-    x_=d;
+    m_value[0]=d;
 }
 
 inline double Vector::u() const
 {
-    return x_;
+    return m_value[0];
 }
 
 inline void Vector::v(double d)
 {
-    y_=d;
+    m_value[1]=d;
 }
 
 inline double Vector::v() const
 {
-    return y_;
+    return m_value[1];
 }
 
 inline void Vector::w(double d)
 {
-    z_=d;
+    m_value[2]=d;
 }
 
 inline double Vector::w() const
 {
-    return z_;
+    return m_value[2];
 }
 
 inline double Dot(const Vector& v1, const Vector& v2)
 {
-    return v1.x_*v2.x_+v1.y_*v2.y_+v1.z_*v2.z_;
+    return v1.m_value[0]*v2.m_value[0]+v1.m_value[1]*v2.m_value[1]+v1.m_value[2]*v2.m_value[2];
 }
 
 inline double Dot(const Vector& v, const Point& p)
 {
-    return v.x_*p.x_+v.y_*p.y_+v.z_*p.z_;
+    return v.m_value[0]*p.m_value[0]+v.m_value[1]*p.m_value[1]+v.m_value[2]*p.m_value[2];
 }
 
 inline
 double Vector::normalize()
 {
-    double l2=x_*x_+y_*y_+z_*z_;
+    double l2=m_value[0]*m_value[0]+m_value[1]*m_value[1]+m_value[2]*m_value[2];
     double l=Sqrt(l2);
     ASSERT(l>0.0);
-    x_/=l;
-    y_/=l;
-    z_/=l;
+    m_value[0]/=l;
+    m_value[1]/=l;
+    m_value[2]/=l;
     return l;
 }
 
 inline
 double Vector::safe_normalize()
 {
-  double l=Sqrt(x_*x_ + y_*y_ + z_*z_ + 1.0e-12);
-  x_/=l;
-  y_/=l;
-  z_/=l;
+  double l=Sqrt(m_value[0]*m_value[0] + m_value[1]*m_value[1] + m_value[2]*m_value[2] + 1.0e-12);
+  m_value[0]/=l;
+  m_value[1]/=l;
+  m_value[2]/=l;
   return l;
 }
 
@@ -481,6 +479,7 @@ inline const Point &Vector::point() const {
 }
 
 inline Point &Vector::asPoint() const {
+    static_assert(std::is_standard_layout<Point>::value);
     return (Point &)(*this);
 }
 
