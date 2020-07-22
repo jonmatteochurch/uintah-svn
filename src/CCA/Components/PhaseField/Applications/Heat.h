@@ -4223,7 +4223,7 @@ Heat<VAR, DIM, STN, AMR, TST>::initialize_solution (
 {
     Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
@@ -4291,7 +4291,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
     Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
@@ -4412,7 +4412,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
             Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
             // BUG workaround
             std::stringstream ss;
             ss << v << std::endl;
@@ -4469,7 +4469,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
                         idf = id_finest + offset;
                         v = this->get_position ( patch_finest, idf ).asVector();
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
                         // BUG workaround
                         std::stringstream ss;
                         ss << v << std::endl;
@@ -4524,7 +4524,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
         Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
         // BUG workaround
         std::stringstream ss;
         ss << v << std::endl;
@@ -4584,7 +4584,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
                     idf = id_finest + offset;
                     v = this->get_position ( patch_finest, idf ).asVector();
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
                     // BUG workaround
                     std::stringstream ss;
                     ss << v << std::endl;
@@ -4876,7 +4876,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
     Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
@@ -4952,7 +4952,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
             Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
             // BUG workaround
             std::stringstream ss;
             ss << v << std::endl;
@@ -4993,7 +4993,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
                         idf = id_finest + offset;
                         v = this->get_position ( patch_finest, idf ).asVector();
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
                         // BUG workaround
                         std::stringstream ss;
                         ss << v << std::endl;
@@ -5026,7 +5026,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
         Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
         // BUG workaround
         std::stringstream ss;
         ss << v << std::endl;
@@ -5070,7 +5070,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
                     idf = id_finest + offset;
                     v = this->get_position ( patch_finest, idf ).asVector();
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
                     // BUG workaround
                     std::stringstream ss;
                     ss << v << std::endl;

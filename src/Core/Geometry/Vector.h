@@ -50,14 +50,14 @@ class Point;
 class TypeDescription;
 
 class Vector {
-  double x_,y_,z_;
+  double vals[3];
+  double & x_,y_,z_;
 public:
-  inline explicit Vector(const Point&);
-  inline Vector(double x, double y, double z): x_(x), y_(y), z_(z)
-  { }
-  inline Vector(const Vector&);
-  inline Vector();
-  inline explicit Vector(double init) : x_(init), y_(init), z_(init) {}
+  inline Vector() : x_(vals[0]), y_(vals[1]), z_(vals[2]) {};
+  inline Vector(double x, double y, double z): vals{x,y,z}, x_(vals[0]), y_(vals[1]), z_(vals[2]) {};
+  inline Vector(const Vector& v) : Vector ( v.x_, v.y_, v.z_ ) {};
+  inline explicit Vector(double init) : Vector (init, init, init) {};
+  inline explicit Vector(const Point& p);
   inline double length() const;
   inline double length2() const;
   friend inline double Dot(const Vector&, const Vector&);
@@ -78,26 +78,26 @@ public:
   //Note vector(0)=vector.x();vector(1)=vector.y();vector(2)=vector.z()
   inline double& operator()(int idx) {
     // Ugly, but works
-    return (&x_)[idx];
+    return vals[idx];
   }
 
   //Note vector(0)=vector.x();vector(1)=vector.y();vector(2)=vector.z()
   inline double operator()(int idx) const {
     // Ugly, but works
-    return (&x_)[idx];
+    return vals[idx];
   }
 #endif
 
   //Note vector[0]=vector.x();vector[1]=vector.y();vector[2]=vector.z()
   inline double& operator[](int idx) {
     // Ugly, but works
-    return (&x_)[idx];
+    return vals[idx];
   }
 
   //Note vector[0]=vector.x();vector[1]=vector.y();vector[2]=vector.z()
   inline double operator[](int idx) const {
     // Ugly, but works
-    return (&x_)[idx];
+    return vals[idx];
   }
 
   // checks if one vector is exactly the same as another
@@ -207,20 +207,8 @@ namespace Uintah {
 
 
 inline Vector::Vector(const Point& p)
-    : x_(p.x_), y_(p.y_), z_(p.z_)
-{
-}
-
-inline Vector::Vector()
-{
-}
-
-inline Vector::Vector(const Vector& p)
-{
-    x_=p.x_;
-    y_=p.y_;
-    z_=p.z_;
-}
+ : Vector ( p.x_, p.y_, p.z_ )
+{};
 
 inline double Vector::length2() const
 {

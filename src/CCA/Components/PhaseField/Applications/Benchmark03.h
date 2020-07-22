@@ -764,7 +764,7 @@ void Benchmark03<VAR, STN>::initialize_solution (
 {
     Vector v ( this->get_position ( patch, id ).asVector() );
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
     // BUG workaround
     std::stringstream ss;
     ss << v << std::endl;
