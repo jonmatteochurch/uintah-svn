@@ -530,7 +530,7 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     )
     {
-        Task * task = scinew Task ( "PureMetal::task_communicate_psi", this, &PureMetal::task_communicate_psi );
+        Task * task = scinew Task ( "PureMetal::task_communicate_psi", this, &PureMetal::task_empty );
         task->requires ( Task::NewDW, psi_label, CGT, CGN );
         task->modifies ( psi_label );
         sched->addTask ( task, sched->getLoadBalancer()->getPerProcessorPatchSet ( level ), this->m_materialManager->allMaterials() );
@@ -887,13 +887,13 @@ protected: // TASKS
     );
 
     /**
-     * @brief Commpunicate psi task
+     * @brief empty task
      *
      * Empty task used in schedulings to force mpi communication of
      * psi values accross neighbour patches
      */
     void
-    task_communicate_psi (
+    task_empty (
         const ProcessorGroup *,
         const PatchSubset *,
         const MaterialSubset *,
@@ -1250,10 +1250,16 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize_solution (
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
 PureMetal<VAR, DIM, STN, AMR>::scheduleRestartInitialize (
-    const LevelP &,
-    SchedulerP &
+    const LevelP & level,
+    SchedulerP & sched
 )
 {
+    if ( !level->hasCoarserLevel() ) return;
+    Task * task = scinew Task ( "PureMetal::task_communicate_subproblems", this, &PureMetal::task_empty );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->modifies ( this->getSubProblemsLabel() );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1366,6 +1372,8 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
         task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->requires ( Task::OldDW, u_label, FGT, FGN );
         task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
         task->requires ( Task::NewDW, a2_label, FGT, FGN );
         task->requires ( Task::NewDW, a2_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
