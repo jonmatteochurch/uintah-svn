@@ -328,7 +328,7 @@ private: // CONSTRUCTORS/DESTRUCTOR
     ) : m_boundary_labels ( nullptr ),
         m_subproblems_label ( nullptr ),
         m_material ( nullptr ),
-        m_patch ( nullptr ),
+        m_patch ( patch ),
         m_ghost_regions (),
         m_mpi_data ( scinew MpiData ( flags, bcs... ) ),
         m_list ( scinew ProblemList () )

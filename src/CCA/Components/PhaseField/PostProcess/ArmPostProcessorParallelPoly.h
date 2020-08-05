@@ -344,16 +344,16 @@ public:
             return;
         }
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI " );
 
         int error = Uintah::MPI::Allreduce ( MPI_IN_PLACE, m_locations, m_locations_size, MPI_INT, MPI_MIN, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "ArmPostProcessorParallelPoly::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessorParallelPoly::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -606,7 +606,7 @@ public:
             return;
         }
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI " );
 
         int error;
         if ( myworld->myRank() == 0 )
@@ -620,12 +620,12 @@ public:
                     Uintah::MPI::Reduce ( m_data_z, nullptr, m_n0 * m_data_size, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() ) ||
                     Uintah::MPI::Reduce ( m_tip_z, nullptr, m_nn * m_nt, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "ArmPostProcessorParallelPoly::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessorParallelPoly::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -704,7 +704,7 @@ public:
             p0.roots();
             if ( !p0.root_in_range ( 0., data_t ( i, m_n0 - 1 ), t ) )
             {
-                SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalPoly::computeTipInfo: can't find root\n", __FILE__, __LINE__ ) );
+                SCI_THROW ( InternalError ( "ArmPostProcessorParallelPoly::computeTipInfo: can't find root\n", __FILE__, __LINE__ ) );
             }
 
             arm_n[i] = n;

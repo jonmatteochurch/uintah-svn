@@ -379,16 +379,16 @@ public:
             return;
         }
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalTanh::reduceMPI " );
 
         int error = Uintah::MPI::Allreduce ( MPI_IN_PLACE, m_locations, m_locations_size, MPI_INT, MPI_MIN, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalTanh::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "ArmPostProcessorDiagonalTanh::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalTanh::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -720,7 +720,7 @@ public:
             return;
         }
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalTanh::reduceMPI " );
 
         int error;
         if ( myworld->myRank() == 0 )
@@ -734,12 +734,12 @@ public:
                     Uintah::MPI::Reduce ( m_data_z, nullptr, m_n0 * m_data_size, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() ) ||
                     Uintah::MPI::Reduce ( m_tip_z, nullptr, m_nn * m_nt, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalTanh::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "ArmPostProcessorDiagonalTanh::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalTanh::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
