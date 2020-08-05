@@ -648,16 +648,20 @@ LoadBalancerCommon::createNeighborhoods( const GridP & grid
             const LevelP& oldLevel = oldGrid->getLevel(l);
             oldLevel->selectPatches(patch->getExtraCellLowIndex() - localGhost, patch->getExtraCellHighIndex() + localGhost, oldPatches);
             // add owning processors (they are the old owners)
+            // JMC also to distal neighborhood otherwise inNeighborhood will not found this patch when hasDistalReqs=true
             const auto num_patches = oldPatches.size();
             for (auto i = 0u; i < num_patches; ++i) {
               m_local_neighbor_patches.insert(oldPatches[i]->getRealPatch());
+              m_distal_neighbor_patches.insert(oldPatches[i]->getRealPatch());
               int nproc = getPatchwiseProcessorAssignment(oldPatches[i]);
               if (nproc >= 0) {
                 m_local_neighbor_processes.insert(nproc);
+                m_distal_neighbor_processes.insert(nproc);
               }
               int oproc = getOldProcessorAssignment(oldPatches[i]);
               if (oproc >= 0) {
                 m_local_neighbor_processes.insert(oproc);
+                m_distal_neighbor_processes.insert(oproc);
               }
             }
           }
@@ -709,14 +713,18 @@ LoadBalancerCommon::createNeighborhoods( const GridP & grid
 
           const auto num_fine_neighbors = fine.size();
           for (auto i = 0u; i < num_fine_neighbors; ++i) {  //add owning processors
+            // JMC also to distal neighborhood otherwise inNeighborhood will not found this patch when hasDistalReqs=true
             m_local_neighbor_patches.insert(fine[i]->getRealPatch());
+            m_distal_neighbor_patches.insert(fine[i]->getRealPatch());
             int nproc = getPatchwiseProcessorAssignment(fine[i]);
             if (nproc >= 0) {
               m_local_neighbor_processes.insert(nproc);
+              m_distal_neighbor_processes.insert(nproc);
             }
             int oproc = getOldProcessorAssignment(fine[i]);
             if (oproc >= 0) {
               m_local_neighbor_processes.insert(oproc);
+              m_distal_neighbor_processes.insert(oproc);
             }
           }
         }
