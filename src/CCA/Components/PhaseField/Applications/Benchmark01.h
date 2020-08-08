@@ -2390,13 +2390,6 @@ Benchmark01<VAR, STN, AMR>::initialize_solution (
 )
 {
     Vector v ( this->get_position ( patch, id ).asVector() );
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-    // BUG workaround
-    std::stringstream ss;
-    ss << v << std::endl;
-#endif
-
     v[0] -= M_PI;
     v[1] -= M_PI;
     v[2] = 0.;

@@ -4006,8 +4006,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
         DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
-
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
         parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
     }
 
@@ -4081,7 +4080,6 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
-
         parallel_reduce_sum ( range, [patch, patch_finest, &simTime, &L, &u, &u_finest, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, patch_finest, simTime, L[X], u, u_finest, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
     }
 
@@ -4222,13 +4220,6 @@ Heat<VAR, DIM, STN, AMR, TST>::initialize_solution (
 )
 {
     Vector v ( this->get_position ( patch, id ).asVector() );
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-    // BUG workaround
-    std::stringstream ss;
-    ss << v << std::endl;
-#endif
-
     double a = M_PI_2 / L;
     u[id] = 1.;
     for ( size_t d = 0; d < DIM; ++d )
@@ -4290,13 +4281,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
     double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
 
     Vector v ( this->get_position ( patch, id ).asVector() );
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-    // BUG workaround
-    std::stringstream ss;
-    ss << v << std::endl;
-#endif
-
     double ddu_ex = -a * ut;
     double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
     ddu_ex *= a;
@@ -4411,13 +4395,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
             double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.};
 
             Vector v ( this->get_position ( patch, id ).asVector() );
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-            // BUG workaround
-            std::stringstream ss;
-            ss << v << std::endl;
-#endif
-
             double ddu_ex = -a * ut;
             double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
             ddu_ex *= a;
@@ -4468,12 +4445,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
                     {
                         idf = id_finest + offset;
                         v = this->get_position ( patch_finest, idf ).asVector();
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-                        // BUG workaround
-                        std::stringstream ss;
-                        ss << v << std::endl;
-#endif
                         ddu_ex = -a * ut;
                         du_ex[0] = du_ex[1] = du_ex[2] = ddu_ex;
                         ddu_ex *= a;
@@ -4523,13 +4494,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
         double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
 
         Vector v ( this->get_position ( patch, id ).asVector() );
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-        // BUG workaround
-        std::stringstream ss;
-        ss << v << std::endl;
-#endif
-
         double ddu_ex = -a * ut;
         double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
         ddu_ex *= a;
@@ -4583,12 +4547,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
                 {
                     idf = id_finest + offset;
                     v = this->get_position ( patch_finest, idf ).asVector();
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-                    // BUG workaround
-                    std::stringstream ss;
-                    ss << v << std::endl;
-#endif
                     ddu_ex = -a * ut;
                     du_ex[0] = du_ex[1] = du_ex[2] = ddu_ex;
                     ddu_ex *= a;
@@ -4876,14 +4834,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
     Vector v ( this->get_position ( patch, id ).asVector() );
 
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-    // BUG workaround
-    std::stringstream ss;
-    ss << v << std::endl;
-#endif
-
     double u_ex = ut;
-
     for ( size_t i = 0; i < DIM; ++i )
         u_ex *= cos ( a * v[i] );
 
@@ -4952,13 +4903,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 
             Vector v ( this->get_position ( patch, id ).asVector() );
 
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-            // BUG workaround
-            std::stringstream ss;
-            ss << v << std::endl;
-#endif
             double u_ex = ut;
-
             for ( size_t i = 0; i < DIM; ++i )
                 u_ex *= cos ( a * v[i] );
 
@@ -4992,12 +4937,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
                     {
                         idf = id_finest + offset;
                         v = this->get_position ( patch_finest, idf ).asVector();
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-                        // BUG workaround
-                        std::stringstream ss;
-                        ss << v << std::endl;
-#endif
                         double u_ex = ut;
 
                         for ( size_t i = 0; i < DIM; ++i )
@@ -5025,12 +4964,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
         double u_err2 = 0.;
 
         Vector v ( this->get_position ( patch, id ).asVector() );
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-        // BUG workaround
-        std::stringstream ss;
-        ss << v << std::endl;
-#endif
         double u_ex = ut;
 
         for ( size_t i = 0; i < DIM; ++i )
@@ -5069,12 +5002,6 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
                 {
                     idf = id_finest + offset;
                     v = this->get_position ( patch_finest, idf ).asVector();
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-                    // BUG workaround
-                    std::stringstream ss;
-                    ss << v << std::endl;
-#endif
                     double u_ex = ut;
 
                     for ( size_t i = 0; i < DIM; ++i )

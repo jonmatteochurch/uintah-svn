@@ -789,14 +789,6 @@ void Benchmark02<VAR, STN>::initialize_solution (
     double rc[] = { 0.1, 0.0666666666667, 0.0666666666667, 0.05, 0.05, 0.125,  0.125 };
 
     Vector v ( this->get_position ( patch, id ).asVector() );
-
-#if defined(__INTEL_COMPILER) && defined(BUG_WORKAROUND)
-    // BUG workaround
-    std::stringstream ss;
-    ss << v << std::endl;
-#endif
-
-
     for ( int i = 0; i < Ncirc; ++i )
     {
         Vector r ( v );
