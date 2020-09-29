@@ -85,7 +85,7 @@ using index_sequence = integer_sequence<size_t, I...>;
 template<typename T, size_t N, T... I>
 struct make_integer_sequence
 /// @cond DOXYIGNORE
-        : make_integer_sequence < T, N - 1, N - 1, I... >
+    : make_integer_sequence < T, N - 1, N - 1, I... >
 /// @endcond
 {};
 
@@ -202,7 +202,7 @@ template<size_t N, size_t M>
 struct power
 {
     /// value of \f$ N^M \f$
-    static constexpr size_t value = power<N,M/2>::value * power<N,M-M/2>::value;
+    static constexpr size_t value = power < N, M / 2 >::value * power < N, M - M / 2 >::value;
 };
 
 /**
@@ -212,7 +212,7 @@ struct power
  * @tparam N integer base \f$ N \f$
  */
 template<size_t N>
-struct power<N,0>
+struct power<N, 0>
 {
     /// value of \f$ N^0 \f$
     static constexpr size_t value = 1;
@@ -225,10 +225,47 @@ struct power<N,0>
  * @tparam N integer base \f$ N \f$
  */
 template<size_t N>
-struct power<N,1>
+struct power<N, 1>
 {
     /// value of \f$ N^1 \f$
     static constexpr size_t value = N;
+};
+
+/**
+ * @brief Compile time factorial (M = 2 case)
+ *
+ * expression template for computing the power \f$ 2^M \f$ at compile time
+ * @tparam M integer exponent \f$ M \f$
+ */
+template<size_t M>
+struct power<2, M>
+{
+    /// value of \f$ N^0 \f$
+    static constexpr size_t value = 1 << M;
+};
+
+/**
+ * @brief Compile time factorial (M = 2, N = 0 case)
+ *
+ * expression template for computing the power \f$ 2^0 \f$ at compile time
+ */
+template<>
+struct power<2, 0>
+{
+    /// value of \f$ N^0 \f$
+    static constexpr size_t value = 1;
+};
+
+/**
+ * @brief Compile time factorial (M = 2, N = 1 case)
+ *
+ * expression template for computing the power \f$ 2^1 \f$ at compile time
+ */
+template<>
+struct power<2, 1>
+{
+    /// value of \f$ N^0 \f$
+    static constexpr size_t value = 2;
 };
 
 /**

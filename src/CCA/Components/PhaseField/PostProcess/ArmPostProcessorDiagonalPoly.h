@@ -57,12 +57,10 @@ extern Dout g_mpi_dbg;
 namespace PhaseField
 {
 
-template<VarType VAR, DimType DIM>
-class ArmPostProcessorDiagonalPoly;
-
 template<VarType VAR>
-class ArmPostProcessorDiagonalPoly < VAR, D2 >
+class ArmPostProcessorDiagonalPoly
     : public ArmPostProcessor < VAR, D2 >
+    , public ArmPostProcessor < VAR, D3 >
 {
 private: // STATIC MEMBERS
 
@@ -1084,7 +1082,7 @@ public:
 
         // 6. Evaluate tip curvatue
 
-        tip_curvatures[0] = std::abs ( ( psi_nn_tip + 3.* psi_tt_tip ) / ( 4. * psi_n_tip ) );
+        tip_curvatures[0] = std::abs ( ( psi_nn_tip + 3.* psi_tt_tip ) / ( 2. * M_SQRT2 * psi_n_tip ) );
 
         // 7. Evaluate parabolic curvatue using full 0-level
 
@@ -1095,11 +1093,8 @@ public:
         }
 
         Lapack::Poly parabola ( 1 );
-        double kn, kd;
         parabola.fit ( m_data_size + m_n2 - skip, arm_t2 + skip, arm_n + skip );
-        kn = 2.* parabola.cfx ( 1 );
-        kd = 1 - 4.* parabola.cfx ( 1 ) * parabola.cfx ( 2 );
-        tip_curvatures[1] = std::sqrt ( ( kn * kn ) / ( kd * kd * kd ) );
+        tip_curvatures[1] = 2.* parabola.cfx ( 1 );
 
         DOUT ( DBG_PRINT, "n=y;" );
         DOUT ( DBG_PRINT, "t1=sqrt(x);" );
@@ -1111,13 +1106,16 @@ public:
 
         // 8. Evaluate parabolic curvatue excluding tip neighbour
 
-        int arm_size = m_data_size;
+        int arm_size = m_data_size - 1;
         for ( ; arm_size > 0; --arm_size )
         {
-            const double & tt2 = arm_t2[arm_size - 1];
-            double dt2 = arm_t2[arm_size - 1] - arm_t2[arm_size - 2];
-            double dn = arm_n[arm_size - 1] - arm_n[arm_size - 2];
-            if ( -dt2 < m_alpha * tt2 * dn )
+            const double & tt0 = arm_t2[arm_size ];
+            const double & tt1 = arm_t2[arm_size - 1];
+            const double & tt2 = arm_t2[arm_size - 2];
+            double dn01 = arm_n[arm_size] - arm_n[arm_size - 1];
+            double dn12 = arm_n[arm_size - 1] - arm_n[arm_size - 2];
+            double dn = 0.5 * ( arm_n[arm_size] - arm_n[arm_size - 2] );
+            if ( dn01 * ( tt1 - tt0 ) - dn01 * ( tt2 - tt1 ) < m_alpha * dn01 * dn12 * dn )
             {
                 break;
             }
@@ -1130,9 +1128,7 @@ public:
         else
         {
             parabola.fit ( arm_size - skip, arm_t2 + skip, arm_n + skip );
-            kn = 2.* parabola.cfx ( 1 );
-            kd = 1 - 4.* parabola.cfx ( 1 ) * parabola.cfx ( 2 );
-            tip_curvatures[2] = std::sqrt ( ( kn * kn ) / ( kd * kd * kd ) );
+            tip_curvatures[1] = 2.* parabola.cfx ( 1 );
 
             DOUT ( DBG_PRINT, "n=y;" );
             DOUT ( DBG_PRINT, "t1=sqrt(x);" );
@@ -1146,29 +1142,10 @@ public:
         delete[] arm_n;
         delete[] arm_t2;
     }
-}; // struct ArmPostProcessorDiagonalPolyD2
+}; // struct ArmPostProcessorDiagonalPoly
 
-template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR, D2 >::en { 1, 1, 0 };
-template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR, D2 >::et { 1, -1, 0 };
-
-template<VarType VAR>
-class ArmPostProcessorDiagonalPoly < VAR, D3 >
-    : public ArmPostProcessor < VAR, D3 >
-{
-public:
-    ArmPostProcessorDiagonalPoly ( int n0, int n1, int n2, int n3, int d0, int d1, int d2, int d3, double, bool dbg ) {}
-    virtual ~ArmPostProcessorDiagonalPoly() {};
-    virtual void setLevel ( const Level * level ) {}
-    virtual void initializeLocations () {};
-    virtual void setLocations ( const Patch * patch, IntVector const & low, IntVector const & high, const std::list<Patch::FaceType> & faces, View < ScalarField<const double> > const & psi ) {};
-    virtual void reduceLocations ( const ProcessorGroup * myworld ) {};
-    virtual void printLocations ( std::ostream & out ) const {};
-    virtual void initializeData () {};
-    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi, View< ScalarField<int> > * refine_flag ) {};
-    virtual void reduceData ( const ProcessorGroup * myworld ) {};
-    virtual void printData ( std::ostream & out ) const {};
-    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) {};
-}; // struct ArmPostProcessorDiagonalPolyD3
+template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR >::en { 1, 1, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR >::et { 1, -1, 0 };
 
 } // namespace PhaseField
 } // namespace Uintah

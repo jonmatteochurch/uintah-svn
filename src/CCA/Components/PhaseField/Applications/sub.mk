@@ -34,4 +34,3 @@ SRCS += \
   $(SRCDIR)/Heat.cc \
   $(SRCDIR)/Benchmark.cc \
   $(SRCDIR)/PureMetal.cc \
-  $(SRCDIR)/PostProcessPureMetal.cc \

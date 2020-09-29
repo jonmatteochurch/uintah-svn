@@ -72,7 +72,7 @@ namespace PhaseField
 template < VarType VAR, StnType STN >
 class Benchmark04
     : public Application< Problem<VAR, STN> >
-    , public Implementation< Benchmark04<VAR, STN>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int >
+    , public Implementation< Benchmark04<VAR, STN>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int >
 {
 private: // STATIC MEMBERS
 
@@ -124,7 +124,6 @@ public: // CONSTRUCTORS/DESTRUCTOR
     Benchmark04 (
         const ProcessorGroup * myworld,
         const MaterialManagerP materialManager,
-        const std::string & uda,
         int verbosity = 0
     );
 
@@ -469,7 +468,6 @@ template<VarType VAR, StnType STN>
 Benchmark04<VAR, STN>::Benchmark04 (
     const ProcessorGroup * myWorld,
     const MaterialManagerP materialManager,
-    const std::string &,
     int verbosity
 ) : Application< Problem<VAR, STN> > ( myWorld, materialManager, verbosity )
 {

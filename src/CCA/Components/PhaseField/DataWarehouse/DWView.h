@@ -107,6 +107,8 @@ public: // CONSTRUCTORS/DESTRUCTOR
     /// @return deleted
     DWView & operator= ( const DWView & ) = delete;
 
+    using View<Field>::set;
+
 }; // class DWView
 
 } // namespace PhaseField

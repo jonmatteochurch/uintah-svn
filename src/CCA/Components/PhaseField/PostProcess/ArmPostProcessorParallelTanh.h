@@ -57,12 +57,10 @@ extern Dout g_mpi_dbg;
 namespace PhaseField
 {
 
-template<VarType VAR, DimType DIM>
-class ArmPostProcessorParallelTanh;
-
 template<VarType VAR>
-class ArmPostProcessorParallelTanh < VAR, D2 >
+class ArmPostProcessorParallelTanh
     : public ArmPostProcessor < VAR, D2 >
+    , public ArmPostProcessor < VAR, D3 >
 {
 private: // STATIC MEMBERS
 
@@ -730,14 +728,14 @@ public:
         }
 
         tip_position = tanh2.zero ( 0. );
-        tip_curvatures[0] = - tanh2.dyy0() / tanh2.dx0();
+        tip_curvatures[0] = std::abs ( tanh2.dyy0() / tanh2.dx0 ( tip_position ) );
 
         DOUT ( DBG_PRINT, "plot3(" << tip_position << ",0,0,'o','LineWidth',2,'MarkerEdgeColor','k','MarkerFaceColor','y','MarkerSize',10)" );
 
         delete[] tip_n;
         delete[] tip_t;
 
-        // 3. Evaluate parabolic curvatue using full 0-level
+        // 3. Evaluate parabolic curvature using full 0-level
 
         int skip = 0;
         while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 )
@@ -748,11 +746,8 @@ public:
         std::cout << "data size: " << m_data_size << std::endl;
 
         Lapack::Poly parabola ( 1 );
-        double kn, kd;
         parabola.fit ( m_data_size + m_nt - skip, arm_t2 + skip, arm_n + skip );
-        kn = 2.* parabola.cfx ( 1 );
-        kd = 1 - 4.* parabola.cfx ( 1 ) * parabola.cfx ( 2 );
-        tip_curvatures[1] = std::sqrt ( ( kn * kn ) / ( kd * kd * kd ) );
+        tip_curvatures[1] = 2.* parabola.cfx ( 1 );
 
         DOUT ( DBG_PRINT, "n=y;" );
         DOUT ( DBG_PRINT, "t1=sqrt(x);" );
@@ -762,15 +757,18 @@ public:
         DOUT ( DBG_PRINT, "plot3(n,t2,0*n,'k.');" )
         DOUT ( DBG_PRINT, "plot3(polyval(p,tt.^2),tt,0*tt,'r-');\n" );
 
-        // 4. Evaluate parabolic curvatue excluding tip neighbour
+        // 4. Evaluate parabolic curvature excluding tip neighbor
 
-        int arm_size = m_data_size;
+        int arm_size = m_data_size - 1;
         for ( ; arm_size > 0; --arm_size )
         {
-            const double & tt2 = arm_t2[arm_size - 1];
-            double dt2 = arm_t2[arm_size - 1] - arm_t2[arm_size - 2];
-            double dn = arm_n[arm_size - 1] - arm_n[arm_size - 2];
-            if ( -dt2 < m_alpha * tt2 * dn )
+            const double & tt0 = arm_t2[arm_size ];
+            const double & tt1 = arm_t2[arm_size - 1];
+            const double & tt2 = arm_t2[arm_size - 2];
+            double dn01 = arm_n[arm_size] - arm_n[arm_size - 1];
+            double dn12 = arm_n[arm_size - 1] - arm_n[arm_size - 2];
+            double dn = 0.5 * ( arm_n[arm_size] - arm_n[arm_size - 2] );
+            if ( dn01 * ( tt1 - tt0 ) - dn01 * ( tt2 - tt1 ) < m_alpha * dn01 * dn12 * dn )
             {
                 break;
             }
@@ -783,9 +781,7 @@ public:
         else
         {
             parabola.fit ( arm_size - skip, arm_t2 + skip, arm_n + skip );
-            kn = 2.* parabola.cfx ( 1 );
-            kd = 1 - 4.* parabola.cfx ( 1 ) * parabola.cfx ( 2 );
-            tip_curvatures[2] = std::sqrt ( ( kn * kn ) / ( kd * kd * kd ) );
+            tip_curvatures[1] = 2.* parabola.cfx ( 1 );
 
             DOUT ( DBG_PRINT, "n=y;" );
             DOUT ( DBG_PRINT, "t1=sqrt(x);" );
@@ -801,27 +797,8 @@ public:
     }
 }; // class ArmPostProcessorParallelTanhD2
 
-template<VarType VAR> const IntVector ArmPostProcessorParallelTanh < VAR, D2 >::en { 1, 0, 0 };
-template<VarType VAR> const IntVector ArmPostProcessorParallelTanh < VAR, D2 >::et { 0, 1, 0 };
-
-template<VarType VAR>
-class ArmPostProcessorParallelTanh < VAR, D3 >
-    : public ArmPostProcessor < VAR, D3 >
-{
-public:
-    ArmPostProcessorParallelTanh ( const Lapack::TrustRegionSetup & psetup, int npts, int ntip, int, double, bool dbg ) {}
-    virtual ~ArmPostProcessorParallelTanh() {};
-    virtual void setLevel ( const Level * level ) {}
-    virtual void initializeLocations () {};
-    virtual void setLocations ( const Patch * patch, IntVector const & low, IntVector const & high, const std::list<Patch::FaceType> & faces, View < ScalarField<const double> > const & psi ) {};
-    virtual void reduceLocations ( const ProcessorGroup * myworld ) {};
-    virtual void printLocations ( std::ostream & out ) const {};
-    virtual void initializeData () {};
-    virtual void setData ( IntVector const & low, IntVector const & high, View < ScalarField<const double> > const & psi, View< ScalarField<int> > * refine_flag ) {};
-    virtual void reduceData ( const ProcessorGroup * myworld ) {};
-    virtual void printData ( std::ostream & out ) const {};
-    virtual void computeTipInfo ( double & tip_position, double tip_curvatures[3] ) {};
-}; // class ArmPostProcessorParallelTanhD3
+template<VarType VAR> const IntVector ArmPostProcessorParallelTanh < VAR >::en { 1, 0, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorParallelTanh < VAR >::et { 0, 1, 0 };
 
 } // namespace PhaseField
 } // namespace Uintah

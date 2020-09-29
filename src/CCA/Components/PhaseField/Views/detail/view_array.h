@@ -63,7 +63,7 @@ public: // VIEW ARRAY METHODS
      * @param patch grid patch to retrieve data for
      * @param use_ghosts if ghosts value are to be retrieved
      */
-    inline void
+    inline virtual void
     set (
         DataWarehouse * dw,
         const Patch * patch,

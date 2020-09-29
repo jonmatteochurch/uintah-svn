@@ -154,7 +154,7 @@ namespace PhaseField
 template<VarType VAR, StnType STN, bool AMR = false>
 class Benchmark01
     : public Application< ScalarProblem<VAR, STN>, AMR >
-    , public Implementation<Benchmark01<VAR, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int >
+    , public Implementation<Benchmark01<VAR, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int >
 {
 private: // STATIC MEMBERS
 
@@ -245,7 +245,6 @@ public: // CONSTRUCTORS/DESTRUCTOR
     Benchmark01 (
         const ProcessorGroup * myworld,
         const MaterialManagerP materialManager,
-        const std::string & uda,
         int verbosity = 0
     );
 
@@ -1251,7 +1250,6 @@ template < VarType VAR, StnType STN, bool AMR >
 Benchmark01<VAR, STN, AMR>::Benchmark01 (
     const ProcessorGroup * myWorld,
     const MaterialManagerP materialManager,
-    const std::string &,
     int verbosity
 ) : Application< ScalarProblem<VAR, STN>, AMR > ( myWorld, materialManager, verbosity )
 {

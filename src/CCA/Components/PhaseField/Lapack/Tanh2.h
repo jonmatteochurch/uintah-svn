@@ -23,7 +23,7 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/Lapack/Tanh.h
+ * @file CCA/Components/PhaseField/Lapack/Tanh2.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2020/04
  */
@@ -114,12 +114,17 @@ public:
 
     double zero ( const double & y ) const
     {
-        return ( std::sqrt ( m_b * m_b - 4. * m_c * ( m_a + m_d * y * y ) ) - m_b ) / ( 2. * m_c );
+        if ( std::abs ( m_c ) < 1e-10 )
+            return -m_a / m_b;
+        else if ( m_d < 0 )
+            return ( - m_b - std::sqrt ( m_b * m_b - 4. * m_c * ( m_a + m_d * y * y ) ) ) / ( 2. * m_c );
+        else
+            return ( - m_b + std::sqrt ( m_b * m_b - 4. * m_c * ( m_a + m_d * y * y ) ) ) / ( 2. * m_c );
     }
 
-    double dx0() const
+    double dx0 ( const double & rtip ) const
     {
-        return - std::sqrt ( m_b * m_b - 4. * m_a * m_c );
+        return - m_b - 2. * m_c * rtip;
     }
 
     double dxx0() const

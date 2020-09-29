@@ -36,6 +36,7 @@
 #include <CCA/Components/PhaseField/PostProcess/ArmPostProcessor.h>
 #include <CCA/Components/PhaseField/DataWarehouse/DWView.h>
 #include <CCA/Ports/Scheduler.h>
+#include <CCA/Ports/Regridder.h>
 #include <forward_list>
 
 namespace Uintah

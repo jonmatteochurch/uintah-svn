@@ -314,9 +314,8 @@ ApplicationFactory::create(       ProblemSpecP     & prob_spec
   //----------------------------
 
 #ifndef NO_PHASEFIELD
-  if ( sim_comp == "phasefield" || sim_comp == "PHASEFIELD" ) {
-    return PhaseField::ApplicationFactory::create ( myworld, materialManager, uda, prob_spec->findBlock ( "PhaseField" ), doAMR );
-  }
+  if ( sim_comp == "phasefield" || sim_comp == "PHASEFIELD" )
+    return PhaseField::ApplicationFactory::create ( myworld, materialManager, prob_spec->findBlock ( "PhaseField" ), doAMR );
 #endif
 
   //----------------------------

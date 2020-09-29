@@ -134,7 +134,7 @@ static constexpr bool dbg_heat_scheduling = false;
 template<VarType VAR, DimType DIM, StnType STN, bool AMR = false, bool TST = false>
 class Heat
     : public Application< HeatProblem<VAR, STN, TST>, AMR >
-    , public Implementation< Heat<VAR, DIM, STN, AMR, TST>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int >
+    , public Implementation< Heat<VAR, DIM, STN, AMR, TST>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int >
 {
 
 private: // STATIC MEMBERS
@@ -179,20 +179,6 @@ private: // STATIC MEMBERS
     /// Non-stencil entries type for implicit matrix
     using _AdditionalEntries = PerPatch<HypreSStruct::AdditionalEntriesP>;
 #endif
-
-    /// Lexicografic greater then comparison for IntVector's
-    /// @remark used in vertex base simulation to identify vertices on
-    /// upper faces
-    /// @param a first index
-    /// @param b second index
-    /// @return if a > b
-    inline static bool gt ( const IntVector & a, const IntVector & b )
-    {
-        for ( size_t D = 0; D < DIM; ++D )
-            if ( a[D] <= b[D] )
-                return false;
-        return true;
-    }
 
 public: // STATIC MEMBERS
 
@@ -311,7 +297,6 @@ public: // CONSTRUCTORS/DESTRUCTOR
     Heat (
         const ProcessorGroup * myWorld,
         const MaterialManagerP materialManager,
-        const std::string & uda,
         int verbosity = 0
     );
 
@@ -1652,6 +1637,66 @@ protected: // IMPLEMENTATIONS
     );
 
     /**
+     * @brief Advance derivatives epsilon implementation
+     * (coarsest level implementation)
+     *
+     * Computes error in the approximation of u derivatives comparing them with
+     * their analytical expressions at a given grid position
+     * (for debugging purpose)
+     *
+     * @param id grid index
+     * @param patch grid patch
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param du view of the solution derivatives vector field in the new dw
+     * @param ddu view of the solution derivatives vector field in the new dw
+     * @param[out] epsilon_du view of the solution derivatives residual vector field in the new dw
+     * @param[out] epsilon_ddu view of the solution derivatives residual vector field in the new dw
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    time_advance_dbg_derivatives_epsilon (
+        const IntVector & id,
+        const Patch * patch,
+        const double & ut,
+        const double & a,
+        const View < VectorField<const double, DIM> > & du,
+        const View < VectorField<const double, DIM> > & ddu,
+        View < VectorField<double, DIM> > & epsilon_du,
+        View < VectorField<double, DIM> > & epsilon_ddu
+    );
+
+    /**
+     * @brief Advance derivatives epsilon implementation
+     * (refined level implementation)
+     *
+     * Computes error in the approximation of u derivatives comparing them with
+     * their analytical expressions at a given grid position
+     * (for debugging purpose)
+     *
+     * @param id grid index
+     * @param patch grid patch
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param du view of the solution derivatives vector field in the new dw
+     * @param ddu view of the solution derivatives vector field in the new dw
+     * @param[out] epsilon_du view of the solution derivatives residual vector field in the new dw
+     * @param[out] epsilon_ddu view of the solution derivatives residual vector field in the new dw
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    time_advance_dbg_derivatives_epsilon (
+        const IntVector & id,
+        const Patch * patch,
+        const double & ut,
+        const double & a,
+        const View < VectorField<const double, DIM> > & du,
+        const View < VectorField<const double, DIM> > & ddu,
+        View < VectorField<double, DIM> > & epsilon_du,
+        View < VectorField<double, DIM> > & epsilon_ddu
+    );
+
+    /**
      * @brief Advance derivatives error implementation
      * (coarsest level implementation)
      *
@@ -1661,12 +1706,12 @@ protected: // IMPLEMENTATIONS
      *
      * @param id grid index
      * @param patch grid patch
-     * @param L domain width
-     * @param t simulation time
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param area domain area
+     * @param factor weight factor for discrete integrals
      * @param du view of the solution derivatives vector field in the new dw
      * @param ddu view of the solution derivatives vector field in the new dw
-     * @param[out] epsilon_du view of the solution derivatives residual vector field in the new dw
-     * @param[out] epsilon_ddu view of the solution derivatives residual vector field in the new dw
      * @param[out] error_du view of the solution derivatives error vector field in the new dw
      * @param[out] error_ddu view of the solution derivatives error vector field in the new dw
      * @param[out] u_norm2_H10 square of the L2-norm of the solution 1st order derivatives vector
@@ -1679,12 +1724,12 @@ protected: // IMPLEMENTATIONS
     time_advance_dbg_derivatives_error (
         const IntVector & id,
         const Patch * patch,
-        const double & L,
-        const double & t,
+        const double & ut,
+        const double & a,
+        const double & area,
+        const double & factor,
         const View < VectorField<const double, DIM> > & du,
         const View < VectorField<const double, DIM> > & ddu,
-        View < VectorField<double, DIM> > & epsilon_du,
-        View < VectorField<double, DIM> > & epsilon_ddu,
         View < VectorField<double, DIM> > & error_du,
         View < VectorField<double, DIM> > & error_ddu,
         double & u_norm2_H10,
@@ -1704,14 +1749,13 @@ protected: // IMPLEMENTATIONS
      * @param id grid index
      * @param patch grid patch
      * @param patch_finest reference grid patch
-     * @param L domain width
-     * @param t simulation time
-     * @param du view of the solution derivatives vector field in the new dw
-     * @param ddu view of the solution derivatives vector field in the new dw
+     * @param refinement grid refinement factors
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param area domain area
+     * @param factor weight factor for discrete integrals
      * @param du_finest view for evaluating the solution derivatives on the reference patch (interpolator)
      * @param ddu_finest view for evaluating the solution derivatives on the reference patch (interpolator)
-     * @param[out] epsilon_du view of the solution derivatives residual vector field in the new dw
-     * @param[out] epsilon_ddu view of the solution derivatives residual vector field in the new dw
      * @param[out] error_du view of the solution derivatives error vector field in the new dw
      * @param[out] error_ddu view of the solution derivatives error vector field in the new dw
      * @param[out] u_norm2_H10 square of the L2-norm of the solution 1st order derivatives vector
@@ -1725,14 +1769,13 @@ protected: // IMPLEMENTATIONS
         const IntVector & id,
         const Patch * patch,
         const Patch * patch_finest,
-        const double & L,
-        const double & t,
-        const View < VectorField<const double, DIM> > & du,
-        const View < VectorField<const double, DIM> > & ddu,
+        const IntVector & refinement,
+        const double & ut,
+        const double & a,
+        const double & area,
+        const double & factor,
         const View < VectorField<const double, DIM> > & du_finest,
         const View < VectorField<const double, DIM> > & ddu_finest,
-        View < VectorField<double, DIM> > & epsilon_du,
-        View < VectorField<double, DIM> > & epsilon_ddu,
         View < VectorField<double, DIM> > & error_du,
         View < VectorField<double, DIM> > & error_ddu,
         double & u_norm2_H10,
@@ -1941,6 +1984,59 @@ protected: // IMPLEMENTATIONS
 #endif // HAVE_HYPRE
 
     /**
+     * @brief Advance solution epsilon task
+     * (test, coarsest level implementation)
+     *
+     * compute error in u approximation at a given grid position using the
+     * analytical solution
+     *
+     * @param id grid index
+     * @param patch grid patch
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param u view of the newly computed solution field in the new dw
+     * @param[out] epsilon_u view of the local residual (difference between computed and
+     * analytical solution at each grid position)
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    time_advance_solution_epsilon (
+        const IntVector & id,
+        const Patch * patch,
+        const double & ut,
+        const double & a,
+        const View < ScalarField<const double> > & u,
+        View < ScalarField<double> > & epsilon_u
+    );
+
+    /**
+     * @brief Advance solution epsilon task
+     * (test, coarsest level implementation)
+     *
+     * compute error in u approximation at a given grid position using the
+     * analytical solution
+     *
+     * @param id grid index
+     * @param patch grid patch
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param u view of the newly computed solution field in the new dw
+     * @param[out] epsilon_u view of the local residual (difference between computed and
+     * analytical solution at each grid position)
+     *
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    time_advance_solution_epsilon (
+        const IntVector & id,
+        const Patch * patch,
+        const double & ut,
+        const double & a,
+        const View < ScalarField<const double> > & u,
+        View < ScalarField<double> > & epsilon_u
+    );
+
+    /**
      * @brief Advance solution error task
      * (test, coarsest level implementation)
      *
@@ -1949,11 +2045,11 @@ protected: // IMPLEMENTATIONS
      *
      * @param id grid index
      * @param patch grid patch
-     * @param L domain width
-     * @param t simulation time
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param area domain area
+     * @param factor weight factor for discrete integrals
      * @param u view of the newly computed solution field in the new dw
-     * @param[out] epsilon_u view of the local residual (difference between computed and
-     * analytical solution at each grid position)
      * @param[out] error_u interpolation error (L2 norm over the range of each
      * grid position of the difference between computed and
      * analytical solution at each grid position)
@@ -1966,10 +2062,11 @@ protected: // IMPLEMENTATIONS
     time_advance_solution_error (
         const IntVector & id,
         const Patch * patch,
-        const double & L,
-        const double & t,
+        const double & ut,
+        const double & a,
+        const double & area,
+        const double & factor,
         const View < ScalarField<const double> > & u,
-        View < ScalarField<double> > & epsilon_u,
         View < ScalarField<double> > & error_u,
         double & u_norm2_L2,
         double & error_norm2_L2
@@ -1985,12 +2082,12 @@ protected: // IMPLEMENTATIONS
      * @param id grid index
      * @param patch grid patch
      * @param patch_finest reference grid patch
-     * @param L domain width
-     * @param t simulation time
-     * @param u view of the newly computed solution field in the new dw
+     * @param refinement grid refinement factors
+     * @param ut \f$ \exp ( -\alpha d a^2 t ) \f$;
+     * @param a \f$ \pi/2 L$ \f$
+     * @param area domain area
+     * @param factor weight factor for discrete integrals
      * @param u_finest view for evaluating the solution on the reference patch (interpolator)
-     * @param[out] epsilon_u view of the local residual (difference between computed and
-     * analytical solution at each grid position)
      * @param[out] error_u interpolation error (L2 norm over the range of each
      * grid position of the difference between computed and
      * analytical solution at each grid position)
@@ -2004,11 +2101,12 @@ protected: // IMPLEMENTATIONS
         const IntVector & id,
         const Patch * patch,
         const Patch * patch_finest,
-        const double & L,
-        const double & t,
-        const View < ScalarField<const double> > & u,
+        const IntVector & refinement,
+        const double & ut,
+        const double & a,
+        const double & area,
+        const double & factor,
         const View < ScalarField<const double> > & u_finest,
-        View < ScalarField<double> > & epsilon_u,
         View < ScalarField<double> > & error_u,
         double & u_norm2_L2,
         double & error_norm2_L2
@@ -2096,7 +2194,6 @@ template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 Heat<VAR, DIM, STN, AMR, TST>::Heat (
     const ProcessorGroup * myWorld,
     const MaterialManagerP materialManager,
-    const std::string &,
     int verbosity
 ) : Application< HeatProblem<VAR, STN, TST>, AMR > ( myWorld, materialManager, verbosity )
 {
@@ -2106,7 +2203,7 @@ Heat<VAR, DIM, STN, AMR, TST>::Heat (
     if ( TST )
     {
         epsilon_u_label = VarLabel::create ( "epsilon_u", Variable<VAR, double>::getTypeDescription() );
-        error_u_label = VarLabel::create ( "error_u", Variable<VAR, double>::getTypeDescription() );
+        error_u_label = VarLabel::create ( "error_u", Variable<CC, double>::getTypeDescription() );
         error_norm2_L2_label = VarLabel::create ( "error_norm2_L2", sum_vartype::getTypeDescription() );
     }
 
@@ -2132,8 +2229,8 @@ Heat<VAR, DIM, STN, AMR, TST>::Heat (
     {
         epsilon_du_label[X] = VarLabel::create ( "epsilon_ux", Variable<VAR, double>::getTypeDescription() );
         epsilon_ddu_label[X] = VarLabel::create ( "epsilon_uxx", Variable<VAR, double>::getTypeDescription() );
-        error_du_label[X] = VarLabel::create ( "error_ux", Variable<VAR, double>::getTypeDescription() );
-        error_ddu_label[X] = VarLabel::create ( "error_uxx", Variable<VAR, double>::getTypeDescription() );
+        error_du_label[X] = VarLabel::create ( "error_ux", Variable<CC, double>::getTypeDescription() );
+        error_ddu_label[X] = VarLabel::create ( "error_uxx", Variable<CC, double>::getTypeDescription() );
     }
     if ( DIM > D1 )
     {
@@ -2143,8 +2240,8 @@ Heat<VAR, DIM, STN, AMR, TST>::Heat (
         {
             epsilon_du_label[Y] = VarLabel::create ( "epsilon_uy", Variable<VAR, double>::getTypeDescription() );
             epsilon_ddu_label[Y] = VarLabel::create ( "epsilon_uyy", Variable<VAR, double>::getTypeDescription() );
-            error_du_label[Y] = VarLabel::create ( "error_uy", Variable<VAR, double>::getTypeDescription() );
-            error_ddu_label[Y] = VarLabel::create ( "error_uyy", Variable<VAR, double>::getTypeDescription() );
+            error_du_label[Y] = VarLabel::create ( "error_uy", Variable<CC, double>::getTypeDescription() );
+            error_ddu_label[Y] = VarLabel::create ( "error_uyy", Variable<CC, double>::getTypeDescription() );
         }
     }
     if ( DIM > D2 )
@@ -2155,8 +2252,8 @@ Heat<VAR, DIM, STN, AMR, TST>::Heat (
         {
             epsilon_du_label[Z] = VarLabel::create ( "epsilon_uz", Variable<VAR, double>::getTypeDescription() );
             epsilon_ddu_label[Z] = VarLabel::create ( "epsilon_uzz", Variable<VAR, double>::getTypeDescription() );
-            error_du_label[Z] = VarLabel::create ( "error_uz", Variable<VAR, double>::getTypeDescription() );
-            error_ddu_label[Z] = VarLabel::create ( "error_uzz", Variable<VAR, double>::getTypeDescription() );
+            error_du_label[Z] = VarLabel::create ( "error_uz", Variable<CC, double>::getTypeDescription() );
+            error_ddu_label[Z] = VarLabel::create ( "error_uzz", Variable<CC, double>::getTypeDescription() );
         }
     }
     u_norm2_H10_label = VarLabel::create ( "u_norm2_H10", sum_vartype::getTypeDescription() );
@@ -3372,32 +3469,59 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         simTime = simTimeVar;
     }
 
+    const Level * level = getLevel ( patches );
+    Grid * grid = level->getGrid().get_rep();
+    const Vector h ( level->dCell() );
+
     BBox box;
-    getLevel ( patches )->getGrid()->getSpatialRange ( box );
+    grid->getSpatialRange ( box );
     Vector L = box.max() - box.min();
     if ( L != box.max().asVector() ) L /= 2;
 
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
+    double a = M_PI_2 / L[X];
+    double e = a * a * alpha * static_cast<double> ( DIM );
+    double ut = exp ( -e * simTime );
+
+    double area = 1.;
+    for ( size_t D = 0; D < DIM; ++D )
+        area *= h[D];
+
+    // Since NC grid is 3D we have double the nodes
+    // in each direction above DIM
+    double factor = 1.;
+    if ( VAR == NC )
+        for ( size_t D = DIM; D < 3; ++D )
+            factor *= .5;
+
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
 
-        DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
-        DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
+        IntVector low = this->template get_low<CC> ( patch );
+        IntVector high = this->template get_high<CC> ( patch ) + ( VAR == CC ? 0 : 1 );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > du ( du_label, material );
+        DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( ddu_label, material );
+        du.set ( dw_new, patch->getLevel(), low, high, false );
+        ddu.set ( dw_new, patch->getLevel(), low, high, false );
 
         DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
 
-        DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
-        DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
+        DWView < VectorField<double, DIM>, CC, DIM > error_du ( dw_new, error_du_label, material, patch );
+        DWView < VectorField<double, DIM>, CC, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+        parallel_for ( range, [patch, &ut, &a, &du, &ddu, &epsilon_du, &epsilon_ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives_epsilon<MG> ( {i, j, k}, patch, ut, a, du, ddu, epsilon_du, epsilon_ddu ); } );
 
-        parallel_reduce_sum ( range, [patch, &simTime, &L, &du, &ddu, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, simTime, L[0], du, ddu, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
+        BlockRange range_cc ( this->template get_range<CC> ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range_cc );
+        parallel_reduce_sum ( range_cc, [patch, &ut, &a, &area, &factor, &du, &ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, ut, a, area, factor, du, ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
     }
 
     dw_new->put ( sum_vartype ( norms[0] ), u_norm2_H10_label );
@@ -3424,11 +3548,6 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
 
     DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_time_advance_dbg_derivatives_error ====" );
 
-    const Level * level = getLevel ( patches );
-    Grid * grid = level->getGrid().get_rep();
-    int index = level->getIndex();
-    int k = this->m_regridder->maxLevels() - index - 1;
-
     std::array<double, 4> norms {{ 0., 0., 0., 0. }}; // { u_norm2_H10, u_norm2_H20, error_norm2_H10, error_norm2_H20 }
 
     simTime_vartype simTimeVar;
@@ -3444,6 +3563,21 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         simTime = simTimeVar;
     }
 
+    const Level * level = getLevel ( patches );
+    Grid * grid = level->getGrid().get_rep();
+    const Vector h ( level->dCell() );
+
+    int index = level->getIndex();
+    int k = this->m_regridder->maxLevels() - index - 1;
+
+    ReferenceGrid<DIM> grid_finest ( grid, index );
+    grid_finest.addFinestLevel ( k );
+    grid_finest.addReference();
+
+    IntVector refinement ( 1 );
+    for ( int i = 1; i <= k; ++i )
+        refinement = refinement * grid_finest.getLevel ( index + i )->getRefinementRatio();
+
     BBox box;
     grid->getSpatialRange ( box );
     Vector L = box.max() - box.min();
@@ -3452,9 +3586,20 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
-    ReferenceGrid<DIM> grid_finest ( grid, index );
-    grid_finest.addFinestLevel ( k );
-    grid_finest.addReference();
+    double a = M_PI_2 / L[X];
+    double e = a * a * alpha * static_cast<double> ( DIM );
+    double ut = exp ( -e * simTime );
+
+    double area = 1.;
+    for ( size_t D = 0; D < DIM; ++D )
+        area *= h[D] / refinement[D];
+
+    // Since NC grid is 3D we have double the nodes
+    // in each direction above DIM
+    double factor = 1.;
+    if ( VAR == NC )
+        for ( size_t D = DIM; D < 3; ++D )
+            factor *= .5;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -3472,13 +3617,16 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         DWView < VectorField<double, DIM>, VAR, DIM > epsilon_du ( dw_new, epsilon_du_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > epsilon_ddu ( dw_new, epsilon_ddu_label, material, patch );
 
-        DWView < VectorField<double, DIM>, VAR, DIM > error_du ( dw_new, error_du_label, material, patch );
-        DWView < VectorField<double, DIM>, VAR, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
+        DWView < VectorField<double, DIM>, CC, DIM > error_du ( dw_new, error_du_label, material, patch );
+        DWView < VectorField<double, DIM>, CC, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+        parallel_for ( range, [patch, &simTime, &L, &du, &ddu, &epsilon_du, &epsilon_ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives_epsilon<MG> ( {i, j, k}, patch, simTime, L[0], du, ddu, epsilon_du, epsilon_ddu ); } );
 
-        parallel_reduce_sum ( range, [patch, patch_finest, &simTime, &L, &du, &ddu, &du_finest, &ddu_finest, &epsilon_du, &epsilon_ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, patch_finest, simTime, L[0], du, ddu, du_finest, ddu_finest, epsilon_du, epsilon_ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
+        BlockRange range_cc ( this->template get_range<CC> ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range_cc );
+        parallel_reduce_sum ( range_cc, [patch, patch_finest, &refinement, &ut, &a, &area, &factor, &du_finest, &ddu_finest, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, patch_finest, refinement, ut, a, area, factor, du_finest, ddu_finest, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
     }
 
     grid_finest.removeReference();
@@ -3987,27 +4135,54 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
         simTime = simTimeVar;
     }
 
+    const Level * level = getLevel ( patches );
+    Grid * grid = level->getGrid().get_rep();
+    const Vector h ( level->dCell() );
+
     BBox box;
-    getLevel ( patches )->getGrid()->getSpatialRange ( box );
+    grid->getSpatialRange ( box );
     Vector L = box.max() - box.min();
     if ( L != box.max().asVector() ) L /= 2;
 
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
+    double a = M_PI_2 / L[X];
+    double e = a * a * alpha * static_cast<double> ( DIM );
+    double ut = exp ( -e * simTime );
+
+    double area = 1.;
+    for ( size_t D = 0; D < DIM; ++D )
+        area *= h[D];
+
+    // Since NC grid is 3D we have double the nodes
+    // in each direction above DIM
+    double factor = 1.;
+    if ( VAR == NC )
+        for ( size_t D = DIM; D < 3; ++D )
+            factor *= .5;
+
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
 
-        DWView < ScalarField<const double>, VAR, DIM > u ( dw_new, u_label, material, patch );
+        IntVector low = this->template get_low<CC> ( patch );
+        IntVector high = this->template get_high<CC> ( patch ) + ( VAR == CC ? 0 : 1 );
+
+        DWView < ScalarField<const double>, VAR, DIM > u ( u_label, material );
+        u.set ( dw_new, patch->getLevel(), low, high, false );
 
         DWView < ScalarField<double>, VAR, DIM > epsilon_u ( dw_new, epsilon_u_label, material, patch );
-        DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
+        DWView < ScalarField<double>, CC, DIM > error_u ( dw_new, error_u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
-        parallel_reduce_sum ( range, [patch, &simTime, &L, &u, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, simTime, L[X], u, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+        parallel_for ( range, [patch, &ut, &a, &u, &epsilon_u, this] ( int i, int j, int k )->void { time_advance_solution_epsilon<MG> ( {i, j, k}, patch, ut, a, u, epsilon_u ); } );
+
+        BlockRange range_cc ( this->template get_range<CC> ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range_cc );
+        parallel_reduce_sum ( range_cc, [patch, &ut, &a, &area, &factor, &u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, ut, a, area, factor, u, error_u, norms[0], norms[1] ); }, norms );
     }
 
     dw_new->put ( sum_vartype ( norms[0] ), u_norm2_L2_label );
@@ -4049,7 +4224,18 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
 
     const Level * level = getLevel ( patches );
     Grid * grid = level->getGrid().get_rep();
+    const Vector h ( level->dCell() );
+
     int index = level->getIndex();
+    int k = this->m_regridder->maxLevels() - index - 1;
+
+    ReferenceGrid<DIM> grid_finest ( grid, index );
+    grid_finest.addFinestLevel ( k );
+    grid_finest.addReference();
+
+    IntVector refinement ( 1 );
+    for ( int i = 1; i <= k; ++i )
+        refinement = refinement * grid_finest.getLevel ( index + i )->getRefinementRatio();
 
     BBox box;
     grid->getSpatialRange ( box );
@@ -4059,11 +4245,20 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     ASSERTMSG ( DIM < D2 || L[Y] == L[X], "grid geometry must be a square" );
     ASSERTMSG ( DIM < D3 || L[Z] == L[X], "grid geometry must be a cube" );
 
-    int k = this->m_regridder->maxLevels() - index - 1;
+    double a = M_PI_2 / L[X];
+    double e = a * a * alpha * static_cast<double> ( DIM );
+    double ut = exp ( -e * simTime );
 
-    ReferenceGrid<DIM> grid_finest ( grid, index );
-    grid_finest.addFinestLevel ( k );
-    grid_finest.addReference();
+    double area = 1.;
+    for ( size_t D = 0; D < DIM; ++D )
+        area *= h[D] / refinement[D];
+
+    // Since NC grid is 3D we have double the nodes
+    // in each direction above DIM
+    double factor = 1.;
+    if ( VAR == NC )
+        for ( size_t D = DIM; D < 3; ++D )
+            factor *= .5;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -4076,11 +4271,15 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
         AMRInterpolator < HeatProblem<VAR, STN, TST>, U, C2F > u_finest ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_finest );
 
         DWView < ScalarField<double>, VAR, DIM > epsilon_u ( dw_new, epsilon_u_label, material, patch );
-        DWView < ScalarField<double>, VAR, DIM > error_u ( dw_new, error_u_label, material, patch );
+        DWView < ScalarField<double>, CC, DIM > error_u ( dw_new, error_u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
-        parallel_reduce_sum ( range, [patch, patch_finest, &simTime, &L, &u, &u_finest, &epsilon_u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, patch_finest, simTime, L[X], u, u_finest, epsilon_u, error_u, norms[0], norms[1] ); }, norms );
+        parallel_for ( range, [patch, &ut, &a, &u, &epsilon_u, this] ( int i, int j, int k )->void { time_advance_solution_epsilon<MG> ( {i, j, k}, patch, ut, a, u, epsilon_u ); } );
+
+        BlockRange range_cc ( this->template get_range<CC> ( patch ) );
+        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range );
+        parallel_reduce_sum ( range_cc, [patch, patch_finest, &refinement, &ut, &a, &area, &factor, &u_finest, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, patch_finest, refinement, ut, a, area, factor, u_finest, error_u, norms[0], norms[1] ); }, norms );
     }
 
     grid_finest.removeReference();
@@ -4253,33 +4452,17 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives (
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG >
 typename std::enable_if < !MG, void >::type
-Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_epsilon (
     const IntVector & id,
     const Patch * patch,
-    const double & t,
-    const double & L,
+    const double & ut,
+    const double & a,
     const View < VectorField<const double, DIM> > & du,
     const View < VectorField<const double, DIM> > & ddu,
     View < VectorField<double, DIM> > & epsilon_du,
-    View < VectorField<double, DIM> > & epsilon_ddu,
-    View < VectorField<double, DIM> > & error_du,
-    View < VectorField<double, DIM> > & error_ddu,
-    double & u_norm2_H10,
-    double & u_norm2_H20,
-    double & error_norm2_H10,
-    double & error_norm2_H20
+    View < VectorField<double, DIM> > & epsilon_ddu
 )
 {
-    const Level * level ( patch->getLevel() );
-
-    double a = M_PI_2 / L;
-    double e = a * a * alpha * static_cast<double> ( DIM );
-    double ut = exp ( -e * t );
-    double duf[DIM], dduf[DIM], lapuf;
-    double edu[DIM], eddu[DIM], elapu;
-    double du2[] = { 0., 0., 0.}, lapu2 = 0.;
-    double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
-
     Vector v ( this->get_position ( patch, id ).asVector() );
     double ddu_ex = -a * ut;
     double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
@@ -4299,67 +4482,47 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
 
     for ( size_t i = 0; i < DIM; ++i )
     {
-        duf[i] = du[i][id];
-        dduf[i] = ddu[i][id];
-        epsilon_du[i][id] = edu[i] = duf[i] - du_ex[i];
-        epsilon_ddu[i][id] = eddu[i] = dduf[i] - ddu_ex;
+        epsilon_du[i][id] = du[i][id] - du_ex[i];
+        epsilon_ddu[i][id] = ddu[i][id] - ddu_ex;
     }
-
-    double area = level->cellVolume();
-
-    if ( VAR == NC )
-        for ( size_t D = DIM; D < 3; ++D )
-            area *= .5;
-
-    lapuf = 0.;
-    elapu = 0.;
-    for ( size_t i = 0; i < DIM; ++i )
-    {
-#ifdef EXACT_NORM
-        lapuf += ddu_ex;
-#else
-        lapuf += dduf[i];
-#endif
-        elapu += eddu[i];
-#ifdef EXACT_NORM
-        du2[i] += area * du_ex[i] * du_ex[i];
-#else
-        du2[i] += area * duf[i] * duf[i];
-#endif
-        du_err2[i] += area * edu[i] * edu[i];
-        ddu_err2[i] += area * eddu[i] * eddu[i];
-    }
-
-    lapu2 += area * lapuf * lapuf;
-    lapu_err2 += area * elapu * elapu;
-
-    for ( size_t i = 0; i < DIM; ++i )
-    {
-        error_du[i][id] = sqrt ( du_err2[i] );
-        error_ddu[i][id] = sqrt ( ddu_err2[i] );
-        u_norm2_H10 += du2[i];
-        error_norm2_H10 += du_err2[i];
-    }
-
-    u_norm2_H20 += lapu2;
-    error_norm2_H20 += lapu_err2;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG >
 typename std::enable_if < MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_epsilon (
+    const IntVector & id,
+    const Patch * patch,
+    const double & ut,
+    const double & a,
+    const View < VectorField<const double, DIM> > & du,
+    const View < VectorField<const double, DIM> > & ddu,
+    View < VectorField<double, DIM> > & epsilon_du,
+    View < VectorField<double, DIM> > & epsilon_ddu
+)
+{
+    if ( this->is_refined ( patch->getLevel(), patch, id ) )
+        for ( size_t i = 0; i < DIM; ++i )
+        {
+            epsilon_du[i][id] = 0.;
+            epsilon_ddu[i][id] = 0.;
+        }
+    else
+        time_advance_dbg_derivatives_epsilon < !MG > ( id, patch, ut, a, du, ddu, epsilon_du, epsilon_ddu );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
     const IntVector & id,
     const Patch * patch,
-    const Patch * patch_finest,
-    const double & t,
-    const double & L,
+    const double & ut,
+    const double & a,
+    const double & area,
+    const double & factor,
     const View < VectorField<const double, DIM> > & du,
     const View < VectorField<const double, DIM> > & ddu,
-    const View < VectorField<const double, DIM> > & du_finest,
-    const View < VectorField<const double, DIM> > & ddu_finest,
-    View < VectorField<double, DIM> > & epsilon_du,
-    View < VectorField<double, DIM> > & epsilon_ddu,
     View < VectorField<double, DIM> > & error_du,
     View < VectorField<double, DIM> > & error_ddu,
     double & u_norm2_H10,
@@ -4368,131 +4531,11 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
     double & error_norm2_H20
 )
 {
-    const Level * level ( patch->getLevel() );
-    IntVector low = patch->getExtraCellLowIndex ( -1 ) - 1;
-    IntVector high = patch->getCellHighIndex();
+    double du2[] = { 0., 0., 0.}, lapu2 = 0.;
+    double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
 
-    if ( this->is_refined ( level, patch, id ) )
+    auto do_loop = [this, &patch, &ut, &a, &du, &ddu, &area, &du2, &du_err2, &ddu_err2, &lapu2, &lapu_err2 ] ( IntVector id, double w = 1. )
     {
-        if ( VAR == CC || gt ( id, low ) )
-            for ( size_t i = 0; i < DIM; ++i )
-            {
-                epsilon_du[i][id] = 0.;
-                epsilon_ddu[i][id] = 0.;
-                error_du[i][id] = 0.;
-                error_ddu[i][id] = 0.;
-            }
-        else
-        {
-            const Level * level_finest = patch_finest->getLevel();
-            const GridP grid_tmp = level_finest->getGrid();
-
-            double a = M_PI_2 / L;
-            double e = a * a * alpha * static_cast<double> ( DIM );
-            double ut = exp ( -e * t );
-            double duf[DIM], dduf[DIM];
-            double edu[DIM], eddu[DIM];
-            double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.};
-
-            Vector v ( this->get_position ( patch, id ).asVector() );
-            double ddu_ex = -a * ut;
-            double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
-            ddu_ex *= a;
-
-            for ( size_t i = 0; i < DIM; ++i )
-            {
-                double c = cos ( a * v[i] );
-                double s = sin ( a * v[i] );
-                du_ex[i] *= s;
-                ddu_ex *= c;
-                for ( size_t j = 0; j < i; ++j )
-                    du_ex[j] *= c;
-                for ( size_t j = i + 1; j < DIM; ++j )
-                    du_ex[j] *= c;
-            }
-
-            for ( size_t i = 0; i < DIM; ++i )
-            {
-                epsilon_du[i][id] = du[i][id] - du_ex[i];
-                epsilon_ddu[i][id] = ddu[i][id] - ddu_ex;
-            }
-
-            IntVector refinement ( 1 );
-            for ( int i = level->getIndex() + 1; i <= level_finest->getIndex(); ++i )
-            {
-                auto l = grid_tmp ->getLevel ( i );
-                auto r = l->getRefinementRatio();
-                refinement = refinement * level_finest->getGrid()->getLevel ( i )->getRefinementRatio();
-            }
-
-            IntVector id_finest = id * refinement;
-            for ( size_t D = 0; D < DIM; ++D )
-                if ( id_finest[D] < 0 && refinement[D] > 1 )
-                    id_finest[D] += 1;
-
-            double area = level_finest->cellVolume();
-            IntVector offset, idf;
-
-            for ( size_t D = 0; D < DIM; ++D )
-                if ( id[D] == high[D] )
-                    refinement[D] = 1;
-            for ( size_t D = DIM; D < 3; ++D )
-                area *= .5;
-
-            for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
-                for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
-                    for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
-                    {
-                        idf = id_finest + offset;
-                        v = this->get_position ( patch_finest, idf ).asVector();
-                        ddu_ex = -a * ut;
-                        du_ex[0] = du_ex[1] = du_ex[2] = ddu_ex;
-                        ddu_ex *= a;
-
-                        for ( size_t i = 0; i < DIM; ++i )
-                        {
-                            double c = cos ( a * v[i] );
-                            double s = sin ( a * v[i] );
-                            du_ex[i] *= s;
-                            ddu_ex *= c;
-                            for ( size_t j = 0; j < i; ++j )
-                                du_ex[j] *= c;
-                            for ( size_t j = i + 1; j < DIM; ++j )
-                                du_ex[j] *= c;
-                        }
-
-                        for ( size_t i = 0; i < DIM; ++i )
-                        {
-                            duf[i] = du_finest[i][idf];
-                            dduf[i] = ddu_finest[i][idf];
-                            edu[i] = duf[i] - du_ex[i];
-                            eddu[i] = dduf[i] - ddu_ex;
-                            du_err2[i] += area * edu[i] * edu[i];
-                            ddu_err2[i] += area * eddu[i] * eddu[i];
-                        }
-                    }
-
-            for ( size_t i = 0; i < DIM; ++i )
-            {
-                error_du[i][id] = sqrt ( du_err2[i] );
-                error_ddu[i][id] = sqrt ( ddu_err2[i] );
-            }
-
-        }
-    }
-    else
-    {
-        const Level * level_finest = patch_finest->getLevel();
-        const GridP grid_tmp = level_finest->getGrid();
-
-        double a = M_PI_2 / L;
-        double e = a * a * alpha * static_cast<double> ( DIM );
-        double ut = exp ( -e * t );
-        double duf[DIM], dduf[DIM], lapuf;
-        double edu[DIM], eddu[DIM], elapu;
-        double du2[] = { 0., 0., 0.}, lapu2 = 0.;
-        double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
-
         Vector v ( this->get_position ( patch, id ).asVector() );
         double ddu_ex = -a * ut;
         double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
@@ -4510,95 +4553,170 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
                 du_ex[j] *= c;
         }
 
+        double duf[DIM], dduf[DIM];
+        double edu[DIM], eddu[DIM];
+        double lapuf = 0.;
+        double elapu = 0.;
         for ( size_t i = 0; i < DIM; ++i )
         {
-            epsilon_du[i][id] = du[i][id] - du_ex[i];
-            epsilon_ddu[i][id] = ddu[i][id] - ddu_ex;
-        }
+            duf[i] = du[i][id];
+            dduf[i] = ddu[i][id];
+            edu[i] = duf[i] - du_ex[i];
+            eddu[i] = dduf[i] - ddu_ex;
 
-        IntVector refinement ( 1 );
-        for ( int i = level->getIndex() + 1; i <= level_finest->getIndex(); ++i )
-        {
-            auto l = grid_tmp ->getLevel ( i );
-            auto r = l->getRefinementRatio();
-            refinement = refinement * level_finest->getGrid()->getLevel ( i )->getRefinementRatio();
-        }
-
-        IntVector id_finest = id * refinement;
-        for ( size_t D = 0; D < DIM; ++D )
-            if ( id_finest[D] < 0 && refinement[D] > 1 )
-                id_finest[D] += 1;
-
-        double area = level_finest->cellVolume();
-        IntVector offset, idf;
-
-        if ( VAR == NC )
-        {
-            for ( size_t D = 0; D < DIM; ++D )
-                if ( id[D] == high[D] )
-                    refinement[D] = 1;
-            for ( size_t D = DIM; D < 3; ++D )
-                area *= .5;
-        }
-
-        for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
-            for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
-                for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
-                {
-                    idf = id_finest + offset;
-                    v = this->get_position ( patch_finest, idf ).asVector();
-                    ddu_ex = -a * ut;
-                    du_ex[0] = du_ex[1] = du_ex[2] = ddu_ex;
-                    ddu_ex *= a;
-
-                    for ( size_t i = 0; i < DIM; ++i )
-                    {
-                        double c = cos ( a * v[i] );
-                        double s = sin ( a * v[i] );
-                        du_ex[i] *= s;
-                        ddu_ex *= c;
-                        for ( size_t j = 0; j < i; ++j )
-                            du_ex[j] *= c;
-                        for ( size_t j = i + 1; j < DIM; ++j )
-                            du_ex[j] *= c;
-                    }
-
-                    lapuf = 0.;
-                    elapu = 0.;
-                    for ( size_t i = 0; i < DIM; ++i )
-                    {
-                        duf[i] = du_finest[i][idf];
-                        dduf[i] = ddu_finest[i][idf];
-                        edu[i] = duf[i] - du_ex[i];
-                        eddu[i] = dduf[i] - ddu_ex;
 #ifdef EXACT_NORM
-                        lapuf += ddu_ex;
+            lapuf += ddu_ex;
 #else
-                        lapuf += dduf[i];
+            lapuf += dduf[i];
 #endif
-                        elapu += eddu[i];
+            elapu += eddu[i];
 #ifdef EXACT_NORM
-                        du2[i] += area * du_ex[i] * du_ex[i];
+            du2[i] += w * area * du_ex[i] * du_ex[i];
 #else
-                        du2[i] += area * duf[i] * duf[i];
+            du2[i] += w * area * duf[i] * duf[i];
 #endif
-                        du_err2[i] += area * edu[i] * edu[i];
-                        ddu_err2[i] += area * eddu[i] * eddu[i];
-                    }
-                    lapu2 += area * lapuf * lapuf;
-                    lapu_err2 += area * elapu * elapu;
-                }
+            du_err2[i] += w * area * edu[i] * edu[i];
+            ddu_err2[i] += w * area * eddu[i] * eddu[i];
+        }
+
+        lapu2 += w * area * lapuf * lapuf;
+        lapu_err2 += w * area * elapu * elapu;
+    };
+
+    if ( VAR == CC )
+    {
+        do_loop ( id );
+    }
+    else
+    {
+        IntVector offset;
+        for ( offset[X] = 0; offset[X] < 2; ++offset[X] )
+            for ( offset[Y] = 0; offset[Y] < 2; ++offset[Y] )
+                for ( offset[Z] = 0; offset[Z] < 2; ++offset[Z] )
+                    do_loop ( id + offset, 0.125 );
+    }
+
+    u_norm2_H20 += lapu2;
+    error_norm2_H20 += lapu_err2;
+
+    for ( size_t i = 0; i < DIM; ++i )
+    {
+        u_norm2_H10 += du2[i];
+        error_norm2_H10 += du_err2[i];
+        error_du[i][id] = sqrt ( du_err2[i] / factor ) / area;
+        error_ddu[i][id] = sqrt ( ddu_err2[i] / factor ) / area;
+    }
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
+    const IntVector & id,
+    const Patch * patch,
+    const Patch * patch_finest,
+    const IntVector & refinement,
+    const double & ut,
+    const double & a,
+    const double & area,
+    const double & factor,
+    const View < VectorField<const double, DIM> > & du_finest,
+    const View < VectorField<const double, DIM> > & ddu_finest,
+    View < VectorField<double, DIM> > & error_du,
+    View < VectorField<double, DIM> > & error_ddu,
+    double & u_norm2_H10,
+    double & u_norm2_H20,
+    double & error_norm2_H10,
+    double & error_norm2_H20
+)
+{
+    const Level * level ( patch->getLevel() );
+
+    if ( this->is_refined ( level, patch, id ) )
+    {
+        for ( size_t i = 0; i < DIM; ++i )
+        {
+            error_du[i][id] = 0.;
+            error_ddu[i][id] = 0.;
+        }
+        return;
+    }
+
+    double du2[] = { 0., 0., 0.}, lapu2 = 0.;
+    double du_err2[] = { 0., 0., 0.}, ddu_err2[] = { 0., 0., 0.}, lapu_err2 = 0.;
+
+    auto do_loop = [this, &patch_finest, &ut, &a, &du_finest, &ddu_finest, &area, &du2, &du_err2, &ddu_err2, &lapu2, &lapu_err2 ] ( IntVector idf, double w = 1. )
+    {
+        Vector v ( this->get_position ( patch_finest, idf ).asVector() );
+        double ddu_ex = -a * ut;
+        double du_ex[] = { ddu_ex, ddu_ex, ddu_ex };
+        ddu_ex *= a;
 
         for ( size_t i = 0; i < DIM; ++i )
         {
-            error_du[i][id] = sqrt ( du_err2[i] );
-            error_ddu[i][id] = sqrt ( ddu_err2[i] );
-            u_norm2_H10 += du2[i];
-            error_norm2_H10 += du_err2[i];
+            double c = cos ( a * v[i] );
+            double s = sin ( a * v[i] );
+            du_ex[i] *= s;
+            ddu_ex *= c;
+            for ( size_t j = 0; j < i; ++j )
+                du_ex[j] *= c;
+            for ( size_t j = i + 1; j < DIM; ++j )
+                du_ex[j] *= c;
         }
 
-        u_norm2_H20 += lapu2;
-        error_norm2_H20 += lapu_err2;
+        double duf[DIM], dduf[DIM];
+        double edu[DIM], eddu[DIM];
+        double lapuf = 0.;
+        double elapu = 0.;
+        for ( size_t i = 0; i < DIM; ++i )
+        {
+            duf[i] = du_finest[i][idf];
+            dduf[i] = ddu_finest[i][idf];
+            edu[i] = duf[i] - du_ex[i];
+            eddu[i] = dduf[i] - ddu_ex;
+#ifdef EXACT_NORM
+            lapuf += ddu_ex;
+#else
+            lapuf += dduf[i];
+#endif
+            elapu += eddu[i];
+#ifdef EXACT_NORM
+            du2[i] += w * area * du_ex[i] * du_ex[i];
+#else
+            du2[i] += w * area * duf[i] * duf[i];
+#endif
+            du_err2[i] += w * area * edu[i] * edu[i];
+            ddu_err2[i] += w * area * eddu[i] * eddu[i];
+        }
+
+        lapu2 += area * lapuf * lapuf;
+        lapu_err2 += area * elapu * elapu;
+    };
+
+    IntVector id_finest = id * refinement;
+    IntVector offset;
+
+    if ( VAR == CC )
+    {
+        do_loop ( id_finest );
+    }
+    else
+    {
+        for ( offset[X] = 0; offset[X] < 2; ++offset[X] )
+            for ( offset[Y] = 0; offset[Y] < 2; ++offset[Y] )
+                for ( offset[Z] = 0; offset[Z] < 2; ++offset[Z] )
+                    do_loop ( id_finest + offset, 0.125 );
+    }
+
+    u_norm2_H20 += lapu2;
+    error_norm2_H20 += lapu_err2;
+
+    for ( size_t i = 0; i < DIM; ++i )
+    {
+        u_norm2_H10 += du2[i];
+        error_norm2_H10 += du_err2[i];
+        error_du[i][id] = sqrt ( du_err2[i] / factor );
+        error_ddu[i][id] = sqrt ( ddu_err2[i] / factor );
     }
 }
 #endif
@@ -4809,55 +4927,100 @@ void Heat<VAR, DIM, STN, AMR, TST>::time_advance_update_dbg_matrix
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG >
 typename std::enable_if < !MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_epsilon
+(
+    const IntVector & id,
+    const Patch * patch,
+    const double & ut,
+    const double & a,
+    const View < ScalarField<const double> > & u,
+    View < ScalarField<double> > & epsilon_u
+)
+{
+    Vector v ( this->get_position ( patch, id ).asVector() );
+    double u_ex = ut;
+
+    for ( size_t i = 0; i < DIM; ++i )
+        u_ex *= cos ( a * v[i] );
+
+    epsilon_u[id] = u[id] - u_ex;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_epsilon
+(
+    const IntVector & id,
+    const Patch * patch,
+    const double & ut,
+    const double & a,
+    const View < ScalarField<const double> > & u,
+    View < ScalarField<double> > & epsilon_u
+)
+{
+    if ( this->is_refined ( patch->getLevel(), patch, id ) )
+        epsilon_u[id] = 0;
+    else
+        time_advance_solution_epsilon < !MG > ( id, patch, ut, a, u, epsilon_u );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
 (
     const IntVector & id,
     const Patch * patch,
-    const double & t,
-    const double & L,
+    const double & ut,
+    const double & a,
+    const double & area,
+    const double & factor,
     const View < ScalarField<const double> > & u,
-    View < ScalarField<double> > & epsilon_u,
     View < ScalarField<double> > & error_u,
     double & u_norm2_L2,
     double & error_norm2_L2
 )
 {
-    const Level * level ( patch->getLevel() );
-
-    double a = M_PI_2 / L;
-    double e = a * a * alpha * static_cast<double> ( DIM );
-    double ut = exp ( -e * t );
-    double uf;
-    double eu;
     double u2 = 0.;
     double u_err2 = 0.;
 
-    Vector v ( this->get_position ( patch, id ).asVector() );
+    auto do_loop = [this, &patch, &ut, &a, &u, &area, &u2, &u_err2] ( IntVector id, double w = 1. )
+    {
+        Vector v = this->get_position ( patch, id ).asVector();
+        double u_ex = ut;
 
-    double u_ex = ut;
-    for ( size_t i = 0; i < DIM; ++i )
-        u_ex *= cos ( a * v[i] );
+        for ( size_t i = 0; i < DIM; ++i )
+            u_ex *= cos ( a * v[i] );
 
-    uf = u[id];
-    epsilon_u[id] = eu = uf - u_ex;
-
-    double area = level->cellVolume();
-
-    if ( VAR == NC )
-        for ( size_t D = DIM; D < 3; ++D )
-            area *= .5;
+        double uf = u[id];
+        double eu = uf - u_ex;
 
 #ifdef EXACT_NORM
-    u2 += area * u_ex * u_ex;
+        u2 += w * area * u_ex * u_ex;
 #else
-    u2 += area * uf * uf;
+        u2 += w * area * uf * uf;
 #endif
-    u_err2 += area * eu * eu;
+        u_err2 += w * area * eu * eu;
+    };
 
-    error_u[id] = sqrt ( u_err2 );
+    if ( VAR == CC )
+    {
+        do_loop ( id );
+    }
+    else
+    {
+        IntVector offset;
+        for ( offset[X] = 0; offset[X] < 2; ++offset[X] )
+            for ( offset[Y] = 0; offset[Y] < 2; ++offset[Y] )
+                for ( offset[Z] = 0; offset[Z] < 2; ++offset[Z] )
+                    do_loop ( id + offset, 0.125 );
+    }
 
     u_norm2_L2 += u2;
     error_norm2_L2 += u_err2;
+
+    error_u[id] = sqrt ( u_err2 / factor ) / area;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -4868,160 +5031,208 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
     const IntVector & id,
     const Patch * patch,
     const Patch * patch_finest,
-    const double & t,
-    const double & L,
-    const View < ScalarField<const double> > & u,
+    const IntVector & refinement,
+    const double & ut,
+    const double & a,
+    const double & area,
+    const double & factor,
     const View < ScalarField<const double> > & u_finest,
-    View < ScalarField<double> > & epsilon_u,
     View < ScalarField<double> > & error_u,
     double & u_norm2_L2,
     double & error_norm2_L2
 )
 {
     const Level * level ( patch->getLevel() );
-    IntVector low = patch->getExtraCellLowIndex ( -1 ) - 1;
-    IntVector high = patch->getCellHighIndex();
 
     if ( this->is_refined ( level, patch, id ) )
     {
-        if ( VAR == CC || gt ( id, low ) )
-        {
-            epsilon_u[id] = 0;
-            error_u[id] = 0;
-        }
-        else
-        {
-            const Level * level_finest = patch_finest->getLevel();
-            const GridP grid_tmp = level_finest->getGrid();
-
-            double a = M_PI_2 / L;
-            double e = a * a * alpha * static_cast<double> ( DIM );
-            double ut = exp ( -e * t );
-            double uf;
-            double eu;
-            double u_err2 = 0.;
-
-            Vector v ( this->get_position ( patch, id ).asVector() );
-
-            double u_ex = ut;
-            for ( size_t i = 0; i < DIM; ++i )
-                u_ex *= cos ( a * v[i] );
-
-            epsilon_u[id] = u[id] - u_ex;
-
-            IntVector refinement ( 1 );
-            for ( int i = level->getIndex() + 1; i <= level_finest->getIndex(); ++i )
-            {
-                auto l = grid_tmp ->getLevel ( i );
-                auto r = l->getRefinementRatio();
-                refinement = refinement * level_finest->getGrid()->getLevel ( i )->getRefinementRatio();
-            }
-
-            IntVector id_finest = id * refinement;
-            for ( size_t D = 0; D < DIM; ++D )
-                if ( id_finest[D] < 0 && refinement[D] > 1 )
-                    id_finest[D] += 1;
-
-            double area = level_finest->cellVolume();
-            IntVector offset, idf;
-
-            for ( size_t D = 0; D < DIM; ++D )
-                if ( id[D] == high[D] )
-                    refinement[D] = 1;
-            for ( size_t D = DIM; D < 3; ++D )
-                area *= .5;
-
-            for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
-                for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
-                    for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
-                    {
-                        idf = id_finest + offset;
-                        v = this->get_position ( patch_finest, idf ).asVector();
-                        double u_ex = ut;
-
-                        for ( size_t i = 0; i < DIM; ++i )
-                            u_ex *= cos ( a * v[i] );
-
-                        uf = u_finest[idf];
-                        eu = uf - u_ex;
-                        u_err2 += area * eu * eu;
-                    }
-
-            error_u[id] = sqrt ( u_err2 );
-        }
+        error_u[id] = 0;
+        return;
     }
-    else
+
+    double u2 = 0.;
+    double u_err2 = 0.;
+
+    auto do_loop = [this, &patch_finest, &ut, &a, &u_finest, &area, &u2, &u_err2] ( IntVector idf, double w = 1. )
     {
-        const Level * level_finest = patch_finest->getLevel();
-        const GridP grid_tmp = level_finest->getGrid();
-
-        double a = M_PI_2 / L;
-        double e = a * a * alpha * static_cast<double> ( DIM );
-        double ut = exp ( -e * t );
-        double uf;
-        double eu;
-        double u2 = 0.;
-        double u_err2 = 0.;
-
-        Vector v ( this->get_position ( patch, id ).asVector() );
+        Vector v = this->get_position ( patch_finest, idf ).asVector();
         double u_ex = ut;
 
         for ( size_t i = 0; i < DIM; ++i )
             u_ex *= cos ( a * v[i] );
 
-        epsilon_u[id] = u[id] - u_ex;
+        double uf = u_finest[idf];
+        double eu = uf - u_ex;
+#ifdef EXACT_NORM
+        u2 += w * area * u_ex * u_ex;
+#else
+        u2 += w * area * uf * uf;
+#endif
+        u_err2 += w * area * eu * eu;
+    };
 
-        IntVector refinement ( 1 );
-        for ( int i = level->getIndex() + 1; i <= level_finest->getIndex(); ++i )
-        {
-            auto l = grid_tmp ->getLevel ( i );
-            auto r = l->getRefinementRatio();
-            refinement = refinement * level_finest->getGrid()->getLevel ( i )->getRefinementRatio();
-        }
+    IntVector id_finest = id * refinement;
+    IntVector offset;
 
-        IntVector id_finest = id * refinement;
-        for ( size_t D = 0; D < DIM; ++D )
-            if ( id_finest[D] < 0 && refinement[D] > 1 )
-                id_finest[D] += 1;
-
-        double area = level_finest->cellVolume();
-        IntVector offset, idf;
-
-        if ( VAR == NC )
-        {
-            for ( size_t D = 0; D < DIM; ++D )
-                if ( id[D] == high[D] )
-                    refinement[D] = 1;
-            for ( size_t D = DIM; D < 3; ++D )
-                area *= .5;
-        }
-
+    if ( VAR == CC )
+    {
         for ( offset[X] = 0; offset[X] < refinement[X]; ++offset[X] )
             for ( offset[Y] = 0; offset[Y] < refinement[Y]; ++offset[Y] )
                 for ( offset[Z] = 0; offset[Z] < refinement[Z]; ++offset[Z] )
-                {
-                    idf = id_finest + offset;
-                    v = this->get_position ( patch_finest, idf ).asVector();
-                    double u_ex = ut;
-
-                    for ( size_t i = 0; i < DIM; ++i )
-                        u_ex *= cos ( a * v[i] );
-
-                    uf = u_finest[idf];
-                    eu = uf - u_ex;
-#ifdef EXACT_NORM
-                    u2 += area * u_ex * u_ex;
-#else
-                    u2 += area * uf * uf;
-#endif
-                    u_err2 += area * eu * eu;
-                }
-
-        error_u[id] = sqrt ( u_err2 );
-
-        u_norm2_L2 += u2;
-        error_norm2_L2 += u_err2;
+                    do_loop ( id_finest + offset );
     }
+    else
+    {
+        offset[X] = 0;
+        {
+            offset[Y] = 0;
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+            }
+            for ( offset[Y] = 1; offset[Y] < refinement[Y]; ++offset[Y] )
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.5 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+            }
+            offset[Y] = refinement[Y];
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+            }
+        }
+        for ( offset[X] = 1; offset[X] < refinement[X]; ++offset[X] )
+        {
+            offset[Y] = 0;
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.5 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+            }
+            for ( offset[Y] = 1; offset[Y] < refinement[Y]; ++offset[Y] )
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.5 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 1. );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.5 );
+                }
+            }
+            offset[Y] = refinement[Y];
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.5 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+            }
+        }
+        offset[X] = refinement[X];
+        {
+            offset[Y] = 0;
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+            }
+            for ( offset[Y] = 1; offset[Y] < refinement[Y]; ++offset[Y] )
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.5 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+            }
+            offset[Y] = refinement[Y];
+            {
+                offset[Z] = 0;
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+                for ( offset[Z] = 1; offset[Z] < refinement[Z]; ++offset[Z] )
+                {
+                    do_loop ( id_finest + offset, 0.25 );
+                }
+                offset[Z] = refinement[Z];
+                {
+                    do_loop ( id_finest + offset, 0.125 );
+                }
+            }
+        }
+    }
+
+    u_norm2_L2 += u2;
+    error_norm2_L2 += u_err2;
+
+    error_u[id] = sqrt ( u_err2 / factor ) / area;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>

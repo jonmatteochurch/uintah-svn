@@ -84,7 +84,7 @@ public: // TYPE HELPERS
     template<size_t I, size_t... J>
     struct get_field
     {
-        /// Type hekpof the Field represented by the [J..]-th component of the I-th Problem variable
+        /// Type helper the Field represented by the [J..]-th component of the I-th Problem variable
         using type = typename std::tuple_element < I, std::tuple<Field...> >::type::template elem_type<J...>;
     };
 
@@ -230,31 +230,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
     {
     }
 
-    /**
-     * @brief Restrict Problem range
-     *
-     * Check if given region intersects problem range. If true
-     * reset the range to the intersection and return true,
-     * otherwise retrns false
-     *
-     * @param low lower bound of the region to check
-     * @param high higher bound of the region to check
-     * @return if given region intersects problem range
-     */
-    inline bool
-    restrict_range(
-        const IntVector & low,
-        const IntVector & high
-    )
-    {
-        if ( doesIntersect(low, high, m_low, m_high) ) {
-            m_low = Max(m_low,low);
-            m_high = Min(m_high,high);
-            return true;
-        }
-
-        return false;
-    }
+public: // METHODS
 
     /**
      * @brief Get Codimension
@@ -469,6 +445,33 @@ public: // CONSTRUCTORS/DESTRUCTOR
         get_fd_view_type<I> * view { std::get<I> ( m_fd_view ).get() };
         view->set ( dw, m_level, m_low, m_high );
         return *view;
+    }
+
+    /**
+     * @brief Restrict Problem range
+     *
+     * Check if given region intersects problem range. If true
+     * reset the range to the intersection and return true,
+     * otherwise retrns false
+     *
+     * @param low lower bound of the region to check
+     * @param high higher bound of the region to check
+     * @return if given region intersects problem range
+     */
+    inline bool
+    restrict_range (
+        const IntVector & low,
+        const IntVector & high
+    )
+    {
+        if ( doesIntersect ( low, high, m_low, m_high ) )
+        {
+            m_low = Max ( m_low, low );
+            m_high = Min ( m_high, high );
+            return true;
+        }
+
+        return false;
     }
 
 }; // class Problem

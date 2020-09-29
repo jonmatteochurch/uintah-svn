@@ -103,9 +103,10 @@ public:
             spec->getWithDefault ( "alpha", alpha, alpha );
 
             if ( epsilon < 0 )
-                return scinew ArmPostProcessorDiagonalPoly<VAR, DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
-            else
-                return scinew ArmPostProcessorParallelPoly<VAR, DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
+                return scinew ArmPostProcessorDiagonalPoly<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
+            else if ( VAR != CC || DIM!=D3 )
+                return scinew ArmPostProcessorParallelPoly<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
+            SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessorParallelPoly for 3D parallel growth", __FILE__, __LINE__ ) );
         }
         if ( type == "tanh" )
         {
@@ -129,9 +130,10 @@ public:
             spec->getWithDefault ( "alpha", alpha, alpha );
 
             if ( epsilon < 0 )
-                return scinew ArmPostProcessorDiagonalTanh<VAR, DIM> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts1, npts3, alpha, dbg );
-            else
-                return scinew ArmPostProcessorParallelTanh<VAR, DIM> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts1, npts3, alpha, dbg );
+                return scinew ArmPostProcessorDiagonalTanh<VAR> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts3, npts1, alpha, dbg );
+            else if ( VAR != CC || DIM!=D3 )
+                return scinew ArmPostProcessorParallelTanh<VAR> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts3, npts1, alpha, dbg );
+            SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessorParallelPoly for 3D parallel growth", __FILE__, __LINE__ ) );
         }
 
         SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessor of type '" + type + "'", __FILE__, __LINE__ ) );
@@ -142,6 +144,4 @@ public:
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_PhaseField_DataTypes_ArmPostProcessor_h
-
-
 

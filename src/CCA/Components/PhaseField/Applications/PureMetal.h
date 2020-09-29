@@ -115,7 +115,7 @@ static constexpr bool dbg_pure_metal_scheduling = false;
 template<VarType VAR, DimType DIM, StnType STN, bool AMR = false>
 class PureMetal
     : public Application< PureMetalProblem<VAR, STN>, AMR >
-    , public Implementation < PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, const std::string &, int>
+    , public Implementation < PureMetal<VAR, DIM, STN, AMR>, UintahParallelComponent, const ProcessorGroup *, const MaterialManagerP, int>
 {
 public:
 
@@ -218,6 +218,7 @@ protected: // MEMBERS
     /// Threshold for AMR
     double refine_threshold;
 
+    /// Module for post-processing tip info
     ArmPostProcessModule<VAR, DIM, STN, AMR> * post_process;
 
 public: // CONSTRUCTORS/DESTRUCTOR
@@ -234,7 +235,6 @@ public: // CONSTRUCTORS/DESTRUCTOR
     PureMetal (
         const ProcessorGroup * myWorld,
         const MaterialManagerP materialManager,
-        const std::string & uda,
         int verbosity = 0
     );
 
@@ -1069,7 +1069,6 @@ template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 PureMetal<VAR, DIM, STN, AMR>::PureMetal (
     const ProcessorGroup * my_world,
     MaterialManagerP const material_manager,
-    const std::string &,
     int verbosity
 ) : Application< PureMetalProblem<VAR, STN>, AMR > ( my_world, material_manager, verbosity ),
     post_process ( nullptr )

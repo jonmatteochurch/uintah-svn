@@ -58,7 +58,6 @@ struct TrustRegionSetup
     int max_nfev, max_triter;
 };
 
-
 template < int N >
 int solve_lsq_trust_region ( const Lapack::DMat & J, const double Uf[N], const double SUf[N], const double SUf2[N], const double & Delta2, double ( &d ) [N], double & alpha, const double & max_triter, const double & trtol2 )
 {
