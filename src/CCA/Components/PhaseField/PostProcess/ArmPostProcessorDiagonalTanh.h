@@ -862,26 +862,24 @@ public:
         }
 
         tip_position = tanh2.zero ( 0. );
-        tip_curvatures[0] = std::abs ( ( tanh2.dxx0() + 3. * tanh2.dyy0() ) / ( 2. * M_SQRT2 * tanh2.dx0 ( tip_position ) ) );
+        tip_curvatures[0] = m_dn * std::abs ( ( tanh2.dxx0() + 3. * tanh2.dyy0() ) / ( 2. * M_SQRT2 * tanh2.dx0 ( tip_position ) ) );
 
         DOUT ( DBG_PRINT, "plot3(" << tip_position << ",0,0,'o','LineWidth',2,'MarkerEdgeColor','k','MarkerFaceColor','y','MarkerSize',10)" );
 
         delete[] tip_n;
         delete[] tip_t;
 
-        // 3. Evaluate parabolic curvatue using full 0-level
+        // 3. Evaluate parabolic curvature using full 0-level
 
         int skip = 0;
         while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 )
         {
             ++skip;
         }
-        std::cout << "skip: " << skip << std::endl;
-        std::cout << "data size: " << m_data_size << std::endl;
 
         Lapack::Poly parabola ( 1 );
-        parabola.fit ( m_data_size + m_nt - skip, arm_t2 + skip, arm_n + skip );
-        tip_curvatures[1] = 2.* parabola.cfx ( 1 );
+        parabola.fit ( m_data_size - skip, arm_t2 + skip, arm_n + skip );
+        tip_curvatures[1] = 2.* std::abs ( parabola.cfx ( 1 ) );
 
         DOUT ( DBG_PRINT, "n=y;" );
         DOUT ( DBG_PRINT, "t1=sqrt(x);" );
@@ -891,22 +889,13 @@ public:
         DOUT ( DBG_PRINT, "plot3(n,t2,0*n,'k.');" )
         DOUT ( DBG_PRINT, "plot3(polyval(p,tt.^2),tt,0*tt,'r-');\n" );
 
-        // 4. Evaluate parabolic curvatue excluding tip neighbour
+        // 4. Evaluate parabolic curvature excluding tip neighbor
 
-        int arm_size = m_data_size - 1;
-        for ( ; arm_size > 0; --arm_size )
-        {
-            const double & tt0 = arm_t2[arm_size ];
-            const double & tt1 = arm_t2[arm_size - 1];
-            const double & tt2 = arm_t2[arm_size - 2];
-            double dn01 = arm_n[arm_size] - arm_n[arm_size - 1];
-            double dn12 = arm_n[arm_size - 1] - arm_n[arm_size - 2];
-            double dn = 0.5 * ( arm_n[arm_size] - arm_n[arm_size - 2] );
-            if ( dn01 * ( tt1 - tt0 ) - dn01 * ( tt2 - tt1 ) < m_alpha * dn01 * dn12 * dn )
-            {
+        int arm_size = m_data_size - 2;
+        skip = std::max ( skip, 1 );
+        for ( ; arm_size >= skip; --arm_size )
+            if ( arm_t2[arm_size - 1] - 2 * arm_t2[arm_size] + arm_t2[arm_size + 1] < m_alpha * m_dn )
                 break;
-            }
-        }
 
         if ( arm_size - skip < 2 )
         {
@@ -915,7 +904,7 @@ public:
         else
         {
             parabola.fit ( arm_size - skip, arm_t2 + skip, arm_n + skip );
-            tip_curvatures[1] = 2.* parabola.cfx ( 1 );
+            tip_curvatures[2] = 2.* std::abs ( parabola.cfx ( 1 ) );
 
             DOUT ( DBG_PRINT, "n=y;" );
             DOUT ( DBG_PRINT, "t1=sqrt(x);" );

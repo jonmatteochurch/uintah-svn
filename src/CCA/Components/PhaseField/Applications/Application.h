@@ -733,8 +733,7 @@ protected: // TASKS
         const MaterialSubset * _DOXYARG ( matls ),
         DataWarehouse * _DOXYARG ( dw_old ),
         DataWarehouse * _DOXYARG ( dw_new )
-    )
-    {}
+    ) {}
 
 }; // class Application
 

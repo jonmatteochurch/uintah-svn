@@ -890,7 +890,7 @@ protected: // TASKS
      * @brief empty task
      *
      * Empty task used in schedulings to force mpi communication of
-     * psi values accross neighbour patches
+     * psi values accross neighbor patches
      */
     void
     task_empty (
@@ -899,8 +899,7 @@ protected: // TASKS
         const MaterialSubset *,
         DataWarehouse *,
         DataWarehouse *
-    )
-    {}
+    ) {}
 
 protected: // IMPLEMENTATIONS
 
@@ -1219,8 +1218,7 @@ typename std::enable_if < MG, void >::type
 PureMetal<VAR, DIM, STN, AMR>::scheduleInitialize_grad_psi (
     const LevelP & /*level*/,
     SchedulerP & /*sched*/
-)
-{}
+) {}
 
 /**
  * @remark we need to schedule all levels before task_error_estimate_grad_psi to
@@ -1454,8 +1452,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefineInterface (
     SchedulerP & /*sched*/,
     bool /*need_old_coarse*/,
     bool /*need_new_coarse*/
-)
-{};
+) {}
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void

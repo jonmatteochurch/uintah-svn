@@ -821,12 +821,10 @@ public:
         {
             ++skip;
         }
-        std::cout << "skip: " << skip << std::endl;
-        std::cout << "data size: " << m_data_size << std::endl;
 
         Lapack::Poly parabola ( 1 );
-        parabola.fit ( m_data_size + m_n2 - skip, arm_t2 + skip, arm_n + skip );
-        tip_curvatures[1] = 2.* parabola.cfx ( 1 );
+        parabola.fit ( m_data_size - skip, arm_t2 + skip, arm_n + skip );
+        tip_curvatures[1] = 2.* std::abs ( parabola.cfx ( 1 ) );
 
         DOUT ( DBG_PRINT, "n=y;" );
         DOUT ( DBG_PRINT, "t1=sqrt(x);" );
@@ -838,20 +836,11 @@ public:
 
         // 8. Evaluate parabolic curvature excluding tip neighbor
 
-        int arm_size = m_data_size - 1;
-        for ( ; arm_size > 0; --arm_size )
-        {
-            const double & tt0 = arm_t2[arm_size ];
-            const double & tt1 = arm_t2[arm_size - 1];
-            const double & tt2 = arm_t2[arm_size - 2];
-            double dn01 = arm_n[arm_size] - arm_n[arm_size - 1];
-            double dn12 = arm_n[arm_size - 1] - arm_n[arm_size - 2];
-            double dn = 0.5 * ( arm_n[arm_size] - arm_n[arm_size - 2] );
-            if ( dn01 * ( tt1 - tt0 ) - dn01 * ( tt2 - tt1 ) < m_alpha * dn01 * dn12 * dn )
-            {
+        int arm_size = m_data_size - 2;
+        skip = std::max ( skip, 1 );
+        for ( ; arm_size >= skip; --arm_size )
+            if ( arm_t2[arm_size - 1] - 2 * arm_t2[arm_size] + arm_t2[arm_size + 1] < m_alpha * m_dn )
                 break;
-            }
-        }
 
         if ( arm_size - skip < 2 )
         {
@@ -860,7 +849,7 @@ public:
         else
         {
             parabola.fit ( arm_size - skip, arm_t2 + skip, arm_n + skip );
-            tip_curvatures[2] = 2.* parabola.cfx ( 1 );
+            tip_curvatures[2] = 2.* std::abs ( parabola.cfx ( 1 ) );
 
             DOUT ( DBG_PRINT, "n=y;" );
             DOUT ( DBG_PRINT, "t1=sqrt(x);" );
