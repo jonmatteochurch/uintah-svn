@@ -1,7 +1,7 @@
 #$ -cwd -V
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -pe ib 16
-#$ -l h_rt=00:40:00
+#$ -l h_rt=04:30:00
 #$ -l h_vmem=2G
 
 if [ -z "$UPATH" ]; then
@@ -12,4 +12,4 @@ SUS=$UPATH/arc/build/StandAlone/sus
 INP=$UPATH/src/StandAlone/inputs/PhaseField/pure_metal/karma98
 
 FN=karma_07_cc_diagonal_poly
-mpirun $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+mpirun $SUS $INP/$FN.ups

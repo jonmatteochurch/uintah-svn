@@ -1,8 +1,8 @@
 #$ -cwd -V
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -pe ib 36
-#$ -l h_rt=00:40:00
-#$ -l h_vmem=2G
+#$ -l h_rt=10:00:00
+#$ -l h_vmem=3G
 
 if [ -z "$UPATH" ]; then
     UPATH=$HOME/uintah/trunk
@@ -12,4 +12,4 @@ SUS=$UPATH/arc/build/StandAlone/sus
 INP=$UPATH/src/StandAlone/inputs/PhaseField/pure_metal/karma98
 
 FN=karma_08_cc_diagonal_poly
-mpirun $SUS $INP/$FN.ups > $FN.log 2> $FN.err
+mpirun $SUS $INP/$FN.ups
