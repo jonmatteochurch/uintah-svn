@@ -479,7 +479,7 @@ inline const Point &Vector::point() const {
 }
 
 inline Point &Vector::asPoint() const {
-    static_assert(std::is_standard_layout<Point>::value);
+    static_assert(std::is_standard_layout<Point>::value, "Vector and Point are pointer-incovertible only if both standard-layout classes");
     return (Point &)(*this);
 }
 
