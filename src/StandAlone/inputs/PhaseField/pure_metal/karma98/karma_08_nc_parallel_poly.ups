@@ -7,7 +7,7 @@
     <var>nc</var>
     <dim>2</dim>
     <verbosity>0</verbosity>
-    <delt>0.016</delt>
+    <delt>0.003</delt>
     <alpha>10.</alpha> <!--D-->
     <R0>16.</R0> <!--40 lattice units-->
     <Delta>0.3</Delta>
@@ -15,7 +15,7 @@
   </PhaseField>
   <ArmPostProcessor type="polynomial" />
   <Time>
-    <maxTime>2000.0</maxTime>
+    <maxTime>2100.0</maxTime>
     <initTime>0.</initTime>
     <delt_min>0.</delt_min>
     <delt_max>1.</delt_max>

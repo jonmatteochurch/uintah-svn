@@ -13,12 +13,9 @@
     <Delta>0.55</Delta>
     <epsilon>0.05</epsilon>
   </PhaseField>
-  <ArmPostProcessor type="tanh">
-    <ftol>0</ftol>
-    <gtol>0</gtol>
-  </ArmPostProcessor>
+  <ArmPostProcessor type="tanh" />
   <Time>
-    <maxTime>2000.0</maxTime>
+    <maxTime>2100.0</maxTime>
     <initTime>0.</initTime>
     <delt_min>0.</delt_min>
     <delt_max>1.</delt_max>

@@ -7,16 +7,13 @@
     <var>cc</var>
     <dim>2</dim>
     <verbosity>0</verbosity>
-    <delt>0.016</delt>
+    <delt>0.012</delt>
     <alpha>3.</alpha> <!--D-->
     <R0>16.</R0> <!--40 lattice units-->
     <Delta>0.50</Delta>
     <epsilon>-0.05</epsilon>
   </PhaseField>
-  <ArmPostProcessor type="tanh">
-    <ftol>0</ftol>
-    <gtol>0</gtol>
-  </ArmPostProcessor>
+  <ArmPostProcessor type="tanh" />
   <Time>
     <maxTime>2000.0</maxTime>
     <initTime>0.</initTime>
