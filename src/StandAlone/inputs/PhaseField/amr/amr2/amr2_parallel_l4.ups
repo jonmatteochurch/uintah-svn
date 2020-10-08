@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<Uintah_specification>
+  <Meta>
+    <title>amr_parallel_l4</title>
+  </Meta>
+  <SimulationComponent type="phasefield"/>
+  <PhaseField type="pure_metal">
+    <var>cc</var>
+    <dim>2</dim>
+    <verbosity>0</verbosity>
+    <delt>0.016</delt>
+    <alpha>1.</alpha>
+    <!--D-->
+    <R0>16.</R0>
+    <!--40 lattice units-->
+    <Delta>0.65</Delta>
+    <epsilon>0.05</epsilon>
+    <refine_threshold>0.005</refine_threshold>
+  </PhaseField>
+  <ArmPostProcessor type="polynomial"/>
+  <Time>
+    <maxTime>2100.0</maxTime>
+    <initTime>0.</initTime>
+    <delt_min>0.</delt_min>
+    <delt_max>1.</delt_max>
+    <timestep_multiplier>1.</timestep_multiplier>
+  </Time>
+  <Grid>
+    <Level>
+      <Box label="1">
+        <lower>[0., 0., 0.]</lower>
+        <upper>[243.2,243.2, 1.]</upper>
+        <patches>[4,4,1]</patches>
+      </Box>
+      <spacing>[3.200000,3.200000,1.]</spacing>
+    </Level>
+    <BoundaryConditions>
+      <Face side="x-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="y-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="x+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>-0.65</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Dirichlet">
+          <value>-1.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Dirichlet">
+          <value>1.1025</value>
+        </BCType>
+      </Face>
+      <Face side="y+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>-0.65</value>
+        </BCType>
+        <BCType id="0" label="psi" var="Dirichlet">
+          <value>-1.</value>
+        </BCType>
+        <BCType id="0" label="Bxy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="A2" var="Dirichlet">
+          <value>1.1025</value>
+        </BCType>
+      </Face>
+    </BoundaryConditions>
+  </Grid>
+  <AMR>
+    <Regridder type="Tiled">
+      <adaptive>true</adaptive>
+      <max_levels>4</max_levels>
+      <cell_refinement_ratio>[[2,2,1]]</cell_refinement_ratio>
+      <cell_stability_dilation>[1,1,0]</cell_stability_dilation>
+      <cell_regrid_dilation>[0,0,0]</cell_regrid_dilation>
+      <min_boundary_cells>[1,1,0]</min_boundary_cells>
+      <min_patch_size>[[4,4,1]]</min_patch_size>
+    </Regridder>
+    <FineCoarseInterfaces>
+      <FCIType id="0" label="psi" var="FC1"/>
+      <FCIType id="1" label="u" var="FC1"/>
+      <FCIType id="2" label="A2" var="FC1"/>
+      <FCIType id="3" label="Bxy" var="FC1"/>
+    </FineCoarseInterfaces>
+  </AMR>
+  <DataArchiver>
+    <filebase>amr2_parallel_l4.uda</filebase>
+    <outputInitTimestep/>
+    <outputTimestepInterval>250</outputTimestepInterval>
+    <checkpoint cycle="2" interval="100"/>
+    <save label="psi"/>
+    <save label="u"/>
+    <save label="refineFlag"/>
+    <save label="tip_position"/>
+    <save label="tip_velocity"/>
+    <save label="tip_curvatures"/>
+  </DataArchiver>
+</Uintah_specification>

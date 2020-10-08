@@ -113,7 +113,7 @@
   <DataArchiver>
     <filebase>amr_parallel_l1.uda</filebase>
     <outputInitTimestep/>
-    <outputTimestepInterval>1</outputTimestepInterval>
+    <outputTimestepInterval>250</outputTimestepInterval>
     <checkpoint cycle="2" interval="100"/>
     <save label="psi"/>
     <save label="u"/>
