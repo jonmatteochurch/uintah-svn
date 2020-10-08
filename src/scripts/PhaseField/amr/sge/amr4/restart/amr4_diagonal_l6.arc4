@@ -1,0 +1,15 @@
+#$ -cwd -V
+#$ -m be -M scjmc@leeds.ac.uk
+#$ -pe ib 9
+#$ -l h_rt=10:00:00
+#$ -l h_vmem=3G
+
+if [ -z "$UPATH" ]; then
+    UPATH=$HOME/uintah/trunk
+fi
+
+SUS=$UPATH/arc/build/StandAlone/sus
+INP=$UPATH/src/StandAlone/inputs/PhaseField/amr/amr4
+
+FN=amr4_diagonal_l6
+mpirun $SUS -restart $(readlink $FN.restart)
