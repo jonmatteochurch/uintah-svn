@@ -69,13 +69,13 @@ public:
             int npts0 = 6;
             spec->getWithDefault ( "npts0", npts0, npts0 );
 
-            int npts1 = 5;
+            int npts1 = 2;
             spec->getWithDefault ( "npts1", npts1, npts1 );
 
             int npts2 = npts1;
             spec->getWithDefault ( "npts2", npts2, npts2 );
 
-            int npts3 = npts0;
+            int npts3 = 5;
             spec->getWithDefault ( "npts3", npts3, npts3 );
 
             int deg0 = npts0 - 1;
@@ -99,7 +99,7 @@ public:
             if ( deg3 >= npts3 )
                 SCI_THROW ( ProblemSetupException ( "Cannot use polynomial interpolation with deg3 >= npts3.", __FILE__, __LINE__ ) );
 
-            double alpha = 1.;
+            double alpha = 0.125;
             spec->getWithDefault ( "alpha", alpha, alpha );
 
             if ( epsilon < 0 )
@@ -111,8 +111,8 @@ public:
         if ( type == "tanh" )
         {
             int npts0 = 6;
-            int npts1 = 4;
-            int npts3 = 6;
+            int npts1 = 2;
+            int npts3 = 5;
             spec->getWithDefault ( "npts0", npts0, npts0 );
             spec->getWithDefault ( "npts1", npts1, npts1 );
             spec->getWithDefault ( "npts3", npts3, npts3 );
@@ -126,7 +126,7 @@ public:
             spec->getWithDefault ( "max_nfev", max_nfev, max_nfev );
             spec->getWithDefault ( "max_triter", max_triter, max_triter );
 
-            double alpha = 1.;
+            double alpha = 0.125;
             spec->getWithDefault ( "alpha", alpha, alpha );
 
             if ( epsilon < 0 )
