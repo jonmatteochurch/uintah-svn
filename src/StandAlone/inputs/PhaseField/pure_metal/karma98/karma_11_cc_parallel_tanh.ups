@@ -93,7 +93,7 @@
     <filebase>karma_11_cc_parallel_tanh.uda</filebase>
     <outputInitTimestep />
     <outputTimestepInterval>250</outputTimestepInterval>
-    <checkpoint cycle="2" timestepInterval="100"/>
+    <checkpoint cycle="2" walltimeIntervalHorus="1"/>
     <save label="psi"/>
     <save label="u"/>
     <save label="tip_position"/>
