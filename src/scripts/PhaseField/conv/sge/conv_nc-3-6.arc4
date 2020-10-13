@@ -1,0 +1,14 @@
+#$ -cwd -V
+#$ -m be -M scjmc@leeds.ac.uk
+#$ -pe ib 16
+#$ -l h_rt=02:00:00
+
+if [ -z "$UPATH" ]; then
+    UPATH=$HOME/uintah/trunk
+fi
+
+SUS=$UPATH/arc/build/StandAlone/sus
+INP=$UPATH/src/StandAlone/inputs/PhaseField/heat/conv
+
+FN=conv_nc-3-6
+mpirun $SUS $INP/$FN.ups

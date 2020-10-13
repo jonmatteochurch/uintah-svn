@@ -46,7 +46,7 @@
 #include <functional>
 #include <CCA/Components/PhaseField/Views/View.h>
 
-#define ONLY_EVEN 0
+#define ONLY_EVEN 1
 #define DBG_PRINT 0
 
 #include<sstream>
