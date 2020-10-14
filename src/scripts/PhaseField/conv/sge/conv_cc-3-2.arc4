@@ -2,6 +2,7 @@
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -pe ib 16
 #$ -l h_rt=02:00:00
+#$ -l h_vmem=3G
 
 if [ -z "$UPATH" ]; then
     UPATH=$HOME/uintah/trunk

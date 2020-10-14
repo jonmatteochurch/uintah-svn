@@ -1,7 +1,7 @@
 #$ -cwd -V
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -pe ib 4
-#$ -l h_rt=00:40:00
+#$ -l h_rt=02:30:00
 #$ -l h_vmem=2G
 
 if [ -z "$UPATH" ]; then
