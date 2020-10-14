@@ -25,7 +25,7 @@
       <Box label="1">
         <lower>[  0.,  0.,  0.]</lower>
         <upper>[ 16., 16.,  1.]</upper>
-        <patches>[2,2,1]</patches>
+        <patches>[8,8,1]</patches>
       </Box>
       <spacing>[.125,.125,1]</spacing>
     </Level>
@@ -103,6 +103,7 @@
   <!--__________________________________-->
   <DataArchiver>
     <filebase>conv_cc_4_2.uda</filebase>
+    <outputInterval>1</outputInterval>
     <outputInitTimestep />
     <checkpoint cycle="2" walltimeStartHours="1" walltimeIntervalHours="1"/>
     <save label="epsilon_ux"/>

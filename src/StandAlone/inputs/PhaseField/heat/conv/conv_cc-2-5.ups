@@ -103,6 +103,7 @@
   <!--__________________________________-->
   <DataArchiver>
     <filebase>conv_cc_2_5.uda</filebase>
+    <outputInterval>1</outputInterval>
     <outputInitTimestep />
     <checkpoint cycle="2" walltimeStartHours="1" walltimeIntervalHours="1"/>
     <save label="epsilon_ux"/>
