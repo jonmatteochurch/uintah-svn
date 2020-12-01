@@ -753,10 +753,8 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 )
-        {
+        if ( !m_data_size || myworld->nRanks() <= 1 )
             return;
-        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalPoly::reduceMPI " );
 
@@ -838,6 +836,9 @@ public:
         double tip_curvatures[3]
     ) override
     {
+        if ( !m_data_size )
+            return;
+
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::computeTipInfo " );
 
         // Containers for 0-level

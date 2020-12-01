@@ -289,8 +289,8 @@ ArmPostProcessModule<VAR, DIM, STN, AMR>::task_do_analysis_tip (
     int myrank = myworld->myRank();
     DOUT ( d_app->m_dbg_lvl1,  myrank << "==== ArmPostProcessModule::task_do_analysis_tip ====" );
 
-    const Level * level = dw_new->getGrid()->getLevel( dw_new->getGrid()->numLevels() - 1 ).get_rep();
-    ASSERT ( patches->empty() || level == getLevel( patches ) );
+    const Level * level = dw_new->getGrid()->getLevel ( dw_new->getGrid()->numLevels() - 1 ).get_rep();
+    ASSERT ( patches->empty() || level == getLevel ( patches ) );
     arm_postproc->setLevel ( level );
 
     arm_postproc->initializeLocations();
@@ -317,9 +317,12 @@ ArmPostProcessModule<VAR, DIM, STN, AMR>::task_do_analysis_tip (
 
             arm_postproc->setLocations ( patch, low, high, faces, psi );
 
-            std::stringstream ss;
-            arm_postproc->printLocations ( ss << myrank << ": " );
-            DOUTR ( dbg_arm_tip, ss.str().c_str() );
+            if ( dbg_arm_tip )
+            {
+                std::stringstream ss;
+                arm_postproc->printLocations ( ss << myrank << ": " );
+                DOUTR ( dbg_arm_tip, ss.str().c_str() );
+            }
 
             iter = list.emplace_after ( iter, low, high, psi, refine_flag );
         }

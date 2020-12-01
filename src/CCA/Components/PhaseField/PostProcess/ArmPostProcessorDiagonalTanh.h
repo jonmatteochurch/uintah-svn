@@ -713,10 +713,8 @@ public:
         const ProcessorGroup * myworld
     ) override
     {
-        if ( myworld->nRanks() <= 1 )
-        {
+        if ( !m_data_size || myworld->nRanks() <= 1 )
             return;
-        }
 
         DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalTanh::reduceMPI " );
 
@@ -798,6 +796,9 @@ public:
         double tip_curvatures[3]
     ) override
     {
+        if ( !m_data_size )
+            return;
+
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalTanh::computeTipInfo " );
 
         // Containers for 0-level
@@ -878,16 +879,23 @@ public:
         }
 
         Lapack::Poly parabola ( 1 );
-        parabola.fit ( m_data_size - skip, arm_t2 + skip, arm_n + skip );
-        tip_curvatures[1] = 2.* std::abs ( parabola.cfx ( 1 ) );
+        if ( m_data_size - skip < 2 )
+        {
+            tip_curvatures[1] = NAN;
+        }
+        else
+        {
+            parabola.fit ( m_data_size - skip, arm_t2 + skip, arm_n + skip );
+            tip_curvatures[1] = 2.* std::abs ( parabola.cfx ( 1 ) );
 
-        DOUT ( DBG_PRINT, "n=y;" );
-        DOUT ( DBG_PRINT, "t1=sqrt(x);" );
-        DOUT ( DBG_PRINT, "t2=-t1;" );
-        DOUT ( DBG_PRINT, "tt=linspace(t2(1),t1(1));" );
-        DOUT ( DBG_PRINT, "plot3(n,t1,0*n,'k.');" );
-        DOUT ( DBG_PRINT, "plot3(n,t2,0*n,'k.');" )
-        DOUT ( DBG_PRINT, "plot3(polyval(p,tt.^2),tt,0*tt,'r-');\n" );
+            DOUT ( DBG_PRINT, "n=y;" );
+            DOUT ( DBG_PRINT, "t1=sqrt(x);" );
+            DOUT ( DBG_PRINT, "t2=-t1;" );
+            DOUT ( DBG_PRINT, "tt=linspace(t2(1),t1(1));" );
+            DOUT ( DBG_PRINT, "plot3(n,t1,0*n,'k.');" );
+            DOUT ( DBG_PRINT, "plot3(n,t2,0*n,'k.');" )
+            DOUT ( DBG_PRINT, "plot3(polyval(p,tt.^2),tt,0*tt,'r-');\n" );
+        }
 
         // 4. Evaluate parabolic curvature excluding tip neighbor
 
