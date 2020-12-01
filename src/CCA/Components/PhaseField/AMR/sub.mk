@@ -35,13 +35,10 @@ SRCS += \
   $(SRCDIR)/AMRFDViewScalarProblemCCP5FCSimple-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemCCP5FCLinear-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemCCP5FCBilinear-bld.cc \
-  $(SRCDIR)/AMRFDViewScalarProblemCCP7FC0-bld.cc \
-  $(SRCDIR)/AMRFDViewScalarProblemCCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemNCP5FC0-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemNCP5FC1-bld.cc \
-  $(SRCDIR)/AMRFDViewScalarProblemNCP5FCSimple-bld.cc \
-  $(SRCDIR)/AMRFDViewScalarProblemNCP5FCLinear-bld.cc \
-  $(SRCDIR)/AMRFDViewScalarProblemNCP5FCBilinear-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP7FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewScalarProblemCCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
   $(SRCDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FC0-bld.cc \
@@ -49,17 +46,14 @@ SRCS += \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FCSimple-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FCLinear-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP5FCBilinear-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FC1-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC0-0-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC0-1-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC0-2-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC1-0-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC1-1-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemCCP7FC1-2-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FC0-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FC1-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FCSimple-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FCLinear-bld.cc \
-  $(SRCDIR)/AMRFDViewHeatTestProblemNCP5FCBilinear-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemNCP7FC0-0-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemNCP7FC0-1-bld.cc \
   $(SRCDIR)/AMRFDViewHeatTestProblemNCP7FC0-2-bld.cc \
@@ -70,14 +64,11 @@ SRCS += \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FCLinear-bld.cc \
-  $(SRCDIR)/AMRFDViewPureMetalProblemCCP7FC0-bld.cc \
-  $(SRCDIR)/AMRFDViewPureMetalProblemCCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemCCP5FCBilinear-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemNCP5FC0-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemNCP5FC1-bld.cc \
-  $(SRCDIR)/AMRFDViewPureMetalProblemNCP5FCSimple-bld.cc \
-  $(SRCDIR)/AMRFDViewPureMetalProblemNCP5FCLinear-bld.cc \
-  $(SRCDIR)/AMRFDViewPureMetalProblemNCP5FCBilinear-bld.cc \
+  $(SRCDIR)/AMRFDViewPureMetalProblemCCP7FC0-bld.cc \
+  $(SRCDIR)/AMRFDViewPureMetalProblemCCP7FC1-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemNCP7FC0-bld.cc \
   $(SRCDIR)/AMRFDViewPureMetalProblemNCP7FC1-bld.cc \
 
@@ -89,13 +80,10 @@ BLDSRCS += \
   $(BLDDIR)/AMRFDViewScalarProblemCCP5FCSimple-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemCCP5FCLinear-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemCCP5FCBilinear-bld.cc \
-  $(BLDDIR)/AMRFDViewScalarProblemCCP7FC0-bld.cc \
-  $(BLDDIR)/AMRFDViewScalarProblemCCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemNCP5FC0-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemNCP5FC1-bld.cc \
-  $(BLDDIR)/AMRFDViewScalarProblemNCP5FCSimple-bld.cc \
-  $(BLDDIR)/AMRFDViewScalarProblemNCP5FCLinear-bld.cc \
-  $(BLDDIR)/AMRFDViewScalarProblemNCP5FCBilinear-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP7FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewScalarProblemCCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemNCP7FC0-bld.cc \
   $(BLDDIR)/AMRFDViewScalarProblemNCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FC0-bld.cc \
@@ -103,17 +91,14 @@ BLDSRCS += \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FCSimple-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FCLinear-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP5FCBilinear-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FC1-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC0-0-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC0-1-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC0-2-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC1-0-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC1-1-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemCCP7FC1-2-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FC0-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FC1-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FCSimple-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FCLinear-bld.cc \
-  $(BLDDIR)/AMRFDViewHeatTestProblemNCP5FCBilinear-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemNCP7FC0-0-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemNCP7FC0-1-bld.cc \
   $(BLDDIR)/AMRFDViewHeatTestProblemNCP7FC0-2-bld.cc \
@@ -124,14 +109,11 @@ BLDSRCS += \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FCSimple-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FCLinear-bld.cc \
-  $(BLDDIR)/AMRFDViewPureMetalProblemCCP7FC0-bld.cc \
-  $(BLDDIR)/AMRFDViewPureMetalProblemCCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemCCP5FCBilinear-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemNCP5FC0-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemNCP5FC1-bld.cc \
-  $(BLDDIR)/AMRFDViewPureMetalProblemNCP5FCSimple-bld.cc \
-  $(BLDDIR)/AMRFDViewPureMetalProblemNCP5FCLinear-bld.cc \
-  $(BLDDIR)/AMRFDViewPureMetalProblemNCP5FCBilinear-bld.cc \
+  $(BLDDIR)/AMRFDViewPureMetalProblemCCP7FC0-bld.cc \
+  $(BLDDIR)/AMRFDViewPureMetalProblemCCP7FC1-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemNCP7FC0-bld.cc \
   $(BLDDIR)/AMRFDViewPureMetalProblemNCP7FC1-bld.cc \
 

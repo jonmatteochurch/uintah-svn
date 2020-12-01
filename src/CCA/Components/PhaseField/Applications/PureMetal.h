@@ -1048,7 +1048,6 @@ protected: // IMPLEMENTATIONS
      * @param[out] grad_psi_norm2 view of the norm of the phase gradient field
      * in the new dw
      * @param[out] refine_flag view of refine flag (grid field) in the new dw
-     * @param[out] refine_patch flag for patch refinement
      */
     void
     error_estimate_grad_psi (
@@ -1056,8 +1055,7 @@ protected: // IMPLEMENTATIONS
         FDView < ScalarField<const double>, STN > & psi,
         View < VectorField<double, DIM> > & grad_psi,
         View < ScalarField<double> > & grad_psi_norm2,
-        View< ScalarField<int> > & refine_flag,
-        bool & refine_patch
+        View< ScalarField<int> > & refine_flag
     );
 
 }; // class PureMetal
@@ -1506,7 +1504,6 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleErrorEstimate_grad_psi (
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::NewDW, psi_label, FGT, FGN );
     task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
-    task->modifies ( this->m_regridder->getRefinePatchFlagLabel(), this->m_regridder->refineFlagMaterials() );
     task->computes ( grad_psi_norm2_label );
     for ( size_t d = 0; d < DIM; ++d )
         task->computes ( grad_psi_label[d] );
@@ -1530,7 +1527,6 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleErrorEstimate_grad_psi (
         task->requires ( Task::NewDW, psi_label, FGT, FGN );
         task->requires ( Task::NewDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
-        task->modifies ( this->m_regridder->getRefinePatchFlagLabel(), this->m_regridder->refineFlagMaterials() );
         task->computes ( grad_psi_norm2_label );
         for ( size_t d = 0; d < DIM; ++d )
             task->computes ( grad_psi_label[d] );
@@ -1886,30 +1882,18 @@ PureMetal<VAR, DIM, STN, AMR>::task_error_estimate_grad_psi
         const Patch * patch = patches->get ( p );
         DOUT ( this->m_dbg_lvl2,  myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );;
 
-        DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
-        refine_flag.initialize ( 0 );
-
-        PerPatch<PatchFlagP> refine_patch_flag;
-        dw_new->get ( refine_patch_flag, this->m_regridder->getRefinePatchFlagLabel(), material, patch );
-        PatchFlag * patch_flag_refine = refine_patch_flag.get().get_rep();
-
         DWView < ScalarField<double>, VAR, DIM > grad_psi_norm2 ( dw_new, grad_psi_norm2_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > grad_psi ( dw_new, grad_psi_label, material, patch );
 
-        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
-        bool refine_patch = false;
+        DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
+        refine_flag.initialize ( 0 );
 
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
         for ( const auto & p : subproblems )
         {
             DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over " << p );;
             FDView < ScalarField<const double>, STN > & psi = p.template get_fd_view<PSI> ( dw_new );
-            parallel_reduce_sum ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, &refine_flag, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2, refine_flag, refine_patch ); }, refine_patch );
-        }
-
-        if ( refine_patch )
-        {
-            DOUT ( this->m_dbg_lvl3,  myrank << "= Setting refine flag" );;
-            patch_flag_refine->set();
+            parallel_for ( p.get_range(), [&psi, &grad_psi, &grad_psi_norm2, &refine_flag, this] ( int i, int j, int k )->void { error_estimate_grad_psi ( {i, j, k}, psi, grad_psi, grad_psi_norm2, refine_flag ); } );
         }
     }
 
@@ -2083,8 +2067,7 @@ PureMetal<VAR, DIM, STN, AMR>::error_estimate_grad_psi (
     FDView < ScalarField<const double>, STN > & psi,
     View < VectorField<double, DIM> > & grad_psi,
     View < ScalarField<double> > & grad_psi_norm2,
-    View< ScalarField<int> > & refine_flag,
-    bool & refine_patch
+    View< ScalarField<int> > & refine_flag
 )
 {
     bool refine = false;
@@ -2101,17 +2084,12 @@ PureMetal<VAR, DIM, STN, AMR>::error_estimate_grad_psi (
     if ( VAR == CC ) // static if
     {
         if ( refine )
-        {
-            refine_patch = true;
             refine_flag[id] = 1;
-        }
     }
     else
     {
         if ( refine )
         {
-            refine_patch = true;
-
             // loop over all cells sharing node id
             IntVector id0 = id - get_dim<DIM>::unit_vector();
             IntVector i;

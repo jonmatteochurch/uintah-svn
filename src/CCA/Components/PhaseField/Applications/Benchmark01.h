@@ -1209,16 +1209,13 @@ protected: // IMPLEMENTATIONS
      * @param id grid index
      * @param u view of the solution the old dw
      * @param[out] refine_flag view of refine flag (grid field) in the new dw
-     * @param[out] refine_patch flag for patch refinement
      */
     template < VarType V >
     typename std::enable_if < V == CC, void >::type
     error_estimate_solution (
         const IntVector id,
         FDView < ScalarField<const double>, STN > & u,
-        View < ScalarField<int> > & refine_flag,
-        bool & refine_patch// SCHEDULINGS
-
+        View < ScalarField<int> > & refine_flag
     );
 
     /**
@@ -1231,15 +1228,13 @@ protected: // IMPLEMENTATIONS
      * @param id grid index
      * @param u view of the solution in the old dw
      * @param[out] refine_flag view of refine flag (grid field) in the new dw
-     * @param[out] refine_patch flag for patch refinement
      */
     template < VarType V >
     typename std::enable_if < V == NC, void >::type
     error_estimate_solution (
         const IntVector id,
         FDView < ScalarField<const double>, STN > & u,
-        View < ScalarField<int> > & refine_flag,
-        bool & refine_patch
+        View < ScalarField<int> > & refine_flag
     );
 
 }; // class Benchmark01
@@ -1827,7 +1822,6 @@ Benchmark01<VAR, STN, AMR>::scheduleErrorEstimate_solution (
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
     task->requires ( Task::NewDW, u_label, FGT, FGN );
     task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
-    task->modifies ( this->m_regridder->getRefinePatchFlagLabel(), this->m_regridder->refineFlagMaterials() );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
@@ -1848,7 +1842,6 @@ Benchmark01<VAR, STN, AMR>::scheduleErrorEstimate_solution (
         task->requires ( Task::NewDW, u_label, FGT, FGN );
         task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
-        task->modifies ( this->m_regridder->getRefinePatchFlagLabel(), this->m_regridder->refineFlagMaterials() );
         sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
     }
 }
@@ -2350,27 +2343,15 @@ Benchmark01<VAR, STN, AMR>::task_error_estimate_solution
         const Patch * patch = patches->get ( p );
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
-        Variable<PP, PatchFlag> refine_patch_flag;
-        dw_new->get ( refine_patch_flag, this->m_regridder->getRefinePatchFlagLabel(), material, patch );
-
-        PatchFlag * patch_flag_refine = refine_patch_flag.get().get_rep();
-
-        bool refine_patch = false;
-
         DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
-        SubProblems< ScalarProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        refine_flag.initialize ( 0 );
 
+        SubProblems< ScalarProblem<VAR, STN> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
         for ( const auto & p : subproblems )
         {
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
             FDView < ScalarField<const double>, STN > & u = p.template get_fd_view<U> ( dw_new );
-            parallel_reduce_sum ( p.get_range(), [&u, &refine_flag, &refine_patch, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_solution<VAR> ( {i, j, k}, u, refine_flag, refine_patch ); }, refine_patch );
-        }
-
-        if ( refine_patch )
-        {
-            DOUT ( this->m_dbg_lvl3, myrank << "= Setting refine flag" );
-            patch_flag_refine->set();
+            parallel_for ( p.get_range(), [&u, &refine_flag, this] ( int i, int j, int k )->void { error_estimate_solution<VAR> ( {i, j, k}, u, refine_flag ); } );
         }
     }
 
@@ -2551,8 +2532,7 @@ Benchmark01<VAR, STN, AMR>::error_estimate_solution
 (
     const IntVector id,
     FDView < ScalarField<const double>, STN > & u,
-    View < ScalarField<int> > & refine_flag,
-    bool & refine_patch
+    View < ScalarField<int> > & refine_flag
 )
 {
     bool refine = false;
@@ -2562,7 +2542,6 @@ Benchmark01<VAR, STN, AMR>::error_estimate_solution
         err2 += grad[d] * grad[d];
     refine = err2 > refine_threshold * refine_threshold;
     refine_flag[id] = refine;
-    refine_patch |= refine;
 }
 
 template<VarType VAR, StnType STN, bool AMR>
@@ -2572,8 +2551,7 @@ Benchmark01<VAR, STN, AMR>::error_estimate_solution
 (
     const IntVector id,
     FDView < ScalarField<const double>, STN > & u,
-    View < ScalarField<int> > & refine_flag,
-    bool & refine_patch
+    View < ScalarField<int> > & refine_flag
 )
 {
     auto grad = u.gradient ( id );
@@ -2582,8 +2560,6 @@ Benchmark01<VAR, STN, AMR>::error_estimate_solution
         err2 += grad[d] * grad[d];
     if ( err2 > refine_threshold * refine_threshold )
     {
-        refine_patch = true;
-
         // loop over all cells sharing node id
         IntVector id0 = id - get_dim<DIM>::unit_vector();
         IntVector i;

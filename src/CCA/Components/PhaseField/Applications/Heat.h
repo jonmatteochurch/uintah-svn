@@ -2154,15 +2154,13 @@ protected: // IMPLEMENTATIONS
      * @param id grid index
      * @param u view of the solution the old dw
      * @param[out] refine_flag view of refine flag (grid field) in the new dw
-     * @param[out] refine_patch flag for patch refinement
      */
     template < VarType V >
     typename std::enable_if < V == CC, void >::type
     error_estimate_solution (
         const IntVector id,
         FDView < ScalarField<const double>, STN > & u,
-        View < ScalarField<int> > & refine_flag,
-        bool & refine_patch
+        View < ScalarField<int> > & refine_flag
     );
 
     /**
@@ -2175,15 +2173,13 @@ protected: // IMPLEMENTATIONS
      * @param id grid index
      * @param u view of the solution in the old dw
      * @param[out] refine_flag view of refine flag (grid field) in the new dw
-     * @param[out] refine_patch flag for patch refinement
      */
     template < VarType V >
     typename std::enable_if < V == NC, void >::type
     error_estimate_solution (
         const IntVector id,
         FDView < ScalarField<const double>, STN > & u,
-        View < ScalarField<int> > & refine_flag,
-        bool & refine_patch
+        View < ScalarField<int> > & refine_flag
     );
 
 }; // class Heat
@@ -3262,7 +3258,6 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleErrorEstimate_solution (
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
     task->requires ( Task::NewDW, u_label, FGT, FGN );
     task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
-    task->modifies ( this->m_regridder->getRefinePatchFlagLabel(), this->m_regridder->refineFlagMaterials() );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
@@ -3285,7 +3280,6 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleErrorEstimate_solution (
         task->requires ( Task::NewDW, u_label, FGT, FGN );
         task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->modifies ( this->m_regridder->getRefineFlagLabel(), this->m_regridder->refineFlagMaterials() );
-        task->modifies ( this->m_regridder->getRefinePatchFlagLabel(), this->m_regridder->refineFlagMaterials() );
         sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
     }
 }
@@ -4380,27 +4374,15 @@ Heat<VAR, DIM, STN, AMR, TST>::task_error_estimate_solution
         const Patch * patch = patches->get ( p );
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
 
-        Variable<PP, PatchFlag> refine_patch_flag;
-        dw_new->get ( refine_patch_flag, this->m_regridder->getRefinePatchFlagLabel(), material, patch );
-
-        PatchFlag * patch_flag_refine = refine_patch_flag.get().get_rep();
-
-        bool refine_patch = false;
-
         DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
-        SubProblems< HeatProblem<VAR, STN, TST> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
+        refine_flag.initialize ( 0 );
 
+        SubProblems< HeatProblem<VAR, STN, TST> > subproblems ( dw_new, this->getSubProblemsLabel(), material, patch );
         for ( const auto & p : subproblems )
         {
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
             FDView < ScalarField<const double>, STN > & u = p.template get_fd_view<U> ( dw_new );
-            parallel_reduce_sum ( p.get_range(), [&u, &refine_flag, this] ( int i, int j, int k, bool & refine_patch )->void { error_estimate_solution<VAR> ( {i, j, k}, u, refine_flag, refine_patch ); }, refine_patch );
-        }
-
-        if ( refine_patch )
-        {
-            DOUT ( this->m_dbg_lvl3, myrank << "= Setting refine flag" );
-            patch_flag_refine->set();
+            parallel_for ( p.get_range(), [&u, &refine_flag, this] ( int i, int j, int k )->void { error_estimate_solution<VAR> ( {i, j, k}, u, refine_flag ); } );
         }
     }
 
@@ -4603,8 +4585,8 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_dbg_derivatives_error (
     {
         u_norm2_H10 += du2[i];
         error_norm2_H10 += du_err2[i];
-        error_du[i][id] = sqrt ( du_err2[i] / factor ) / area;
-        error_ddu[i][id] = sqrt ( ddu_err2[i] / factor ) / area;
+        error_du[i][id] = sqrt ( du_err2[i] / ( factor * area ) );
+        error_ddu[i][id] = sqrt ( ddu_err2[i] / ( factor * area ) );
     }
 }
 
@@ -5020,7 +5002,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
     u_norm2_L2 += u2;
     error_norm2_L2 += u_err2;
 
-    error_u[id] = sqrt ( u_err2 / factor ) / area;
+    error_u[id] = sqrt ( u_err2 / ( factor * area ) );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -5232,7 +5214,7 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_error
     u_norm2_L2 += u2;
     error_norm2_L2 += u_err2;
 
-    error_u[id] = sqrt ( u_err2 / factor ) / area;
+    error_u[id] = sqrt ( u_err2 / ( factor * area ) );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -5266,8 +5248,7 @@ Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
 (
     const IntVector id,
     FDView < ScalarField<const double>, STN > & u,
-    View < ScalarField<int> > & refine_flag,
-    bool & refine_patch
+    View < ScalarField<int> > & refine_flag
 )
 {
     bool refine = false;
@@ -5277,7 +5258,6 @@ Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
         err2 += grad[d] * grad[d];
     refine = err2 > refine_threshold * refine_threshold;
     refine_flag[id] = refine;
-    refine_patch |= refine;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -5287,8 +5267,7 @@ Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
 (
     const IntVector id,
     FDView < ScalarField<const double>, STN > & u,
-    View < ScalarField<int> > & refine_flag,
-    bool & refine_patch
+    View < ScalarField<int> > & refine_flag
 )
 {
     auto grad = u.gradient ( id );
@@ -5297,8 +5276,6 @@ Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
         err2 += grad[d] * grad[d];
     if ( err2 > refine_threshold * refine_threshold )
     {
-        refine_patch = true;
-
         // loop over all cells sharing node id
         IntVector id0 = id - get_dim<DIM>::unit_vector();
         IntVector i;
