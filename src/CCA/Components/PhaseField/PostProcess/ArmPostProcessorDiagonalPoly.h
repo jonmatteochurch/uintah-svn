@@ -713,10 +713,11 @@ public:
 
                     // set patch data
                     for ( ; n_ < m_nn && in < in1; in += 2, id += en, ++n_ )
-                    {
-                        tip_z ( t_, n_ ) = psi[id];
-                        if ( refine_flag ) ( *refine_flag ) [id] = 3;
-                    }
+                        if ( low[0] <= id[0] && id[0] < high[0] && low[1] <= id[1] && id[1] < high[1] )
+                        {
+                            tip_z ( t_, n_ ) = psi[id];
+                            if ( refine_flag ) ( *refine_flag ) [id] = 3;
+                        }
 
                     // skip non patch region
                     for ( ; n_ < m_nn && id[0] < ix1; in += 2, id += en, ++n_ );
@@ -1095,16 +1096,23 @@ public:
         }
 
         Lapack::Poly parabola ( 1 );
-        parabola.fit ( m_data_size - skip, arm_t2 + skip, arm_n + skip );
-        tip_curvatures[1] = 2.* std::abs ( parabola.cfx ( 1 ) );
+        if ( m_data_size - skip < 2 )
+        {
+            tip_curvatures[1] = NAN;
+        }
+        else
+        {
+            parabola.fit ( m_data_size - skip, arm_t2 + skip, arm_n + skip );
+            tip_curvatures[1] = 2.* std::abs ( parabola.cfx ( 1 ) );
 
-        DOUT ( DBG_PRINT, "n=y;" );
-        DOUT ( DBG_PRINT, "t1=sqrt(x);" );
-        DOUT ( DBG_PRINT, "t2=-t1;" );
-        DOUT ( DBG_PRINT, "tt=linspace(t2(1),t1(1));" );
-        DOUT ( DBG_PRINT, "plot3(n,t1,0*n,'k.');" );
-        DOUT ( DBG_PRINT, "plot3(n,t2,0*n,'k.');" )
-        DOUT ( DBG_PRINT, "plot3(polyval(p,tt.^2),tt,0*tt,'r-');\n" );
+            DOUT ( DBG_PRINT, "n=y;" );
+            DOUT ( DBG_PRINT, "t1=sqrt(x);" );
+            DOUT ( DBG_PRINT, "t2=-t1;" );
+            DOUT ( DBG_PRINT, "tt=linspace(t2(1),t1(1));" );
+            DOUT ( DBG_PRINT, "plot3(n,t1,0*n,'k.');" );
+            DOUT ( DBG_PRINT, "plot3(n,t2,0*n,'k.');" )
+            DOUT ( DBG_PRINT, "plot3(polyval(p,tt.^2),tt,0*tt,'r-');\n" );
+        }
 
         // 8. Evaluate parabolic curvature excluding tip neighbor
 

@@ -677,10 +677,11 @@ public:
 
                     // set patch data
                     for ( ; n_ < m_nn && in < in1; in += 2, id += en, ++n_ )
-                    {
-                        tip_z ( t_, n_ ) = psi[id];
-                        if ( refine_flag ) ( *refine_flag ) [id] = 3;
-                    }
+                        if ( low[0] <= id[0] && id[0] < high[0] && low[1] <= id[1] && id[1] < high[1] )
+                        {
+                            tip_z ( t_, n_ ) = psi[id];
+                            if ( refine_flag ) ( *refine_flag ) [id] = 3;
+                        }
 
                     // skip non patch region
                     for ( ; n_ < m_nn && id[0] < ix1; in += 2, id += en, ++n_ );
