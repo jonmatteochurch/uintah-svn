@@ -23,13 +23,13 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPoly.h
+ * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPolyD3.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2020/06
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPoly_h
-#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPoly_h
+#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPolyD3_h
+#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPolyD3_h
 
 #include <sci_defs/lapack_defs.h>
 
@@ -58,10 +58,11 @@ extern Dout g_mpi_dbg;
 namespace PhaseField
 {
 
+template<VarType, DimType> class ArmPostProcessorDiagonalPoly;
+
 template<VarType VAR>
-class ArmPostProcessorDiagonalPoly
-    : public ArmPostProcessor < VAR, D2 >
-    , public ArmPostProcessor < VAR, D3 >
+class ArmPostProcessorDiagonalPoly < VAR, D3 >
+    : public ArmPostProcessor < VAR, D3 >
 {
 private: // STATIC MEMBERS
 
@@ -91,7 +92,6 @@ protected: // MEMBERS
     const int m_nnl; // no of pts left of tip
     const int m_nnh; // no of pts right of tip
 
-
     int m_deg0; // interpolant degree for computation of 0 level, psi_n, and psi_nn
     int m_deg1; // interpolant degree for computation of psi_tt
     int m_deg2; // interpolant degree for evaluating tip values of psi_n, and psi_nn
@@ -118,6 +118,7 @@ protected: // MEMBERS
 
 private: // MEMBERS
 
+    // constaining everithing to plane X=Z
     int n_ind ( const IntVector & id ) const
     {
         return ( id[0] - m_origin[0] ) + ( id[1] - m_origin[1] );
@@ -156,6 +157,16 @@ private: // MEMBERS
     int y_ind ( const int & n, const int & t ) const
     {
         return ( n - t ) / 2 + m_origin[1];
+    }
+
+    int z_ind ( const IntVector & id ) const
+    {
+        return ( id[0] + id[1] ) / 2 + m_origin[2];
+    }
+
+    int z_ind ( const int & n, const int & t ) const
+    {
+        return ( n + t ) / 2 + m_origin[2];
     }
 
     template < VarType V = VAR, typename std::enable_if<V == CC, int>::type = 0 >
@@ -286,7 +297,7 @@ public:
 
         m_origin = level->getCellIndex ( {0., 0., 0.} );
         level->computeVariableExtents ( var_td, m_low, m_high );
-        m_dn = m_dt = 0.5 * std::sqrt ( level->dCell() [0] * level->dCell() [0] + level->dCell() [1] * level->dCell() [1] );
+        m_dn = m_dt = 0.5 * std::sqrt ( level->dCell() [0] * level->dCell() [0] + level->dCell() [1] * level->dCell() [1] + level->dCell() [2] * level->dCell() [2] );
     }
 
     virtual void
@@ -312,36 +323,37 @@ public:
     {
         DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::setLocations: " << low << high << " " );
 
-        bool fc_yminus = patch->getBCType ( Patch::yminus ) == Patch::Coarse &&
-                         std::find ( faces.begin(), faces.end(), Patch::yminus ) != faces.end();
         bool fc_xplus = patch->getBCType ( Patch::xplus ) == Patch::Coarse &&
                         std::find ( faces.begin(), faces.end(), Patch::xplus ) != faces.end();
+        bool fc_yminus = patch->getBCType ( Patch::yminus ) == Patch::Coarse &&
+                         std::find ( faces.begin(), faces.end(), Patch::yminus ) != faces.end();
+        bool fc_zplus = patch->getBCType ( Patch::zplus ) == Patch::Coarse &&
+                        std::find ( faces.begin(), faces.end(), Patch::zplus ) != faces.end();
 
+        IntVector dh {fc_xplus ? 1 : 0, 0, fc_zplus ? 1 : 0};
         IntVector dl {0, fc_yminus ? 1 : 0, 0};
-        IntVector dh {fc_xplus ? 1 : 0, 0, 0};
         IntVector inf = Max ( low + dl, m_origin );
         IntVector sup = Min ( high - dh, m_high - 1 );
 
-        if ( inf[0] < inf[1] )
-        {
-            inf[0] = inf[1];
-        }
+        inf[0] = inf[2] = std::max({inf[0],inf[1],inf[2]});
 
-        int iy0 = m_origin[1]; // symmetric
         int ix1 = m_high[0] - 1; // extend
+        int iy0 = m_origin[1]; // symmetric
+        int iz1 = m_high[2] - 1; // extend
 
         // move along increasing n
         bool found;
         int it1;
         IntVector id;
         int in, it;
-        for ( in = n_ind ( inf ); in < n_ind ( sup ); ++in )
+        for ( in = n_ind ( inf ); in < n_ind ( sup ) && inf[0] < sup[0] && inf[2] < sup[2]; ++in )
         {
             found = false;
             it1 = std::min (
             {
-                in - 2 * low[1], 2 * ( sup[0] - 1 ) - in,
-                in - 2 * ( iy0 + 1 ), 2 * ( ix1 - 1 ) - in,
+                2 * ( sup[0] - 1 ) - in, 2 * ( ix1 - 1 ) - in,
+                in - 2 * low[1], in - 2 * ( iy0 + 1 ),
+                2 * ( sup[2] - 1 ) - in, 2 * ( iz1 - 1 ) - in
             } );
 
             id = inf;
@@ -350,7 +362,7 @@ public:
                 if ( ( found = psi[id] * psi[id + et] <= 0. ) )
                     if ( it < m_locations[in - m_location_n0] )
                     {
-                        // if convave edge id+et may not be refined
+                        // if concave edge id+et may not be refined
                         if ( patch->getLevel()->containsCell ( id + et ) )
                             m_locations[in - m_location_n0] = it;
                         break;
@@ -358,7 +370,7 @@ public:
 
             if ( !found )
             {
-                if ( id[0] == ix1 )
+                if ( ( id[0] == ix1 && id[2] < high[2] ) || ( id[2] == iz1 && id[0] < high[0] ) )
                 {
                     // extends to -1
                     if ( psi[id] >= 0. )
@@ -370,8 +382,8 @@ public:
                 else if ( id[1] == iy0 )
                 {
                     // symmetry on x
-                    IntVector sym { id[0] + 1, id[1] + ( VAR == NC ? 1 : 0 ), 0 };
-                    if ( sym[0] < sup[0] && psi[id] * psi[sym] <= 0. )
+                    IntVector sym { id[0] + 1, id[1] + ( VAR == NC ? 1 : 0 ), id[2] + 1 };
+                    if ( sym[0] < sup[0] && sym[2] < sup[2] && psi[id] * psi[sym] <= 0. )
                         if ( it < m_locations[in - m_location_n0] )
                         {
                             m_locations[in - m_location_n0] = it;
@@ -383,16 +395,16 @@ public:
             // - first along left edge till I bisector or top edge
             // - then if I bisector intersect patch along it
             // - then along top edge
-            if ( inf[1] < inf[0] && inf[1] < sup[1] - 1 )
+            if ( inf[1] < inf[0] && inf[1] < inf[2] && inf[1] < sup[1] - 1 )
             {
                 ++inf[1];
             }
             else
             {
                 ++inf[0];
+                ++inf[2];
             }
         }
-        while ( inf[0] < sup[0] );
     }
 
     virtual void
@@ -447,8 +459,9 @@ public:
         if ( m_data_size )
         {
             for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
+            if ( m_locations[i - 1] < INT_MAX ) --i;
 
-            m_data_n0 = i - 1;
+            m_data_n0 = i;
             m_data_size -= m_data_n0;
         }
         else
@@ -486,8 +499,10 @@ public:
 
         int ix0 = m_origin[0]; // symmetric
         int iy0 = m_origin[1]; // symmetric
+        int iz0 = m_origin[2]; // symmetric
         int ix1 = m_high[0]; // extend
         int iy1 = m_high[1]; // extend
+        int iz1 = m_high[2]; // extend
 
         IntVector id, sym;
         int in0, in1;
@@ -506,20 +521,22 @@ public:
                 it0 = std::max (
                 {
                     it,
-                    in - 2 * ( high[1] - 1 ), 2 * low[0] - in,
-                    in - 2 * ( iy1 - 1 ), 2 * ix0 - in,
+                    2 * low[0] - in, 2 * ix0 - in,
+                    in - 2 * ( high[1] - 1 ), in - 2 * ( iy1 - 1 ),
+                    2 * low[2] - in, 2 * iz0 - in
                 } );
 
                 it1 = std::min (
                 {
                     it + 2 * m_n0 - 1,
-                    in - 2 * low[1], 2 * ( high[0] - 1 ) - in,
-                    in - 2 * iy0, 2 * ( ix1 - 1 ) - in,
+                    2 * ( high[0] - 1 ) - in, 2 * ( ix1 - 1 ) - in,
+                    in - 2 * low[1], in - 2 * iy0,
+                    2 * ( high[2] - 1 ) - in, 2 * ( iz1 - 1 ) - in
                 } );
 
                 id[0] = x_ind ( in, it );
                 id[1] = y_ind ( in, it );
-                id[2] = 0;
+                id[2] = z_ind ( in, it );
 
                 n_ = in - m_data_n0;
                 t_ = 0;
@@ -531,14 +548,43 @@ public:
                     data_z ( n_, t_ ) = -1.;
                 }
 
+                // symmetry on x+z axis
+                sym = { m_origin[0] - id[0], id[1], m_origin[2] - id[2] };
+                if ( VAR == CC )
+                {
+                    --sym[0];
+                    --sym[2];
+                }
+                for ( ; id[0] < ix0 && id[2] < iz0; it += 2, id += et, --sym[0], --sym[1], --sym[2], ++t_ )
+                    if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
+                    {
+                        data_t ( n_, t_ ) = t_coord ( it );
+                        data_z ( n_, t_ ) = psi[sym];
+                        if ( refine_flag ) ( *refine_flag ) [sym] = -2;
+                    }
+
                 // symmetry on x axis
-                sym = { m_origin[0] - id[0], id[1], 0 };
+                sym = { m_origin[0] - id[0], id[1], id[2] };
                 if ( VAR == CC )
                 {
                     --sym[0];
                 }
-                for ( ; id[0] < ix0; it += 2, id += et, --sym[0], --sym[1], ++t_ )
-                    if ( sym[0] >= low[0] && sym[1] >= low[1] && sym[1] < high[1] )
+                for ( ; id[0] < ix0; it += 2, id += et, --sym[0], --sym[1], ++sym[2], ++t_ )
+                    if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
+                    {
+                        data_t ( n_, t_ ) = t_coord ( it );
+                        data_z ( n_, t_ ) = psi[sym];
+                        if ( refine_flag ) ( *refine_flag ) [sym] = -2;
+                    }
+
+                // symmetry on z axis
+                sym = { id[0], id[1], m_origin[2] - id[2] };
+                if ( VAR == CC )
+                {
+                    --sym[2];
+                }
+                for ( ; id[2] < iz0; it += 2, id += et, ++sym[0], --sym[1], --sym[2], ++t_ )
+                    if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
                     {
                         data_t ( n_, t_ ) = t_coord ( it );
                         data_z ( n_, t_ ) = psi[sym];
@@ -557,13 +603,13 @@ public:
                 }
 
                 // symmetry on y axis
-                sym = { id[0], m_origin[1] - id[1], 0 };
+                sym = { id[0], m_origin[1] - id[1], id[2] };
                 if ( VAR == CC )
                 {
                     --sym[1];
                 }
-                for ( ; id[0] < ix1 && t_ < m_n0; it += 2, id += et, ++t_, ++sym[0], ++sym[1] )
-                    if ( sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                for ( ; id[0] < ix1 && id[2] < iz1 && t_ < m_n0; it += 2, id += et, ++t_, ++sym[0], ++sym[1], ++sym[2] )
+                    if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
                     {
                         data_t ( n_, t_ ) = t_coord ( it );
                         data_z ( n_, t_ ) = psi[sym];
@@ -571,7 +617,7 @@ public:
                     }
 
                 // extend psi to -1 out computational boundary
-                for ( ; t_ < m_n0; it += 2, id += et, ++t_, ++sym[0], ++sym[1] )
+                for ( ; t_ < m_n0; it += 2, id += et, ++t_ )
                 {
                     data_t ( n_, t_ ) = t_coord ( it );
                     data_z ( n_, t_ ) = -1.;
@@ -585,7 +631,7 @@ public:
 #else
         int dt = m_nt;
 #endif
-        if ( ( t_ind ( high[0] - 1, low[1] ) + dt ) * ( t_ind ( low[0], high[1] - 1 ) - dt ) <= 0 )
+        if ( ( t_ind ( std::max ( high[0], high[2] ) - 1, low[1] ) + dt ) * ( t_ind ( std::min ( low[0], low[2] ), high[1] - 1 ) - dt ) <= 0 )
         {
             bool is_tip = false;
             if ( m_tip_n < 0 )
@@ -657,7 +703,7 @@ public:
                 in += tr = in % 2; // if lowest is odd increase n to be even
                 it = 0;
 
-                IntVector start { x_ind ( in, it ), y_ind ( in, it ), 0 };
+                IntVector start { x_ind ( in, it ), y_ind ( in, it ), z_ind ( in, it ) };
 
                 for ( t_ = 0; t_ < m_nt; ++t_, ++it )
                 {
@@ -668,41 +714,112 @@ public:
                     in0 = std::max (
                     {
                         in,
-                        2 * low[0] - it, 2 * low[1] + it,
-                        2 * ( 1 - ix1 ) - it, 2 * ( 1 - iy1 ) + it,
+                        2 * low[0] - it, 2 * ( 1 - ix1 ) - it,
+                        2 * low[1] + it, 2 * ( 1 - iy1 ) + it,
+                        2 * low[2] - it, 2 * ( 1 - iz1 ) - it,
                     } );
 
                     in1 = std::min (
                     {
                         in + 2 * m_nn,
-                        2 * high[0] - it, 2 * high[1] + it,
-                        2 * ix1 - it, 2 * iy1 + it,
+                        2 * high[0] - it, 2 * ix1 - it,
+                        2 * high[1] + it, 2 * iy1 + it,
+                        2 * high[2] - it, 2 * iz1 - it,
                     } );
 
                     // extend psi to -1 out computational boundary
-                    for ( ; n_ < m_nn && id[0] < -ix1 + 1; in += 2, id += en, ++n_ )
+                    for ( ; n_ < m_nn && ( id[0] < -ix1 + 1 || id[2] < -iz1 + 1 ); in += 2, id += en, ++n_ )
                     {
                         tip_z ( t_, n_ ) = -1.;
                     }
 
+                    // symmetry on x+y+z axes
+                    sym = { m_origin[0] - id[0], m_origin[1] - id[1], m_origin[2] - id[2] };
+                    if ( VAR == CC )
+                    {
+                        --sym[0];
+                        --sym[1];
+                        --sym[2];
+                    }
+                    for ( ; n_ < m_nn && id[0] < ix0 && id[1] < iy0 && id[2] < iz0; in += 2, id += en, ++n_, sym -= en )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
                     // symmetry on x+y axes
-                    sym = { m_origin[0] - id[0], m_origin[1] - id[1], 0 };
+                    sym = { m_origin[0] - id[0], m_origin[1] - id[1], id[2] };
                     if ( VAR == CC )
                     {
                         --sym[0];
                         --sym[1];
                     }
-                    for ( ; n_ < m_nn && id[0] < ix0; in += 2, id += en, ++n_, sym -= en )
-                        if ( sym[0] >= low[0] && sym[1] >= low[1] && sym[1] < high[1] )
+                    for ( ; n_ < m_nn && id[0] < ix0 && id[1] < iy0; in += 2, id += en, ++n_, --sym[0], --sym[1], ++sym[2] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
+                    // symmetry on x+z axes
+                    sym = { m_origin[0] - id[0], id[1], m_origin[2] - id[2] };
+                    if ( VAR == CC )
+                    {
+                        --sym[0];
+                        --sym[2];
+                    }
+                    for ( ; n_ < m_nn && id[0] < ix0 && id[2] < iz0; in += 2, id += en, ++n_, --sym[0], ++sym[1], --sym[2] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
+                    // symmetry on y+z axes
+                    sym = { id[0], m_origin[1] - id[1], m_origin[2] - id[2] };
+                    if ( VAR == CC )
+                    {
+                        --sym[1];
+                        --sym[2];
+                    }
+                    for ( ; n_ < m_nn && id[1] < iy0 && id[2] < iz0; in += 2, id += en, ++n_, ++sym[0], --sym[1], --sym[2] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
+                    // symmetry on x axes
+                    sym = { m_origin[0] - id[0], id[1], id[2] };
+                    if ( VAR == CC )
+                    {
+                        --sym[0];
+                    }
+                    for ( ; n_ < m_nn && id[0] < ix0; in += 2, id += en, ++n_, --sym[0], ++sym[1], ++sym[2] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
                         {
                             tip_z ( t_, n_ ) = psi[sym];
                             if ( refine_flag ) ( *refine_flag ) [sym] = -3;
                         }
 
                     // symmetry on y axis
-                    sym = { id[0], m_origin[1] - id[1], 0 };
-                    for ( ; n_ < m_nn && id[1] < iy0; in += 2, id += en, ++n_, sym += et )
-                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                    sym = { id[0], m_origin[1] - id[1], id[2] };
+                    if ( VAR == CC )
+                    {
+                        --sym[1];
+                    }
+                    for ( ; n_ < m_nn && id[1] < iy0; in += 2, id += en, ++n_, ++sym[0], --sym[1], ++sym[2] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
+                    // symmetry on z axis
+                    sym = { id[0], id[1], m_origin[1] - id[2] };
+                    for ( ; n_ < m_nn && id[2] < iz0; in += 2, id += en, ++n_, ++sym[0], ++sym[1], --sym[2] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] && low[2] <= sym[2] && sym[2] < high[2] )
                         {
                             tip_z ( t_, n_ ) = psi[sym];
                             if ( refine_flag ) ( *refine_flag ) [sym] = -3;
@@ -713,7 +830,7 @@ public:
 
                     // set patch data
                     for ( ; n_ < m_nn && in < in1; in += 2, id += en, ++n_ )
-                        if ( low[0] <= id[0] && id[0] < high[0] && low[1] <= id[1] && id[1] < high[1] )
+                        if ( low[0] <= id[0] && id[0] < high[0] && low[1] <= id[1] && id[1] < high[1] && low[2] <= id[2] && id[2] < high[2] )
                         {
                             tip_z ( t_, n_ ) = psi[id];
                             if ( refine_flag ) ( *refine_flag ) [id] = 3;
@@ -721,9 +838,8 @@ public:
 
                     // skip non patch region
                     for ( ; n_ < m_nn && id[0] < ix1; in += 2, id += en, ++n_ );
-
-                    // skip non patch region
                     for ( ; n_ < m_nn && id[1] < iy1; in += 2, id += en, ++n_ );
+                    for ( ; n_ < m_nn && id[2] < iz1; in += 2, id += en, ++n_ );
 
                     // extend psi to -1 out computational boundary
                     for ( ; n_ < m_nn; in += 2, id += en, ++n_ )
@@ -742,6 +858,7 @@ public:
                     else
                     {
                         ++start[0];
+                        ++start[1];
                     }
 #endif
                 }
@@ -1143,10 +1260,10 @@ public:
         delete[] arm_n;
         delete[] arm_t2;
     }
-}; // struct ArmPostProcessorDiagonalPoly
+}; // struct ArmPostProcessorDiagonalPolyD3
 
-template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR >::en { 1, 1, 0 };
-template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR >::et { 1, -1, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR, D3 >::en { 1, 1, 1 };
+template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR, D3 >::et { 1, -1, 1 };
 
 } // namespace PhaseField
 } // namespace Uintah
@@ -1154,4 +1271,4 @@ template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR >::et {
 #undef ONLY_EVEN
 #undef DBG_PRINT
 
-#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPoly_h
+#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPolyD3_h

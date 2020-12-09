@@ -45,6 +45,7 @@ SRCS += \
   $(SRCDIR)/BCFDViewHeatTestProblemNCP7-2-bld.cc \
   $(SRCDIR)/BCFDViewPureMetalProblemCCP5-bld.cc \
   $(SRCDIR)/BCFDViewPureMetalProblemNCP5-bld.cc \
+  $(SRCDIR)/BCFDViewPureMetalProblemCCP7-bld.cc \
 
 BLDDIR := $(SRCTOP)/$(SRCDIR)
 
@@ -64,3 +65,4 @@ BLDSRCS += \
   $(BLDDIR)/BCFDViewHeatTestProblemNCP7-2-bld.cc \
   $(BLDDIR)/BCFDViewPureMetalProblemCCP5-bld.cc \
   $(BLDDIR)/BCFDViewPureMetalProblemNCP5-bld.cc \
+  $(BLDDIR)/BCFDViewPureMetalProblemCCP7-bld.cc \

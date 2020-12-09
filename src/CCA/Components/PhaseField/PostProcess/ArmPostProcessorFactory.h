@@ -32,7 +32,8 @@
 #define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorFactory_h
 
 #include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorParallelPoly.h>
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPoly.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPolyD2.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPolyD3.h>
 #include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorParallelTanh.h>
 #include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalTanh.h>
 
@@ -103,7 +104,7 @@ public:
             spec->getWithDefault ( "alpha", alpha, alpha );
 
             if ( epsilon < 0 )
-                return scinew ArmPostProcessorDiagonalPoly<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
+                return scinew ArmPostProcessorDiagonalPoly<VAR,DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
             else if ( VAR != CC || DIM!=D3 )
                 return scinew ArmPostProcessorParallelPoly<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
             SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessorParallelPoly for 3D parallel growth", __FILE__, __LINE__ ) );
