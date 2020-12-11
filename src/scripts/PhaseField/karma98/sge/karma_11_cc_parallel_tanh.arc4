@@ -1,8 +1,8 @@
 #$ -cwd -V
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -pe ib 16
-#$ -l h_rt=04:30:00
-#$ -l h_vmem=6G
+#$ -l h_rt=06:30:00
+#$ -l h_vmem=8G
 
 if [ -z "$UPATH" ]; then
     UPATH=$HOME/uintah/trunk

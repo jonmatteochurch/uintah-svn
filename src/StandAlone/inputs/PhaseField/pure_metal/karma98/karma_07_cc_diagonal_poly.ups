@@ -93,7 +93,7 @@
     <filebase>karma_07_cc_diagonal_poly.uda</filebase>
     <outputInitTimestep />
     <outputTimestepInterval>250</outputTimestepInterval>
-    <checkpoint cycle="2" walltimeStartHours="1" walltimeIntervalHours="1"/>
+    <checkpoint cycle="2" interval="500"/>
     <save label="psi"/>
     <save label="u"/>
     <save label="tip_position"/>

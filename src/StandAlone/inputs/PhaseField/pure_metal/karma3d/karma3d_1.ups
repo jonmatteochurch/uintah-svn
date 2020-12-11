@@ -1,6 +1,6 @@
 <Uintah_specification>
   <Meta>
-    <title>karma3d_2</title>
+    <title>karma3d_1</title>
   </Meta>
   <SimulationComponent type="phasefield"/>
   <PhaseField type="pure_metal">
@@ -8,10 +8,10 @@
     <dim>3</dim>
     <verbosity>0</verbosity>
     <delt>0.018</delt>
-    <alpha>2.</alpha> <!--D-->
-    <R0>32.</R0> <!--40 lattice units-->
+    <alpha>3.</alpha> <!--D-->
+    <R0>24.</R0> <!--40 lattice units-->
     <Delta>0.45</Delta>
-    <epsilon>-0.0123</epsilon>
+    <epsilon>-0.0066</epsilon>
     <refine_threshold>0.0025</refine_threshold>
   </PhaseField>
   <ArmPostProcessor type="polynomial"/>
@@ -26,10 +26,10 @@
     <Level>
       <Box label="1">
         <lower>[0., 0., 0.]</lower>
-        <upper>[204.8,204.8,204.8]</upper>
+        <upper>[153.6,153.6,153.6]</upper>
         <patches>[2,2,2]</patches>
       </Box>
-      <spacing>[12.8,12.8,12.8]</spacing>
+      <spacing>[9.6,9.6,9.6]</spacing>
     </Level>
     <BoundaryConditions>
       <Face side="x-">
@@ -159,8 +159,8 @@
       <adaptive>true</adaptive>
       <max_levels>5</max_levels>
       <cell_refinement_ratio>[[2,2,2]]</cell_refinement_ratio>
-      <cell_stability_dilation>[4,4,4]</cell_stability_dilation>
-       <cell_regrid_dilation>[2,2,2]</cell_regrid_dilation> 
+      <cell_stability_dilation>[1,1,1]</cell_stability_dilation>
+       <cell_regrid_dilation>[3,3,3]</cell_regrid_dilation> 
       <min_boundary_cells>[1,1,1]</min_boundary_cells>
       <min_patch_size>[[8,8,8]]</min_patch_size>
     </Regridder>
@@ -174,7 +174,7 @@
     </FineCoarseInterfaces>
   </AMR>
   <DataArchiver>
-    <filebase>karma3d_2.uda</filebase>
+    <filebase>karma3d_1.uda</filebase>
     <outputInitTimestep/>
     <outputTimestepInterval>250</outputTimestepInterval>
     <checkpoint cycle="2" interval="100"/>
