@@ -1,0 +1,24 @@
+#$ -cwd -V
+#$ -m be -M scjmc@leeds.ac.uk
+#$ -pe nodes=11
+#$ -l h_rt=12:00:00
+#$ -l node_type=40core-192G
+#$ -l h_vmem=192G
+
+if [ -z "$UPATH" ]; then
+    UPATH=$HOME/uintah/trunk
+fi
+
+SUS=$UPATH/arc/build/StandAlone/sus
+INP=$UPATH/src/StandAlone/inputs/PhaseField/amr_scalability
+
+LDs="0256 1024 4096"
+NP=256
+
+for LD in $LDs; do
+echo $LD
+	for FN in $INP/scalability2d_*_load${LD}.ups; do
+		LOG=$(basename $FN).log
+		[[ -f $LOG && -s $LOG ]] || mpirun -np $NP $SUS $INP/$FN.ups &> $LOG
+	done
+done
