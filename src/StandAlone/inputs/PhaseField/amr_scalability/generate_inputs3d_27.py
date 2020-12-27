@@ -45,6 +45,12 @@ FOOT = """
         <BCType id="0" label="Bxy" var="Neumann">
           <value>0.</value>
         </BCType>
+        <BCType id="0" label="Bxz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Neumann">
+          <value>0.</value>
+        </BCType>
         <BCType id="0" label="A2" var="Neumann">
           <value>0.</value>
         </BCType>
@@ -57,6 +63,12 @@ FOOT = """
           <value>0.</value>
         </BCType>
         <BCType id="0" label="Bxy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Neumann">
           <value>0.</value>
         </BCType>
         <BCType id="0" label="A2" var="Neumann">
@@ -93,6 +105,12 @@ FOOT = """
         <BCType id="0" label="Bxy" var="Dirichlet">
           <value>0.</value>
         </BCType>
+        <BCType id="0" label="Bxz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
         <BCType id="0" label="A2" var="Dirichlet">
           <value>1.1025</value>
         </BCType>
@@ -105,6 +123,12 @@ FOOT = """
           <value>-1.</value>
         </BCType>
         <BCType id="0" label="Bxy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Dirichlet">
           <value>0.</value>
         </BCType>
         <BCType id="0" label="A2" var="Dirichlet">
@@ -160,25 +184,25 @@ FOOT = """
 NAME = "scalability3d_27_nlvl%(nlvl)1d_load%(load)04d"
 
 for nlvl in range(1,9):
-	for pload in range(0,13,3):
+        for pload in range(0,13,3):
 		load = 2**pload;
 		name = NAME % { "nlvl": nlvl, "load": load };
 
 		ups = open(name+".ups", "w")
 		ups.write(HEAD % { "title": name })
 
-		levels = """"""
-		spacing = .4
-		patches = 3*2**(pload/3)
-		fullwidth = 3**nlvl*2**(pload/3)*16*spacing
-		width = 16*patches*spacing;
-		for lvl in range(1,nlvl+1):
-			lower = (fullwidth-width)/2
-			level = LEVEL % { "label": nlvl-lvl+1, "lower": lower, "upper": lower+width, "patches":patches, "spacing": spacing };
-			levels = level + levels
-			spacing = 2*spacing
-			width = 3*width
-		ups.write(levels)
+                levels = """"""
+                spacing = .4
+                patches = 3*2**(pload/3)
+                fullwidth = 3**nlvl*2**(pload/3)*16*spacing
+                width = 16*patches*spacing;
+                for lvl in range(1,nlvl+1):
+                        lower = (fullwidth-width)/2
+                        level = LEVEL % { "label": nlvl-lvl+1, "lower": lower, "upper": lower+width, "patches":patches, "spacing": spacing };
+                        levels = level + levels
+                        spacing = 2*spacing
+                        width = 3*width
+                ups.write(levels)
 
-		ups.write(FOOT % {'nlvl': nlvl, 'name': name})
+                ups.write(FOOT % {'nlvl': nlvl, 'name': name})
 		ups.close()

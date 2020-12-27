@@ -65,6 +65,12 @@
         <BCType id="0" label="Bxy" var="Neumann">
           <value>0.</value>
         </BCType>
+        <BCType id="0" label="Bxz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Neumann">
+          <value>0.</value>
+        </BCType>
         <BCType id="0" label="A2" var="Neumann">
           <value>0.</value>
         </BCType>
@@ -77,6 +83,12 @@
           <value>0.</value>
         </BCType>
         <BCType id="0" label="Bxy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxz" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Neumann">
           <value>0.</value>
         </BCType>
         <BCType id="0" label="A2" var="Neumann">
@@ -113,6 +125,12 @@
         <BCType id="0" label="Bxy" var="Dirichlet">
           <value>0.</value>
         </BCType>
+        <BCType id="0" label="Bxz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
         <BCType id="0" label="A2" var="Dirichlet">
           <value>1.1025</value>
         </BCType>
@@ -125,6 +143,12 @@
           <value>-1.</value>
         </BCType>
         <BCType id="0" label="Bxy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Bxz" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="Byz" var="Dirichlet">
           <value>0.</value>
         </BCType>
         <BCType id="0" label="A2" var="Dirichlet">
