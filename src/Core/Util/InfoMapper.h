@@ -2023,7 +2023,7 @@ public:
 
     // If the key does not exist insert the keys, names, and units.
     if( m_mapInfoMapper.find(key) == m_mapInfoMapper.end() ) {
-      for ( unsigned int i=0; i<m_keys.size(); ++i ) {
+      for ( size_t i=0; i<m_keys.size(); ++i ) {
         m_mapInfoMapper[key].insert( m_keys[i], m_names[i], m_units[i] );
       }
     }

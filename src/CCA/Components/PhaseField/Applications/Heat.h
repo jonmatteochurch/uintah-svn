@@ -73,30 +73,11 @@
  * - At: top (z+) entry
  * .
  */
-#define PhaseField_Heat_DBG_MATRIX 0
+#undef PhaseField_Heat_DBG_MATRIX
+// #define PhaseField_Heat_DBG_MATRIX
 
-/**
- * @brief Enable derivatives variables for debugging
- *
- * When not null the following variable are made available to be saved
- * and debugged
- * - ux, uy, uz: component of the gradient of u
- *   (depending on problem dimension)
- * - uxx, uyy, uzz: second order derivatives of u
- *   (depending on problem dimension)
- * - error_ux, error_uy, error_uy, error_uz: local error in the first order
- *   derivatives of u over each grid element (cell or node neighborhood)
- *   (depending on problem dimension, test must be set to true in input)
- * - error_uxx, error_uyy, error_uyy, error_uzz: local error in the second order
- *   derivatives of u over each grid element (cell or node neighborhood)
- *   (depending on problem dimension, test must be set to true in input)
- * - u_normH10, u_normH20: discrete seminorms of the solution
- * - error_normH10, error_normH20: global error in the discrete seminorms
- *   (depending on problem dimension, test must be set to true in input)
- */
-#define PhaseField_Heat_DBG_DERIVATIVES 0
-
-// #define EXACT_NORM 0
+#undef EXACT_NORM
+// #define EXACT_NORM
 
 namespace Uintah
 {
@@ -283,6 +264,13 @@ protected: // MEMBERS
     TS time_scheme;
 #endif
 
+    bool is_time_advance_solution_scheduled;
+    bool is_time_advance_solution_assemble_scheduled;
+    bool is_time_advance_solve_scheduled;
+    bool is_time_advance_solution_error_scheduled;
+    bool is_time_advance_dbg_derivatives_scheduled;
+    bool is_time_advance_dbg_derivatives_error_scheduled;
+
 public: // CONSTRUCTORS/DESTRUCTOR
 
     /**
@@ -357,7 +345,11 @@ protected: // SETUP
     problemSetup_boundary_variables (
     )
     {
+#ifdef PhaseField_Heat_DBG_DERIVATIVES
         this->setBoundaryVariables ( u_label, du_label, ddu_label );
+#else
+        this->setBoundaryVariables ( u_label );
+#endif
     }
 
 protected: // SCHEDULINGS
@@ -834,6 +826,12 @@ protected: // SCHEDULINGS
      */
     void
     scheduleTimeAdvance_solve (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    void
+    scheduleTimeAdvannce_comunicate_before_solve (
         const LevelP & level,
         SchedulerP & sched
     );
@@ -1462,6 +1460,15 @@ protected: // TASKS
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
     );
+
+    void
+    task_communicate_before_solve (
+        const ProcessorGroup * /*myworld*/,
+        const PatchSubset * /*patches*/,
+        const MaterialSubset * /*matls*/,
+        DataWarehouse * /*dw_old*/,
+        DataWarehouse * /*dw_new*/
+    ) {}
 
     /**
      * @brief Update stencil entries debugging views task
@@ -2346,6 +2353,7 @@ Heat<VAR, DIM, STN, AMR, TST>::problemSetup (
             SCI_THROW ( InternalError ( "Heat:couldn't get solver port", __FILE__, __LINE__ ) );
         }
         this->m_solver->readParameters ( solv, "u" );
+        this->m_solver->getParameters()->setSymmetric ( false );
         this->m_solver->getParameters()->setSolveOnExtraCells ( false );
     }
 #else
@@ -2534,6 +2542,13 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleComputeStableTimeStep (
     if ( TST ) task->requires ( Task::OldDW, u_norm2_L2_label );
     task->computes ( this->getDelTLabel(), level.get_rep() );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+
+    is_time_advance_solution_scheduled = false;
+    is_time_advance_solution_assemble_scheduled = false;
+    is_time_advance_solve_scheduled = false;
+    is_time_advance_solution_error_scheduled = false;
+    is_time_advance_dbg_derivatives_scheduled = false;
+    is_time_advance_dbg_derivatives_error_scheduled = false;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -2584,8 +2599,8 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives (
     SchedulerP & sched
 )
 {
-    // all tasks must be sent to the scheduler before the first dbg_derivatives_error task
-    if ( level->hasCoarserLevel() ) return;
+    // tasks must be sent to the scheduler after the last solution task
+    if ( is_time_advance_dbg_derivatives_scheduled ) return;
 
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives on all levels " );
     GridP grid = level->getGrid();
@@ -2609,6 +2624,8 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives (
         }
         sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
+
+    is_time_advance_dbg_derivatives_scheduled = true
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -2648,7 +2665,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
 )
 {
     // all tasks must be sent to the scheduler after the last task_time_advance_solution
-    if ( level->hasFinerLevel() ) return;
+    if ( is_time_advance_dbg_derivatives_error_scheduled ) return;
 
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error on all levels " );
 
@@ -2661,22 +2678,17 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
         --l;
     }
 
-    for ( int k = grid->numLevels() - l - 1; l >= 0; --l, ++k )
+    for ( ; l >= 0; --l )
     {
         DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error on level " << level->getIndex() << " " );
 
         Task * task = scinew Task ( "Heat::task_time_advance_dbg_derivatives_error", this, &Heat::task_time_advance_dbg_derivatives_error<MG, T> );
         task->requires ( Task::NewDW, this->getSubProblemsLabel(), IGT, IGN );
-        if ( k ) task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
+
         for ( size_t D = 0; D < DIM; ++D )
         {
             task->requires ( Task::NewDW, du_label[D], IGT, IGN );
             task->requires ( Task::NewDW, ddu_label[D], IGT, IGN );
-            if ( k )
-            {
-                task->requires ( Task::NewDW, du_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
-                task->requires ( Task::NewDW, ddu_label[D], nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
-            }
             task->computes ( epsilon_du_label[D] );
             task->computes ( epsilon_ddu_label[D] );
             task->computes ( error_du_label[D] );
@@ -2688,6 +2700,8 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
         task->computes ( error_norm2_H20_label );
         sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
+
+    is_time_advance_dbg_derivatives_error_scheduled = true;
 }
 #endif
 
@@ -2754,12 +2768,12 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_forward_euler (
 )
 {
     // all tasks must be sent to the scheduler before the first dbg_derivatives_error task
-    if ( level->hasCoarserLevel() ) return;
+    if ( is_time_advance_solution_scheduled ) return;
 
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_forward_euler on all levels " );
     GridP grid = level->getGrid();
 
-    scheduleTimeAdvance_solution_forward_euler < !MG > ( level, sched );
+    scheduleTimeAdvance_solution_forward_euler < !MG > ( grid->getLevel ( 0 ), sched );
     for ( int l = 1; l < grid->numLevels(); ++l )
     {
         Task * task = scinew Task ( "Heat::task_time_advance_solution_forward_euler", this, &Heat::task_time_advance_solution_forward_euler );
@@ -2770,6 +2784,8 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_forward_euler (
         task->computes ( u_label );
         sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
+
+    is_time_advance_solution_scheduled = true;
 }
 
 #ifdef HAVE_HYPRE
@@ -2811,13 +2827,15 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_backward_euler_assem
     else if ( this->m_solver->getName() == "hypre_sstruct" )
     {
         // all assemble task must be sent to the scheduler before the solve task
-        if ( level->hasCoarserLevel() ) return;
+        if ( is_time_advance_solution_assemble_scheduled ) return;
 
         GridP grid = level->getGrid();
 
-        scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct < !MG > ( level, sched );
+        scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct < !MG > ( grid->getLevel ( 0 ), sched );
         for ( int l = 1; l < grid->numLevels(); ++l )
             scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct < MG > ( grid->getLevel ( l ), sched );
+
+        is_time_advance_solution_assemble_scheduled = true;
     }
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver " + this->m_solver->getName() + "\n", __FILE__, __LINE__ ) );
@@ -2900,7 +2918,9 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_backward_euler_assem
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct", this, &Heat::task_time_advance_solution_backward_euler_assemble_hypresstruct );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
     task->requires ( Task::OldDW, additional_entries_label, Ghost::None, 0 );
     task->computes ( matrix_label );
@@ -2946,13 +2966,15 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assem
     }
     else if ( this->m_solver->getName() == "hypre_sstruct" )
     {
-        if ( level->hasCoarserLevel() ) return;
+        if ( is_time_advance_solution_assemble_scheduled ) return;
 
         GridP grid = level->getGrid();
         // all assemble task must be sent to the scheduler before the solve task
-        scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct < !MG > ( level, sched );
+        scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct < !MG > ( grid->getLevel ( 0 ), sched );
         for ( int l = 1; l < grid->numLevels(); ++l )
             scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct < MG > ( grid->getLevel ( l ), sched );
+
+        is_time_advance_solution_assemble_scheduled = true;
     }
     else
         SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
@@ -3052,12 +3074,53 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solve
     SchedulerP & sched
 )
 {
-    this->m_solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
+    if ( this->m_solver->getName() == "hypre_sstruct" )
+    {
+        if ( is_time_advance_solve_scheduled ) return;
+
+        GridP grid = level->getGrid();
+        for ( int l = 0; l < grid->numLevels(); ++l )
+            scheduleTimeAdvannce_comunicate_before_solve( grid->getLevel(l), sched );
+
+        this->m_solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
+                                matrix_label, Task::NewDW, // A
+                                u_label, false,            // x
+                                rhs_label, Task::NewDW,    // b
+                                u_label, Task::OldDW       // guess
+                                );
+
+        is_time_advance_solve_scheduled = true;
+    }
+    else
+    {
+        this->m_solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
                                     matrix_label, Task::NewDW, // A
                                     u_label, false,            // x
                                     rhs_label, Task::NewDW,    // b
                                     u_label, Task::OldDW       // guess
                                   );
+    }
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
+void
+Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvannce_comunicate_before_solve
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    // add empty task to force receiving of all pending mpi messages before hypre solve
+    Task * task = scinew Task ( "task_communicate_before_solve", this, &Heat::task_communicate_before_solve );
+
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
+    if ( level->hasCoarserLevel() )
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    if ( level->hasFinerLevel() )
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, nullptr, Task::NormalDomain, Ghost::None, 0 );
+
+    task->modifies ( matrix_label );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 }
 
 #   ifdef PhaseField_Heat_DBG_MATRIX
@@ -3114,37 +3177,34 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_error (
 )
 {
     // all tasks must be sent to the scheduler after the last task_time_advance_solution
-    if ( level->hasFinerLevel() ) return;
+    if ( is_time_advance_solution_error_scheduled ) return;
 
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error on all levels " );
 
     GridP grid = level->getGrid();
-    int l = level->getIndex();
+    int l = grid->numLevels() - 1;
 
-    if ( this->m_regridder->maxLevels() - l - 1 == 0 )
+    if ( l == this->m_regridder->maxLevels() - 1 )
     {
-        scheduleTimeAdvance_solution_error < !MG, T > ( level, sched );
+        scheduleTimeAdvance_solution_error < !MG, T > ( grid->getLevel( l ), sched );
         --l;
     }
 
-    for ( int k = grid->numLevels() - l - 1; l >= 0; --l, ++k )
+    for ( ; l >= 0; --l )
     {
-        DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error on level " << l << " " << "k: " << k );
+        DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_error on level " << l << " " );
 
         Task * task = scinew Task ( "Heat::task_time_advance_solution_error", this, &Heat::task_time_advance_solution_error<MG, T> );
         task->requires ( Task::NewDW, this->getSubProblemsLabel(), IGT, IGN );
         task->requires ( Task::NewDW, u_label, IGT, IGN );
-        if ( k )
-        {
-            task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
-            task->requires ( Task::NewDW, u_label, nullptr, Task::FineLevel, k, nullptr, Task::NormalDomain, IGT, IGN );
-        }
         task->computes ( epsilon_u_label );
         task->computes ( error_u_label );
         task->computes ( u_norm2_L2_label );
         task->computes ( error_norm2_L2_label );
         sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
+
+    is_time_advance_solution_error_scheduled = true;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -3198,7 +3258,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleRefineInterface (
     bool /*need_new_coarse*/
 )
 {
-    DOUTR ( dbg_heat_scheduling, "scheduleRefineInterface on level " << level_fine->getIndex() );
+    DOUTR ( dbg_heat_scheduling, "scheduleRefineInterface on level " << level_fine->getIndex() << " " );
 };
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -3209,7 +3269,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleCoarsen
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_heat_scheduling, "scheduleCoarsen on level " << level_coarse->getIndex() );
+    DOUTR ( dbg_heat_scheduling, "scheduleCoarsen on level " << level_coarse->getIndex() << " " );
 
     scheduleCoarsen_solution ( level_coarse, sched );
 }
@@ -3221,7 +3281,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleCoarsen_solution (
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_heat_scheduling, "scheduleCoarsen_solution on level " << level_coarse->getIndex() );
+    DOUTR ( dbg_heat_scheduling, "scheduleCoarsen_solution on level " << level_coarse->getIndex() << " " );
 
     Task * task = scinew Task ( "Heat::task_coarsen_solution", this, &Heat::task_coarsen_solution );
     task->requires ( Task::NewDW, this->getSubProblemsLabel(), Ghost::None, 0 );
@@ -3323,7 +3383,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_initialize_solution (
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
@@ -3351,7 +3411,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_restart_initialize_hypresstruct (
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         _AdditionalEntries additional_entries;
         additional_entries.setData ( scinew HypreSStruct::AdditionalEntries );
@@ -3414,7 +3474,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives (
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < VectorField<double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
         DWView < VectorField<double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
@@ -3493,7 +3553,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         IntVector low = this->template get_low<CC> ( patch );
         IntVector high = this->template get_high<CC> ( patch ) + ( VAR == CC ? 0 : 1 );
@@ -3510,11 +3570,11 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         DWView < VectorField<double, DIM>, CC, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
         parallel_for ( range, [patch, &ut, &a, &du, &ddu, &epsilon_du, &epsilon_ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives_epsilon<MG> ( {i, j, k}, patch, ut, a, du, ddu, epsilon_du, epsilon_ddu ); } );
 
         BlockRange range_cc ( this->template get_range<CC> ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range_cc );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over CC range " << range_cc );
         parallel_reduce_sum ( range_cc, [patch, &ut, &a, &area, &factor, &du, &ddu, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, ut, a, area, factor, du, ddu, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
     }
 
@@ -3568,9 +3628,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
     grid_finest.addFinestLevel ( k );
     grid_finest.addReference();
 
-    IntVector refinement ( 1 );
-    for ( int i = 1; i <= k; ++i )
-        refinement = refinement * grid_finest.getLevel ( index + i )->getRefinementRatio();
+    IntVector refinement = grid_finest.getLevel ( index + 1 )->getRefinementRatio();
 
     BBox box;
     grid->getSpatialRange ( box );
@@ -3600,7 +3658,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         const Patch * patch = patches->get ( p );
         Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
 
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " (ReferenceGrid Patch: " << *patch_finest << " )" );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " ( ReferenceGrid Patch: " << *patch_finest << " Refinement: " << refinement << " ) " );
 
         DWView < VectorField<const double, DIM>, VAR, DIM > du ( dw_new, du_label, material, patch );
         DWView < VectorField<const double, DIM>, VAR, DIM > ddu ( dw_new, ddu_label, material, patch );
@@ -3615,11 +3673,11 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_dbg_derivatives_error
         DWView < VectorField<double, DIM>, CC, DIM > error_ddu ( dw_new, error_ddu_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
         parallel_for ( range, [patch, &simTime, &L, &du, &ddu, &epsilon_du, &epsilon_ddu, this] ( int i, int j, int k )->void { time_advance_dbg_derivatives_epsilon<MG> ( {i, j, k}, patch, simTime, L[0], du, ddu, epsilon_du, epsilon_ddu ); } );
 
         BlockRange range_cc ( this->template get_range<CC> ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range_cc );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over CC range " << range_cc );
         parallel_reduce_sum ( range_cc, [patch, patch_finest, &refinement, &ut, &a, &area, &factor, &du_finest, &ddu_finest, &error_du, &error_ddu, this] ( int i, int j, int k, std::array<double, 4> & norms )->void { time_advance_dbg_derivatives_error<MG> ( {i, j, k}, patch, patch_finest, refinement, ut, a, area, factor, du_finest, ddu_finest, error_du, error_ddu, norms[0], norms[1], norms[2], norms[3] ); }, norms );
     }
 
@@ -3651,7 +3709,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_forward_euler (
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<double>, VAR, DIM > u_new ( dw_new, u_label, material, patch );
 
@@ -3708,7 +3766,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
@@ -3746,7 +3804,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
         SubProblems < HeatProblem<VAR, STN, TST> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
@@ -3802,7 +3860,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
         HypreSStruct::AdditionalEntries * A_additional = scinew HypreSStruct::AdditionalEntries;
@@ -3846,7 +3904,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_backward_euler_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
         SubProblems < HeatProblem<VAR, STN, TST> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
@@ -3902,7 +3960,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
@@ -3940,7 +3998,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
         SubProblems < HeatProblem<VAR, STN, TST> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
@@ -3996,7 +4054,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<Stencil7>, VAR, DIM > A_stencil ( dw_new, matrix_label, material, patch );
         HypreSStruct::AdditionalEntries * A_additional = scinew HypreSStruct::AdditionalEntries;
@@ -4040,7 +4098,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_crank_nicolson_assembl
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<double>, VAR, DIM > b ( dw_new, rhs_label, material, patch );
         SubProblems < HeatProblem<VAR, STN, TST> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
@@ -4076,7 +4134,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_update_dbg_matrix
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<const Stencil7>, VAR, DIM > A ( dw_new, matrix_label, material, patch );
 
@@ -4159,7 +4217,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         IntVector low = this->template get_low<CC> ( patch );
         IntVector high = this->template get_high<CC> ( patch ) + ( VAR == CC ? 0 : 1 );
@@ -4171,11 +4229,11 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
         DWView < ScalarField<double>, CC, DIM > error_u ( dw_new, error_u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
         parallel_for ( range, [patch, &ut, &a, &u, &epsilon_u, this] ( int i, int j, int k )->void { time_advance_solution_epsilon<MG> ( {i, j, k}, patch, ut, a, u, epsilon_u ); } );
 
         BlockRange range_cc ( this->template get_range<CC> ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range_cc );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over CC range " << range_cc );
         parallel_reduce_sum ( range_cc, [patch, &ut, &a, &area, &factor, &u, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, ut, a, area, factor, u, error_u, norms[0], norms[1] ); }, norms );
     }
 
@@ -4227,9 +4285,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
     grid_finest.addFinestLevel ( k );
     grid_finest.addReference();
 
-    IntVector refinement ( 1 );
-    for ( int i = 1; i <= k; ++i )
-        refinement = refinement * grid_finest.getLevel ( index + i )->getRefinementRatio();
+    IntVector refinement = grid_finest.getLevel ( index + 1 )->getRefinementRatio();
 
     BBox box;
     grid->getSpatialRange ( box );
@@ -4259,7 +4315,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
         const Patch * patch = patches->get ( p );
         Patch * patch_finest = grid_finest.addFinestPatch ( patch, index );
 
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " ( ReferenceGrid Patch: " << *patch_finest << " Refinement: " << refinement << " ) " );
 
         DWView < ScalarField<const double>, VAR, DIM > u ( dw_new, u_label, material, patch );
         AMRInterpolator < HeatProblem<VAR, STN, TST>, U, C2F > u_finest ( dw_new, u_label, this->getSubProblemsLabel(), material, patch_finest );
@@ -4268,11 +4324,11 @@ Heat<VAR, DIM, STN, AMR, TST>::task_time_advance_solution_error
         DWView < ScalarField<double>, CC, DIM > error_u ( dw_new, error_u_label, material, patch );
 
         BlockRange range ( this->get_range ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over range " << range );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over range " << range );
         parallel_for ( range, [patch, &ut, &a, &u, &epsilon_u, this] ( int i, int j, int k )->void { time_advance_solution_epsilon<MG> ( {i, j, k}, patch, ut, a, u, epsilon_u ); } );
 
         BlockRange range_cc ( this->template get_range<CC> ( patch ) );
-        DOUT ( this->m_dbg_lvl3, "= Iterating over CC range " << range );
+        DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over CC range " << range );
         parallel_reduce_sum ( range_cc, [patch, patch_finest, &refinement, &ut, &a, &area, &factor, &u_finest, &error_u, this] ( int i, int j, int k, std::array<double, 2> & norms )->void { time_advance_solution_error<MG> ( {i, j, k}, patch, patch_finest, refinement, ut, a, area, factor, u_finest, error_u, norms[0], norms[1] ); }, norms );
     }
 
@@ -4302,7 +4358,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_refine_solution
     for ( int p = 0; p < patches_fine->size(); ++p )
     {
         const Patch * patch_fine = patches_fine->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Fine Patch: " << *patch_fine << " Level: " << patch_fine->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Fine Patch: " << *patch_fine << " Level: " << patch_fine->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<double>, VAR, DIM > u_fine ( dw_new, u_label, material, patch_fine );
 
@@ -4333,7 +4389,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_coarsen_solution (
     for ( int p = 0; p < patches_coarse->size(); ++p )
     {
         const Patch * patch_coarse = patches_coarse->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Coarse Patch: " << *patch_coarse << " Level: " << patch_coarse->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Coarse Patch: " << *patch_coarse << " Level: " << patch_coarse->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<double>, VAR, DIM > u_coarse ( dw_new, u_label, material, patch_coarse );
 
@@ -4372,7 +4428,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_error_estimate_solution
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
-        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
 
         DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
         refine_flag.initialize ( 0 );
@@ -4767,19 +4823,15 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_backward_euler_assemble_hyp
     std::tuple<Stencil7, HypreSStruct::AdditionalEntries, double> sys = u_old.laplacian_sys_hypresstruct ( id );
 
     const Stencil7 & lap_stn = std::get<0> ( sys );
-    HypreSStruct::AdditionalEntries & lap_extra = std::get<1> ( sys );
+    HypreSStruct::AdditionalEntries & lap_add = std::get<1> ( sys );
     const double & rhs = std::get<2> ( sys );
     const double a = alpha * delt;
 
     for ( int i = 0; i < 7; ++i )
         A_stencil[id][i] = -a * lap_stn[i];
     A_stencil[id].p += 1;
-    for ( auto & entry : lap_extra )
-    {
-        auto it = A_additional->find ( entry.first );
-        if ( it != A_additional->end() ) it->second -= a * entry.second;
-        else A_additional->emplace ( entry.first, -a * entry.second );
-    }
+    for ( auto & entry : lap_add )
+        *A_additional += -a * entry;
     b[id] = u_old[id] + a * rhs;
 }
 

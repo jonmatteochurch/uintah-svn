@@ -22,54 +22,37 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_MatrixIndex_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_MatrixIndex_h
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstruct_solver_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstruct_solver_h
 
-#include <Core/Geometry/IntVector.h>
-#include <Core/Grid/Level.h>
-
-#include <tuple>
+#include <CCA/Components/Solvers/HypreSStruct/Definitions.h>
 
 namespace Uintah
 {
 namespace HypreSStruct
 {
-
-class MatrixIndex
-    : public std::tuple<IntVector, int, IntVector>
+namespace detail
 {
-public:
-    using std::tuple<IntVector, int, IntVector>::tuple;
 
-    const IntVector &
-    index() const
-    {
-        return std::get<0> ( *this );
-    }
+template <int SLV, int DIM, int C2F, bool precond> class sstruct_solver;
 
-    const int &
-    toLevel() const
-    {
-        return std::get<1> ( *this );
-    }
+template<S SLV, int DIM, int C2F> using sstruct_ssolver = sstruct_solver<(int)SLV, DIM, C2F, false>;
+template<P PCN, int DIM, int C2F> using sstruct_precond = sstruct_solver<(int)PCN, DIM, C2F, true>;
 
-    const IntVector &
-    toIndex() const
-    {
-        return std::get<2> ( *this );
-    }
-};
-
-inline std::ostream & operator<< ( std::ostream & os, const MatrixIndex & ind )
-{
-    os << "{" << ind.index() << "," << ind.toLevel() << "," << ind.toIndex() << "}";
-    return os;
-}
-
+} // namespace detail
 } // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_MatrixIndex_h
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_Diagonal.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_SysPFMG.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_Split.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_FAC.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_PCG.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_GMRES.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_FlexGMRES.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_LGMRES.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_BiCGSTAB.h>
 
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_PartDataP_h
 
 

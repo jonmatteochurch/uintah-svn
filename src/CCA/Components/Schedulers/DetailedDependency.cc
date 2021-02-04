@@ -23,6 +23,7 @@
  */
 
 #include <CCA/Components/Schedulers/DetailedDependency.h>
+#include <CCA/Components/Schedulers/DetailedTask.h>
 
 #include <sstream>
 
@@ -43,6 +44,7 @@ std::ostream& operator<<(       std::ostream & arg_out
   }
 
   out << ", matl " << dep.m_matl << ", low=" << dep.m_low << ", high=" << dep.m_high;
+  for (auto toTask: dep.m_to_tasks) out << ", toTasks=" << *toTask;
 
   arg_out << out.str();
 

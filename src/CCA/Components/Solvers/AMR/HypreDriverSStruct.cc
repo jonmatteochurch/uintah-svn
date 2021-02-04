@@ -213,7 +213,7 @@ void
 HypreDriverSStruct::makeLinearSystem_CC(const int matl)
 {
   cout_doing << Parallel::getMPIRank() << "------------------------------ HypreDriverSStruct::makeLinearSystem_CC()" << "\n";
-  ASSERTEQ(sizeof(Stencil7), 7*sizeof(double));
+  // ASSERTEQ(sizeof(Stencil7), 7*sizeof(double));
   //__________________________________
   // Set up the grid
   cout_doing << _pg->myRank() << " Setting up the grid" << "\n";

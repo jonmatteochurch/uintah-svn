@@ -1021,7 +1021,7 @@ template <class BoxP, class Point, class Volume, class Value, class Evaluator>
 CompositeBox<BoxP, Point, Volume, Value, Evaluator>::~CompositeBox()
 {
   // should have reactivated before deleting
-  ASSERT(activatedSubSuperBoxes_.size() == 0);
+  ASSERT_NOTHROW(activatedSubSuperBoxes_.size() == 0);
 
   if (isActive_)
     inactivate();

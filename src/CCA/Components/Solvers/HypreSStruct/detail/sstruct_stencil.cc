@@ -22,24 +22,37 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_stencil.h>
 
 namespace Uintah
 {
 namespace HypreSStruct
 {
-
-template <int DIM>
-struct SStructStencil
+namespace detail
 {
-    static constexpr int size = 2 * DIM + 1;
-    static int offsets[size][DIM];
-    static const int entry[size];
+
+template<> int sstruct_stencil<2>::offsets[5][2] = {
+    {0,0},
+    {-1,0},
+    {1,0},
+    {0,-1},
+    {0,1}
 };
 
+template<> const int sstruct_stencil<2>::entry[5] = { 6, 0, 1, 2, 3 };
+
+template<> int sstruct_stencil<3>::offsets[7][3] = {
+    {0,0,0},
+    {-1,0,0},
+    {1,0,0},
+    {0,-1,0},
+    {0,1,0},
+    {0,0,-1},
+    {0,0,1},
+};
+
+template<> const int sstruct_stencil<3>::entry[7] = { 6, 0, 1, 2, 3, 4, 5 };
+
+} // namespace detail
 } // namespace HypreSStruct
 } // namespace Uintah
-
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
-

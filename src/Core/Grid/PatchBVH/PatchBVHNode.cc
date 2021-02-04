@@ -125,10 +125,10 @@ namespace Uintah {
   PatchBVHNode::~PatchBVHNode()
   {
     //this class should only be made if there are more than 2 objects in the list thus both sides should exist
-    ASSERT(left_!=nullptr);
+    ASSERT_NOTHROW(left_!=nullptr);
     delete left_;
     
-    ASSERT(right_!=nullptr);
+    ASSERT_NOTHROW(right_!=nullptr);
     delete right_;
   }
 

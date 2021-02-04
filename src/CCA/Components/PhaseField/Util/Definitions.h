@@ -52,6 +52,28 @@
 #define VIRT { ASSERTFAIL ( "VIRTUAL METHOD" ); }
 /// @endcond
 
+/**
+ * @brief Enable derivatives variables for debugging
+ *
+ * When not null the following variable are made available to be saved
+ * and debugged
+ * - ux, uy, uz: component of the gradient of u
+ *   (depending on problem dimension)
+ * - uxx, uyy, uzz: second order derivatives of u
+ *   (depending on problem dimension)
+ * - error_ux, error_uy, error_uy, error_uz: local error in the first order
+ *   derivatives of u over each grid element (cell or node neighborhood)
+ *   (depending on problem dimension, test must be set to true in input)
+ * - error_uxx, error_uyy, error_uyy, error_uzz: local error in the second order
+ *   derivatives of u over each grid element (cell or node neighborhood)
+ *   (depending on problem dimension, test must be set to true in input)
+ * - u_normH10, u_normH20: discrete seminorms of the solution
+ * - error_normH10, error_normH20: global error in the discrete seminorms
+ *   (depending on problem dimension, test must be set to true in input)
+ */
+#undef PhaseField_Heat_DBG_DERIVATIVES
+// #define PhaseField_Heat_DBG_DERIVATIVES
+
 namespace Uintah
 {
 namespace PhaseField

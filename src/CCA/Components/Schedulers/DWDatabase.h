@@ -246,7 +246,7 @@ class DWDatabase {
           if (m_next) {
             delete m_next;
           }
-          ASSERT(m_var);
+          ASSERT_NOTHROW(m_var);
           delete m_var;
         }
         Variable        * m_var  { nullptr };

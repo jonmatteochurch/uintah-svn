@@ -31,11 +31,20 @@ SRCDIR   := CCA/Components/Solvers/HypreSStruct
 
 ifeq ($(HAVE_HYPRE),yes)
 
-  SRCS += $(SRCDIR)/Solver.cc         \
+  SRCS += $(SRCDIR)/detail/sstruct_stencil.cc \
+          $(SRCDIR)/Solver.cc         \
           $(SRCDIR)/SolverFactory.cc  \
-          $(SRCDIR)/SStructSolvers.cc \
-          $(SRCDIR)/SStructStencils.cc \
+          $(SRCDIR)/SStructSolver-bld.cc \
+
+  BLDDIR := $(SRCTOP)/$(SRCDIR)
+
+  BLDSRCS = \
+          $(BLDDIR)/SStructSolver-bld.cc \
 
   LIBS := $(HYPRE_LIBRARY)
+
+
+$(BLDSRCS): %-bld.cc: %-bld.sh
+	bash $<
 
 endif # if $(HAVE_HYPRE)

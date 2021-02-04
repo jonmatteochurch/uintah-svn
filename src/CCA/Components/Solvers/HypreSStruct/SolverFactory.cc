@@ -64,10 +64,10 @@ SolverFactory::create (
         switch ( csolver_type )
         {
         case 1: // SysPFMG-PCG
-            cimpl = "pcg|sys_pfmg|" + ndim + "|" + c2f;
+            cimpl = "pcg|syspfmg|" + ndim + "|" + c2f;
             break;
         case 2: // SysPFMG
-            cimpl = "sys_pfmg|" + ndim + "|" + c2f;
+            cimpl = "syspfmg|" + ndim + "|" + c2f;
             break;
         default:
             SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct FAC coarse solver with csolver_type='" + std::to_string ( csolver_type ) + "'", __FILE__, __LINE__ ) );
@@ -93,10 +93,10 @@ SolverFactory::create (
     if ( !interface_creator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + impl + "'", __FILE__, __LINE__ ) );
 
     if ( ndim == "2" )
-        return scinew Solver<2> ( myWorld, std::stoi(c2f), std::move ( interface_creator ) );
+        return scinew Solver<2> ( myWorld, std::move ( interface_creator ) );
 
     if ( ndim == "3" )
-        return scinew Solver<3> ( myWorld, std::stoi(c2f), std::move ( interface_creator ) );
+        return scinew Solver<3> ( myWorld, std::move ( interface_creator ) );
 
     SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Solver with ndim='" + ndim + "'", __FILE__, __LINE__ ) );
     return nullptr;

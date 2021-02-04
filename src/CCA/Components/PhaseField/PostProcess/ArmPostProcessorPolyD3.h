@@ -23,13 +23,13 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorParallelPoly.h
+ * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorPolyD3.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2020/06
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelPoly_h
-#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelPoly_h
+#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD3_h
+#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD3_h
 
 #include <sci_defs/lapack_defs.h>
 
@@ -57,9 +57,8 @@ namespace PhaseField
 {
 
 template<VarType VAR>
-class ArmPostProcessorParallelPoly
-    : public ArmPostProcessor < VAR, D2 >
-    , public ArmPostProcessor < VAR, D3 >
+class ArmPostProcessorPolyD3
+    : public ArmPostProcessor
 {
 private: // STATIC MEMBERS
 
@@ -73,9 +72,9 @@ protected: // MEMBERS
 
     const double m_alpha;
 
-    const int m_n0; // no. of psi values for computation of 0-level, and psi_n
-    const int m_n1; // no. of psi values computation of psi_tt
-    const int m_n2; // no. of 0-level, and psi_n values for interpolation at tip
+    const int m_n0; // no. of psi values for computation of 0 level, psi_n, and psi_nn
+    const int m_n1; // no. of psi values for computation of psi_tt
+    const int m_n2; // no. of 0-level, psi_n, and psi_nn values for interpolation at tip
     const int m_n3; // no. of psi_tt values for interpolation at tip
 
     const int m_n0l; // no of pts below contour
@@ -89,9 +88,9 @@ protected: // MEMBERS
     const int m_nnl; // no of pts left of tip
     const int m_nnh; // no of pts right of tip
 
-    int m_deg0; // interpolant degree for computation of 0 level, and psi_n
+    int m_deg0; // interpolant degree for computation of 0 level, psi_n, and psi_nn
     int m_deg1; // interpolant degree for computation of psi_tt
-    int m_deg2; // interpolant degree for evaluating tip position and value of psi_n
+    int m_deg2; // interpolant degree for evaluating tip values of psi_n, and psi_nn
     int m_deg3; // interpolant degree for evaluating tip value of psi_tt
 
     IntVector m_origin;
@@ -115,44 +114,57 @@ protected: // MEMBERS
 
 private: // MEMBERS
 
-    int n_ind ( const IntVector & id ) const
+    // constaining everithing to plane X=Y
+    // n=(z-z0), t=(x-x0)=(y-y0)
+
+    int n_ind ( const IntVector & id /*x,y,z*/ ) const
+    {
+        return id[2] - m_origin[2];
+    }
+
+    int n_ind ( const int & /*xy*/, const int & z ) const
+    {
+        return z - m_origin[2];
+    }
+
+    int t_ind ( const IntVector & id /*x,y,z*/ ) const
     {
         return id[0] - m_origin[0];
     }
 
-    int n_ind ( const int & x, const int & /*y*/ ) const
+    int t_ind ( const int & xy, const int & /*z*/ ) const
     {
-        return x - m_origin[0];
+        return xy - m_origin[0];
     }
 
-    int t_ind ( const IntVector & id ) const
-    {
-        return id[1] - m_origin[1];
-    }
-
-    int t_ind ( const int & /*x*/, const int & y ) const
-    {
-        return y - m_origin[1];
-    }
-
-    int x_ind ( const IntVector & id ) const
+    int x_ind ( const IntVector & id /*n,t*/ ) const
     {
         return id[0] + m_origin[0];
     }
 
-    int x_ind ( const int & n, const int & /*t*/ ) const
+    int x_ind ( const int & /*n*/, const int & t ) const
     {
-        return n + m_origin[0];
+        return t + m_origin[0];
     }
 
-    int y_ind ( const IntVector & id ) const
+    int y_ind ( const IntVector & id /*n,t*/ ) const
     {
-        return id[1] + m_origin[1];
+        return id[0] + m_origin[1];
     }
 
     int y_ind ( const int & /*n*/, const int & t ) const
     {
         return t + m_origin[1];
+    }
+
+    int z_ind ( const IntVector & id /*n,t*/ ) const
+    {
+        return id[0] + m_origin[2];
+    }
+
+    int z_ind ( const int & n, const int & /*t*/ ) const
+    {
+        return n + m_origin[2];
     }
 
     template < VarType V = VAR, typename std::enable_if<V == CC, int>::type = 0 >
@@ -220,7 +232,7 @@ private: // MEMBERS
 
 public: // CONSTRUCTORS/DESTRUCTOR
 
-    ArmPostProcessorParallelPoly (
+    ArmPostProcessorPolyD3 (
         int n0,
         int n1,
         int n2,
@@ -259,7 +271,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
     /**
     * @brief Destructor
     */
-    virtual ~ArmPostProcessorParallelPoly ()
+    virtual ~ArmPostProcessorPolyD3 ()
     {
         delete[] m_locations;
         delete[] m_data_t;
@@ -273,19 +285,19 @@ public:
         const Level * level
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::setLevel: " << level->getIndex() << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessorPolyD3::setLevel: " << level->getIndex() << " " );
 
         m_origin = level->getCellIndex ( {0., 0., 0.} );
         level->computeVariableExtents ( var_td, m_low, m_high );
-        m_dn = level->dCell() [0];
-        m_dt = level->dCell() [1];
+        m_dn = level->dCell() [2];
+        m_dt = std::sqrt ( level->dCell() [0] * level->dCell() [0] + level->dCell() [1] * level->dCell() [1] );
     }
 
     virtual void
     initializeLocations (
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::initializeLocations " );
+        DOUTR ( m_dbg,  "ArmPostProcessorPolyD3::initializeLocations " );
 
         m_location_n0 = std::max ( 0, n_ind ( m_low ) );
         m_locations_size = n_ind ( m_high ) - m_location_n0;
@@ -302,28 +314,37 @@ public:
         View < ScalarField<const double> > const & psi
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::setLocations: " << low << high << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessorPolyD3::setLocations: " << low << high << " " );
 
+        bool fc_xplus = patch->getBCType ( Patch::xplus ) == Patch::Coarse &&
+                        std::find ( faces.begin(), faces.end(), Patch::xplus ) != faces.end();
         bool fc_yplus = patch->getBCType ( Patch::yplus ) == Patch::Coarse &&
                         std::find ( faces.begin(), faces.end(), Patch::yplus ) != faces.end();
 
-        IntVector dh {0, fc_yplus ? 1 : 0, 0};
+        IntVector dh {fc_xplus ? 1 : 0, fc_yplus ? 1 : 0, 0};
         IntVector inf = Max ( low, m_origin );
         IntVector sup = Min ( high - dh, m_high - 1 );
+
+        if ( inf[0] < inf[1] ) inf[0] = inf[1];
+        else inf[1] = inf[0];
+
+        if ( sup[0] < sup[1] ) sup[1] = sup[0];
+        else sup[0] = sup[1];
 
         IntVector id {0, 0, 0};
 
         // move along increasing n
-        for ( id[0] = inf[0]; id[0] < sup[0]; ++id[0] )
+        for ( id[2] = inf[2]; id[2] < sup[2]; ++id[2] )
         {
-            // move along increasing t
-            int end1 = ( VAR == CC ) ? std::min ( sup[1], id[0] ) : std::min ( sup[1], id[0] + 1 );
+            // move along increasing t (t<=n)
+            int end1 = ( VAR == CC ) ? std::min ( sup[0], id[2] ) : std::min ( sup[0], id[2] + 1 );
 
-            for ( id[1] = inf[1]; id[1] < end1; ++id[1] )
+            for ( id[0] = id[1] = inf[0]; id[0] < end1; ++id[0], ++id[1] )
                 if ( psi[id] * psi[id + et] <= 0. )
                 {
                     int ind = n_ind ( id ) - m_location_n0;
-                    if ( t_ind ( id ) < m_locations[ind] )
+                    // if concave edge id+et may not be refined
+                    if ( t_ind ( id ) < m_locations[ind] && patch->getLevel()->containsCell ( id + et ) )
                     {
                         m_locations[ind] = t_ind ( id );
                     }
@@ -342,16 +363,16 @@ public:
             return;
         }
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorPolyD3::reduceMPI " );
 
         int error = Uintah::MPI::Allreduce ( MPI_IN_PLACE, m_locations, m_locations_size, MPI_INT, MPI_MIN, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorPolyD3::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessorParallelPoly::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessorParallelPoly::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "ArmPostProcessorPolyD3::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessorPolyD3::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -375,7 +396,7 @@ public:
     initializeData ()
     override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::initializeData " );
+        DOUTR ( m_dbg,  "ArmPostProcessorPolyD3::initializeData " );
 
         int i = m_locations_size;
         for ( i = m_locations_size; i > 0 && m_locations[i - 1] == INT_MAX; --i );
@@ -383,7 +404,7 @@ public:
 
         if ( m_data_size )
         {
-            for ( ; i > 1 &&  m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
+            for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
 
             m_data_n0 = i - ( m_locations[i - 1] < INT_MAX ? 1 : 0 );
             m_data_size -= m_data_n0;
@@ -413,7 +434,7 @@ public:
         View< ScalarField<int> > * refine_flag
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelPoly::setData: " << low << high << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessorPolyD3::setData: " << low << high << " " );
 
         // arm contour not here
         if ( !m_data_size || n_ind ( high ) < m_data_n0 - m_nnl )
@@ -427,32 +448,67 @@ public:
 
         int n_ = -1, t_; // tip candidates
 
-        for ( in = std::max ( m_data_n0, n_ind ( low ) ); in < n_ind ( high ); ++in )
+        int low_xy = std::max ( low[0], low[1] );
+        int low_z = low[2];
+        int high_xy = std::min ( high[0], high[1] );
+        int high_z = high[2];
+
+        for ( in = std::max ( m_data_n0, n_ind ( low_xy, low_z ) ); in < n_ind ( high_xy, high_z ); ++in )
         {
             t_ = m_locations[ in - m_location_n0 ];
             if ( t_ < INT_MAX )
             {
                 it = t_ - m_n0l;
 
-                it0 = std::max ( it, t_ind ( low ) );
-                it1 = std::min ( it + m_n0, t_ind ( high ) );
+                it0 = std::max ( it, t_ind ( low_xy, low_z ) );
+                it1 = std::min ( it + m_n0, t_ind ( high_xy, high_z ) );
+
+                if ( it0 >= it1 ) continue;
 
                 id[0] = x_ind ( in, it );
                 id[1] = y_ind ( in, it );
-                id[2] = 0;
+                id[2] = z_ind ( in, it );
 
                 n_ = in - m_data_n0;
                 t_ = 0;
 
+                // symmetry on x+y axis
+                sym = { m_origin[0] - id[0], m_origin[1] - id[1], id[2] };
+                if ( VAR == CC )
+                {
+                    --sym[0];
+                    --sym[1];
+                }
+                for ( ; id[0] < m_origin[0] && id[1] < m_origin[1]; ++it, id += et, --sym[0], --sym[1], ++t_ )
+                    if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                    {
+                        data_t ( n_, t_ ) = t_coord ( it );
+                        data_z ( n_, t_ ) = psi[sym];
+                        if ( refine_flag ) ( *refine_flag ) [sym] = -2;
+                    }
+
+                // symmetry on x axis
+                sym = { m_origin[0] - id[0], id[1], id[2] };
+                if ( VAR == CC )
+                {
+                    --sym[0];
+                }
+                for ( ; id[0] < m_origin[0]; ++it, id += et, --sym[0], ++sym[1], ++t_ )
+                    if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                    {
+                        data_t ( n_, t_ ) = t_coord ( it );
+                        data_z ( n_, t_ ) = psi[sym];
+                        if ( refine_flag ) ( *refine_flag ) [sym] = -2;
+                    }
+
                 // symmetry on y axis
-                sym = { id[0], m_origin[1] - id[1], 0 };
+                sym = { id[0], m_origin[1] - id[1], id[2] };
                 if ( VAR == CC )
                 {
                     --sym[1];
                 }
-
-                for ( ; id[1] < m_origin[1]; ++it, ++id[1], --sym[1], ++t_ )
-                    if ( low[1] <= sym[1] && sym[1] < high[1] )
+                for ( ; id[1] < m_origin[1]; ++it, id += et, ++sym[0], --sym[1], ++t_ )
+                    if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
                     {
                         data_t ( n_, t_ ) = t_coord ( it );
                         data_z ( n_, t_ ) = psi[sym];
@@ -460,30 +516,31 @@ public:
                     }
 
                 // skip non patch region
-                for ( ; it < it0; ++it, ++id[1], ++t_ );
+                for ( ; it < it0; ++it, id += et, ++t_ );
 
                 // set patch data
-                for ( ; it < it1; ++it, ++id[1], ++t_ )
+                for ( ; it < it1; ++it, id += et, ++t_ )
                 {
                     data_t ( n_, t_ ) = t_coord ( it );
                     data_z ( n_, t_ ) = psi[id];
                     if ( refine_flag ) ( *refine_flag ) [id] = 2;
                 }
 
+                // skip non patch region
+                for ( ; t_ < m_n0 && id[0] < m_high[0]; ++it, ++t_ );
+                for ( ; t_ < m_n0 && id[1] < m_high[1]; ++it, ++t_ );
+
                 // extend psi to -1 out computational boundary
-                if ( high[1] == m_high[1] )
+                for ( ; t_ < m_n0; ++it, ++t_ )
                 {
-                    for ( t_ = t_ind ( high ); t_ < m_n0; ++t_ )
-                    {
-                        data_t ( n_, t_ ) = data_t ( n_, t_ - 1 ) + m_dt;
-                        data_z ( n_, t_ ) = -1.;
-                    }
+                    data_t ( n_, t_ ) = t_coord ( it );
+                    data_z ( n_, t_ ) = -1.;
                 }
             }
         }
 
         // check for tip
-        if ( ( t_ind ( 0, high[1] - 1 ) + m_nt ) * ( t_ind ( low ) - m_nt ) <= 0 )
+        if ( ( t_ind ( high_xy, high_z ) + m_nt - 1 ) * ( t_ind ( low_xy, low_z ) - m_nt ) <= 0 )
         {
             bool is_tip = false;
             if ( m_tip_n < 0 )
@@ -550,46 +607,186 @@ public:
                 in = n_ - m_nnl;
                 it = 0;
 
-                id = { x_ind ( in, it ), y_ind ( in, it ), 0 };
+                int in0 = std::max ( 0, n_ind ( low_xy, low_z ) - in );
+                int in1 = std::min ( m_nn, n_ind ( high_xy, high_z ) - in );
+                int it0 = std::max ( 0, t_ind ( low_xy, low_z ) - it );
+                int it1 = std::min ( m_nt, t_ind ( high_xy, high_z ) - it );
 
-                int in0 = std::max ( 0, n_ind ( low ) - in );
-                int in1 = std::min ( m_nn, n_ind ( high ) - in );
-                int it0 = std::max ( 0, low[1] - it );
-                int it1 = std::min ( m_nt, high[1] - it );
+                n_ = 0;
+                id[2] = z_ind ( in, it );
 
-                // simmetry on x axis
-                if ( id[0] < m_origin[0] )
+                // symmetry on z
+                sym[2] = m_origin[2] - id[2];
+                if ( VAR == CC )
                 {
-                    sym = { m_origin[0] - id[0], 0, 0 };
-                    if ( VAR == CC )
+                    --sym[2];
+                }
+
+                for ( ; n_ < m_nn && id[2] < m_origin[2]; ++n_, ++in, ++id[2], --sym[2] )
+                    if ( low[2] <= sym[2] && sym[2] < high[2] )
                     {
-                        sym[0] -= 1;
-                    }
-                    for ( n_ = 0; n_ < in0; ++n_, ++id[0], --sym[0] )
-                        if ( low[0] <= sym[0] && sym[0] < high[0] )
+                        int t_ = 0;
+                        it = 0;
+                        id[0] = x_ind ( in, it );
+                        id[1] = y_ind ( in, it );
+
+                        // symmetry on x+y axes
+                        sym[0] = m_origin[0];
+                        sym[1] = m_origin[1];
+                        if ( VAR == CC )
                         {
-                            sym[1] = m_origin[1] + it0;
-                            for ( t_ = it0; t_ < it1; ++t_, ++sym[1] )
+                            --sym[0];
+                            --sym[1];
+                        }
+
+                        for ( ; t_ < m_nt && id[0] < m_origin[0] && id[1] < m_origin[1]; ++it, id += et, ++t_, --sym[0], --sym[1] )
+                            if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
                             {
                                 tip_z ( t_, n_ ) = psi[sym];
                                 if ( refine_flag ) ( *refine_flag ) [sym] = -3;
                             }
-                        }
-                }
-                else
-                {
-                    id[0] += in0;
-                }
 
-                for ( n_ = in0; n_ < in1; ++n_, ++id[0] )
+                        // symmetry on x axes
+                        sym[0] = m_origin[0] - id[0];
+                        sym[1] = id[1];
+
+                        if ( VAR == CC )
+                        {
+                            --sym[0];
+                        }
+                        for ( ; t_ < m_nt && id[0] < m_origin[0]; ++it, id += et, ++t_, --sym[0], ++sym[1] )
+                            if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                            {
+                                tip_z ( t_, n_ ) = psi[sym];
+                                if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                            }
+
+                        // symmetry on y axes
+                        sym[0] = id[0];
+                        sym[1] = m_origin[1] - id[1];
+                        if ( VAR == CC )
+                        {
+                            --sym[1];
+                        }
+
+                        for ( ; t_ < m_nt && id[1] < m_origin[1]; ++it, id += et, ++t_, ++sym[0], --sym[1] )
+                            if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                            {
+                                tip_z ( t_, n_ ) = psi[sym];
+                                if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                            }
+
+                        // skip non patch region
+                        for ( ; t_ < m_nt && it < it0; ++it, id += et, ++t_ );
+
+                        // set patch data
+                        sym[0]=id[0];
+                        sym[1]=id[1];
+                        for ( ; t_ < m_nt && it < it1; ++it, id += et, sym += et, ++t_ )
+//                         if ( low[0] <= id[0] && id[0] < high[0] && low[1] <= id[1] && id[1] < high[1] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = 3;
+                        }
+
+                        // skip non patch region
+                        for ( ; t_ < m_nt && id[0] < m_high[0]; ++it, id += et, ++t_ );
+                        for ( ; t_ < m_nt && id[1] < m_high[1]; ++it, id += et, ++t_ );
+
+                        // extend psi to -1 out computational boundary
+                        for ( ; t_ < m_nt; ++it, ++t_ )
+                        {
+                            tip_z ( t_, n_ ) = -1.;
+                        }
+                    }
+
+                // skip non patch region
+                for ( ; n_ < in0; ++n_, ++in, ++id[2] );
+
+                // set patch data
+                sym[2] = id[2];
+                for ( ; n_ < in1; ++n_, ++in, ++id[2] )
                 {
-                    id[1] = m_origin[1] + it0;
-                    for ( t_ = it0; t_ < it1; ++t_, ++id[1] )
+                    int t_ = 0;
+                    it = 0;
+                    id[0] = x_ind ( in, it );
+                    id[1] = y_ind ( in, it );
+
+                    // symmetry on x+y axes
+                    sym[0] = m_origin[0];
+                    sym[1] = m_origin[1];
+                    if ( VAR == CC )
+                    {
+                        --sym[0];
+                        --sym[1];
+                    }
+
+                    for ( ; t_ < m_nt && id[0] < m_origin[0] && id[1] < m_origin[1]; ++it, id += et, ++t_, --sym[0], --sym[1] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
+                    // symmetry on x axes
+                    sym[0] = m_origin[0] - id[0];
+                    sym[1] = id[1];
+
+                    if ( VAR == CC )
+                    {
+                        --sym[0];
+                    }
+                    for ( ; t_ < m_nt && id[0] < m_origin[0]; ++it, id += et, ++t_, --sym[0], ++sym[1] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
+                    // symmetry on y axes
+                    sym[0] = id[0];
+                    sym[1] = m_origin[1] - id[1];
+                    if ( VAR == CC )
+                    {
+                        --sym[1];
+                    }
+
+                    for ( ; t_ < m_nt && id[1] < m_origin[1]; ++it, id += et, ++t_, ++sym[0], --sym[1] )
+                        if ( low[0] <= sym[0] && sym[0] < high[0] && low[1] <= sym[1] && sym[1] < high[1] )
+                        {
+                            tip_z ( t_, n_ ) = psi[sym];
+                            if ( refine_flag ) ( *refine_flag ) [sym] = -3;
+                        }
+
+                    // skip non patch region
+                    for ( ; t_ < m_nt && it < it0; ++it, id += et, ++t_ );
+
+                    // set patch data
+                    for ( ; t_ < m_nt && it < it1; ++it, id += et, ++t_ )
+//                         if ( low[0] <= id[0] && id[0] < high[0] && low[1] <= id[1] && id[1] < high[1] )
                     {
                         tip_z ( t_, n_ ) = psi[id];
                         if ( refine_flag ) ( *refine_flag ) [id] = 3;
                     }
+
+                    // skip non patch region
+                    for ( ; t_ < m_nt && id[0] < m_high[0]; ++it, id += et, ++t_ );
+                    for ( ; t_ < m_nt && id[1] < m_high[1]; ++it, id += et, ++t_ );
+
+                    // extend psi to -1 out computational boundary
+                    for ( ; t_ < m_nt; ++t_ )
+                    {
+                        tip_z ( t_, n_ ) = -1.;
+                    }
                 }
+
+                // skip non patch region
+                for ( ; n_ < m_nn && id[2] < m_high[2]; ++in, ++id[2], ++n_ );
+
+                // extend psi to -1 out computational boundary
+                for ( ; n_ < m_nn; ++n_ )
+                    for ( int t_ = 0; t_ < m_nt; ++t_ )
+                        tip_z ( t_, n_ ) = -1.;
             }
         }
     }
@@ -602,7 +799,7 @@ public:
         if ( !m_data_size || myworld->nRanks() <= 1 )
             return;
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorPolyD3::reduceMPI " );
 
         int error;
         if ( myworld->myRank() == 0 )
@@ -616,12 +813,12 @@ public:
                     Uintah::MPI::Reduce ( m_data_z, nullptr, m_n0 * m_data_size, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() ) ||
                     Uintah::MPI::Reduce ( m_tip_z, nullptr, m_nn * m_nt, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelPoly::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorPolyD3::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessorParallelPoly::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessorParallelPoly::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "ArmPostProcessorPolyD3::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessorPolyD3::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -743,6 +940,8 @@ public:
             DOUT ( DBG_PRINT, "plot3(x," << t << "+0*x,y,'-ob')" );
             DOUT ( DBG_PRINT, "plot3(" << n << "," << t << ",0,'*b')\n" );
         }
+
+        delete[] tip_n;
 
         // 3. Interpolate tip position and psi_n
 
@@ -871,14 +1070,14 @@ public:
         delete[] arm_n;
         delete[] arm_t2;
     }
-}; // class ArmPostProcessorParallelPoly
+}; // struct ArmPostProcessorPolyD3
 
-template<VarType VAR> const IntVector ArmPostProcessorParallelPoly < VAR >::en { 1, 0, 0 };
-template<VarType VAR> const IntVector ArmPostProcessorParallelPoly < VAR >::et { 0, 1, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorPolyD3<VAR>::en { 0, 0, 1 };
+template<VarType VAR> const IntVector ArmPostProcessorPolyD3<VAR>::et { 1, 1, 0 };
 
 } // namespace PhaseField
 } // namespace Uintah
 
 #undef DBG_PRINT
 
-#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelPoly_h
+#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD3_h

@@ -22,15 +22,19 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructImplementation_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructImplementation_h
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstruct_implementation_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstruct_implementation_h
 
 #include <CCA/Components/Solvers/HypreSStruct/MatrixIndex.h>
 #include <CCA/Components/Solvers/HypreSStruct/AdditionalEntries.h>
 #include <CCA/Components/Solvers/HypreSStruct/GlobalData.h>
 #include <CCA/Components/Solvers/HypreSStruct/PartData.h>
-#include <CCA/Components/Solvers/HypreSStruct/ExtraEntries.h>
 #include <CCA/Components/Solvers/HypreSStruct/SStructInterface.h>
+
+// #define EXTRA_ENTRIES_DBG
+
+#include <CCA/Components/Solvers/HypreSStruct/detail/extra_entries.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_stencil.h>
 
 #include <HYPRE_sstruct_ls.h>
 
@@ -44,14 +48,15 @@
 #define HYPRE(fn) HYPREDBG_##fn
 #endif
 
-
 namespace Uintah
 {
 namespace HypreSStruct
 {
+namespace detail
+{
 
 template < int DIM, int C2F >
-class SStructImplementation
+class sstruct_implementation
     : public SStructInterface
 {
 protected:
@@ -75,12 +80,12 @@ protected:
     bool                   A_initialized, b_initialized, x_initialized;
     bool                   guess_updated;
 
-    ExtraEntries<StnIndex, DIM> ** extra_stn_entries;
-    ExtraEntries<AddIndex, DIM> ** extra_add_entries;
+    extra_entries<stn_index, DIM> ** extra_stn_entries;
+    extra_entries<add_index, DIM> ** extra_add_entries;
 
 protected:
 
-    SStructImplementation (
+    sstruct_implementation (
         const GlobalDataP & global_data
     ) : gdata ( global_data ),
         pdatas ( nullptr ),
@@ -107,17 +112,17 @@ protected:
 
         if ( nparts > 1 )
         {
-            extra_stn_entries = scinew ExtraEntries<StnIndex, DIM> * [nvars];
-            extra_add_entries = scinew ExtraEntries<AddIndex, DIM> * [nvars];
+            extra_stn_entries = scinew extra_entries<stn_index, DIM> * [nvars];
+            extra_add_entries = scinew extra_entries<add_index, DIM> * [nvars];
             for ( int i = 0; i < nvars; ++i )
             {
-                extra_stn_entries[i] = scinew ExtraEntries<StnIndex, DIM> [ nparts ];
-                extra_add_entries[i] = scinew ExtraEntries<AddIndex, DIM> [ nparts ];
+                extra_stn_entries[i] = scinew extra_entries<stn_index, DIM> [ nparts ];
+                extra_add_entries[i] = scinew extra_entries<add_index, DIM> [ nparts ];
             }
         }
     }
 
-    virtual ~SStructImplementation()
+    virtual ~sstruct_implementation()
     {
         if ( x_initialized ) HYPRE ( SStructVectorDestroy ) ( x );
         if ( b_initialized ) HYPRE ( SStructVectorDestroy ) ( b );
@@ -155,15 +160,15 @@ protected:
         const IntVector & fine_index
     )
     {
-        StnIndex stn { coarse_box, coarse_index, 0 };
-        AddIndex ind { -1, coarse_index, coarse_part + 1, fine_index };
+        stn_index stn { coarse_box, coarse_index, 0 };
+        add_index ind { coarse_box, coarse_index, -1, coarse_part + 1, fine_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
-        int & to_part  = std::get<2> ( ind );
-        int * to_index = std::get<3> ( ind ).get_pointer();
+        int & to_part  = std::get<3> ( ind );
+        int * to_index = std::get<4> ( ind ).get_pointer();
 
-        if ( extra_add_entries[var][coarse_part].emplace_back ( ind, stn, 0. ) )
-            HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
+        ASSERT ( extra_add_entries[var][coarse_part].emplace_back ( SET, ind, stn, 0. ) )
+        HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
     }
 
     template<int C = C2F, typename std::enable_if<C == 0, int>::type = 0>
@@ -176,21 +181,21 @@ protected:
         const IntVector & coarse_index,
         const int & coarse_rank,
         const IntVector & fine_index,
-        const int & face_dir,
-        const int & face_sgn
+        const int & /*face_dir*/,
+        const int & /*face_sgn*/
     )
     {
-        StnIndex stn { coarse_box, coarse_index, coarse_rank };
-        AddIndex ind { -1, coarse_index, coarse_part + 1, fine_index };
+        stn_index stn { coarse_box, coarse_index, coarse_rank };
+        add_index ind { coarse_box, coarse_index, -1, coarse_part + 1, fine_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
-        int & to_part  = std::get<2> ( ind );
-        int * to_index = std::get<3> ( ind ).get_pointer();
+        int & to_part  = std::get<3> ( ind );
+        int * to_index = std::get<4> ( ind ).get_pointer();
 
-        if ( extra_add_entries[var][coarse_part].emplace_back ( ind, stn, 1. ) )
+        if ( extra_add_entries[var][coarse_part].emplace_back ( ADDTO, ind, stn, 1. ) )
             HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
 
-        extra_stn_entries[var][coarse_part].emplace_back ( stn, stn, 0 );
+        ASSERT ( extra_stn_entries[var][coarse_part].emplace_back ( SET, stn, stn, 0 ) );
     }
 
     template<int C = C2F, typename std::enable_if<C == 1, int>::type = 0>
@@ -207,12 +212,12 @@ protected:
         const int & face_sgn
     )
     {
-        StnIndex stn { coarse_box, coarse_index, coarse_rank };
-        AddIndex ind { -1, coarse_index, coarse_part + 1, fine_index };
+        stn_index stn { coarse_box, coarse_index, coarse_rank };
+        add_index ind { coarse_box, coarse_index, -1, coarse_part + 1, fine_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
-        int & to_part  = std::get<2> ( ind );
-        int * to_index = std::get<3> ( ind ).get_pointer();
+        int & to_part  = std::get<3> ( ind );
+        int * to_index = std::get<4> ( ind ).get_pointer();
 
         int ( & refinement ) [HYPRE_MAXDIM] = prefinements[to_part];
         const double & weight = pdatas[to_part]->pRefinementWeight();
@@ -225,34 +230,34 @@ protected:
             for ( to_index[1] = lower[1]; to_index[1] < upper[1]; ++to_index[1] )
                 for ( to_index[0] = lower[0]; to_index[0] < upper[0]; ++to_index[0] )
                 {
-                    if ( extra_add_entries[var][coarse_part].emplace_back ( ind, stn, weight ) )
+                    if ( extra_add_entries[var][coarse_part].emplace_back ( ADDTO, ind, stn, weight ) )
                         HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
                 }
-        extra_stn_entries[var][coarse_part].emplace_back ( stn, stn, 0 );
+        ASSERT ( extra_stn_entries[var][coarse_part].emplace_back ( SET, stn, stn, 0 ) );
     }
 
     void
     add_f2f_interface_entry
     (
         const int & var,
-        const AddIndex & add,
+        const add_index & add,
         const IntVector & refined_index,
         const double & weight
     )
     {
-        AddIndex ind { -1, std::get<1> ( add ), std::get<2> ( add ) + 1, refined_index };
+        add_index ind { std::get<0> ( add ), std::get<1> ( add ), -1, std::get<3> ( add ) + 1, refined_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
-        int & part     = std::get<2> ( ind );
-        int * to_index = std::get<3> ( ind ).get_pointer();
+        int & part     = std::get<3> ( ind );
+        int * to_index = std::get<4> ( ind ).get_pointer();
 
         // check if stencil entry
-        for ( int rank = 0; rank < SStructStencil<DIM>::size; ++rank )
+        for ( int rank = 0; rank < sstruct_stencil<DIM>::size; ++rank )
         {
             bool is_stencil = true;
             for ( int d = 0; d < DIM; ++d )
             {
-                if ( to_index[d] - index[d] != SStructStencil<DIM>::offsets[rank][d] )
+                if ( to_index[d] - index[d] != sstruct_stencil<DIM>::offsets[rank][d] )
                 {
                     is_stencil = false;
                     break;
@@ -261,16 +266,15 @@ protected:
 
             if ( is_stencil )
             {
-                StnIndex stn { std::get<0> (add), refined_index, rank };
+                stn_index stn { std::get<0> ( add ), std::get<1> ( add ), rank };
                 // add entry to existing stencil
-                extra_stn_entries[var][part].emplace_back ( stn, stn, 1. );
-                extra_stn_entries[var][part].emplace_back ( stn, add, weight );
+                extra_stn_entries[var][part].emplace_back ( ADDTO, stn, add, weight );
                 return;
             }
         }
 
         // otherwise is additional entry
-        if ( extra_add_entries[var][part].emplace_back ( ind, add, weight ) )
+        if ( extra_add_entries[var][part].emplace_back ( ADDTO, ind, add, weight ) )
             HYPRE ( SStructGraphAddEntries ) ( graph, part, index, var, part, to_index, var );
     }
 
@@ -286,7 +290,7 @@ protected:
         const IntVector & refined_index
     )
     {
-        AddIndex add { fine_box, fine_index, fine_part - 1, coarse_index };
+        add_index add { fine_box, fine_index, -1, fine_part - 1, coarse_index };
         add_f2f_interface_entry ( var, add, refined_index, 1. );
     }
 
@@ -302,7 +306,7 @@ protected:
         const IntVector & refined_index
     )
     {
-        AddIndex add { fine_box, fine_index, fine_part - 1, coarse_index };
+        add_index add { fine_box, fine_index, -1, fine_part - 1, coarse_index };
 
         const int ( & refinement ) [HYPRE_MAXDIM] = prefinements[fine_part];
         const double & weight = pdatas[fine_part]->pRefinementWeight();
@@ -327,13 +331,13 @@ protected:
         const IntVector & coarse_index
     )
     {
-        AddIndex add { fine_box, fine_index, fine_part - 1, coarse_index };
+        add_index add { fine_box, fine_index, -1, fine_part - 1, coarse_index };
 
         int * index    = std::get<1> ( add ).get_pointer();
-        int & to_part  = std::get<2> ( add );
-        int * to_index = std::get<3> ( add ).get_pointer();
+        int & to_part  = std::get<3> ( add );
+        int * to_index = std::get<4> ( add ).get_pointer();
 
-        if ( extra_add_entries[var][fine_part].emplace_back ( add, add, 1. ) )
+        if ( extra_add_entries[var][fine_part].emplace_back ( ADDTO, add, add, 1. ) )
             HYPRE ( SStructGraphAddEntries ) ( graph, fine_part, index, var, to_part, to_index, var );
     };
 
@@ -344,7 +348,7 @@ protected:
         const CCVariable<Stencil7> & stencil_entries
     )
     {
-        std::vector<double> values ( pdata->boxSize ( box ) * SStructStencil<DIM>::size );
+        std::vector<double> values ( pdata->boxSize ( box ) * sstruct_stencil<DIM>::size );
 
         std::vector<double>::iterator it = values.begin();
         for ( int k = pdata->iLowerD ( box, 2 ); k <= pdata->iUpperD ( box, 2 ); ++k )
@@ -437,10 +441,10 @@ public:
     ) override
     {
         ASSERT ( !stencil_initialized );
-        HYPRE ( SStructStencilCreate ) ( DIM, SStructStencil<DIM>::size, &stencil );
+        HYPRE ( SStructStencilCreate ) ( DIM, sstruct_stencil<DIM>::size, &stencil );
         for ( int var = 0; var < gdata->nVars(); ++var )
-            for ( int entry = 0; entry < SStructStencil<DIM>::size; ++entry )
-                HYPRE ( SStructStencilSetEntry ) ( stencil, entry, SStructStencil<DIM>::offsets[entry], var );
+            for ( int entry = 0; entry < sstruct_stencil<DIM>::size; ++entry )
+                HYPRE ( SStructStencilSetEntry ) ( stencil, entry, sstruct_stencil<DIM>::offsets[entry], var );
 
         stencil_initialized = true;
     }
@@ -449,7 +453,7 @@ public:
     graphInitialize (
         const MPI_Comm & comm,
         const GridP & grd,
-        AdditionalEntries ** ** additional_entries
+        AdditionalEntries **** additional_entries
     ) override
     {
         ASSERT ( !graph_initialized );
@@ -470,7 +474,7 @@ public:
                 const int ( & refinement ) [HYPRE_MAXDIM] = prefinements[fine_part];
 
                 /* add zero connection to fine boxes from the corresponding
-                 * forming the coarse operators since it reassigns coarse boxs
+                 * forming the coarse operators since it reassigns coarse boxes
                  * to the processors owning their refined fine boxes */
                 for ( int coarse_box = 0; coarse_box < gdata->nBoxes ( coarse_part ); ++coarse_box )
                 {
@@ -503,7 +507,7 @@ public:
                             add_c2f_refinement_entry ( var, coarse_part, coarse_box, coarse_index, fine_index );
                     }
 
-                    /* add addtitional coarse to fine entries */
+                    /* add additional coarse to fine entries */
 
                     // stretch refined range for coarse_box to include ghosts
                     for ( int d = 0; d < DIM; ++d )
@@ -513,6 +517,7 @@ public:
                     }
 
                     // select fine_patches in refined coarse_box range
+                    fine_patches.clear();
                     fine_level->selectPatches ( fine_lower, fine_upper, fine_patches );
 
                     for ( const Patch * fine_patch : fine_patches )
@@ -530,10 +535,7 @@ public:
                         }
 
                         for ( int face_dir = 0; face_dir < DIM; ++face_dir )
-                            for ( int face_sgn :
-                                    {
-                                        -1, 1
-                                    } )
+                            for ( int face_sgn : { -1, 1 } )
                             {
                                 int face = 2 * face_dir + ( face_sgn + 1 ) / 2;
 
@@ -542,7 +544,7 @@ public:
                                 {
                                     // stencil rank that points to refined coarse
                                     // indices corresponding to face
-                                    int coarse_entry = face - face_sgn;
+                                    int coarse_entry = face - face_sgn + 1;
 
                                     // compute face coarse and fine ranges
                                     IntVector ilower = coarse_lower;
@@ -581,7 +583,7 @@ public:
                                         for ( coarse_index[1] = ilower[1], fine_index[1] = fine_lower[1]; coarse_index[1] <= iupper[1]; ++coarse_index[1], fine_index[1] += refinement[1] )
                                             for ( coarse_index[2] = ilower[2], fine_index[2] = fine_lower[2]; coarse_index[2] <= iupper[2]; ++coarse_index[2], fine_index[2] += refinement[2] )
                                                 for ( int var = 0; var < gdata->nVars(); ++var )
-                                                    add_c2f_interface_entry ( var, coarse_part, coarse_box, coarse_index, coarse_entry + 1, fine_index, face_dir, face_sgn );
+                                                    add_c2f_interface_entry ( var, coarse_part, coarse_box, coarse_index, coarse_entry, fine_index, face_dir, face_sgn );
                                 }
                             }
                     }
@@ -679,7 +681,7 @@ public:
 
     virtual void
     matrixUpdate (
-        constCCVariable<Stencil7> ** * stencil_entries,
+        constCCVariable<Stencil7> *** stencil_entries,
         AdditionalEntries ** ** additional_entries
     ) override
     {
@@ -690,7 +692,7 @@ public:
             auto & pdata = pdatas[part];
             for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
             {
-                std::vector<int> stencil_indices ( SStructStencil<DIM>::size );
+                std::vector<int> stencil_indices ( sstruct_stencil<DIM>::size );
                 std::iota ( std::begin ( stencil_indices ), std::end ( stencil_indices ), 0 );
 
                 for ( int var = 0; var < gdata->nVars(); ++var )
@@ -698,7 +700,7 @@ public:
                     std::vector<double> values = get_stencil_values ( pdata, box, stencil_entries[var][part][box] );
                     HYPRE ( SStructMatrixSetBoxValues ) (
                         A, part, const_cast<int *> ( pdata->iLower ( box ) ), const_cast<int *> ( pdata->iUpper ( box ) ),
-                        var, SStructStencil<DIM>::size, stencil_indices.data(), values.data() );
+                        var, sstruct_stencil<DIM>::size, stencil_indices.data(), values.data() );
                 }
             }
         }
@@ -709,10 +711,49 @@ public:
             {
                 for ( int part = 0; part < gdata->nParts(); ++part )
                 {
+#ifdef EXTRA_ENTRIES_DBG
+                    std::cout << "PART (LVL) " << part << std::endl;
+#endif
+
+                    int * index;
+                    int nentries;
+                    int * entries;
+                    double * values;
+
+#ifdef EXTRA_ENTRIES_DBG
+                    std::cout << "STN" << std::endl;
+                    std::cout << extra_stn_entries[var][part] << std::endl;
+                    std::cout << "{ extra iterators:" << std::endl;
+#endif
+
                     for ( const auto & extra : extra_stn_entries[var][part] ( stencil_entries[var][part], additional_entries[var][part] ) )
-                        HYPRE ( SStructMatrixSetValues ) ( A, part, extra.index(), var, extra.nValues(), extra.entries(), extra.values() );
+                    {
+                        if ( extra.get_set_values ( index, nentries, entries, values ) )
+                            HYPRE_SStructMatrixSetValues ( A, part, index, var, nentries, entries, values );
+
+                        if ( extra.get_addto_values ( index, nentries, entries, values ) )
+                            HYPRE_SStructMatrixAddToValues ( A, part, index, var, nentries, entries, values );
+                    }
+
+#ifdef EXTRA_ENTRIES_DBG
+                    std::cout << "}" << std::endl;
+                    std::cout << "ADD" << std::endl;
+                    std::cout << extra_add_entries[var][part] << std::endl;
+                    std::cout << "{ extra iterators:" << std::endl;
+#endif
+
                     for ( const auto & extra : extra_add_entries[var][part] ( stencil_entries[var][part], additional_entries[var][part] ) )
-                        HYPRE ( SStructMatrixSetValues ) ( A, part, extra.index(), var, extra.nValues(), extra.entries(), extra.values() );
+                    {
+                        if ( extra.get_set_values ( index, nentries, entries, values ) )
+                            HYPRE_SStructMatrixSetValues ( A, part, index, var, nentries, entries, values );
+
+                        if ( extra.get_addto_values ( index, nentries, entries, values ) )
+                            HYPRE_SStructMatrixAddToValues ( A, part, index, var, nentries, entries, values );
+
+                    }
+#ifdef EXTRA_ENTRIES_DBG
+                    std::cout << "}" << std::endl;
+#endif
                 }
             }
         }
@@ -807,7 +848,7 @@ public:
 
     virtual void
     getSolution (
-        CCVariable<double> ** * solution
+        CCVariable<double> *** solution
     ) override
     {
         HYPRE ( SStructVectorGather ) ( x );
@@ -840,6 +881,18 @@ public:
         if ( graph_initialized ) HYPRE ( SStructGraphDestroy ) ( graph );
         if ( stencil_initialized ) HYPRE ( SStructStencilDestroy ) ( stencil );
         if ( grid_initialized ) HYPRE ( SStructGridDestroy ) ( grid );
+
+        const int & nvars = gdata->nVars();
+        const int & nparts = gdata->nParts();
+
+        if ( nparts > 1 )
+            for ( int i = 0; i < nvars; ++i )
+                for ( int j = 0; j < nparts; ++j )
+                {
+                    extra_stn_entries[i][j].clear();
+                    extra_add_entries[i][j].clear();
+                }
+
         solverFinalize();
         x_initialized = b_initialized = A_initialized = graph_initialized = stencil_initialized = grid_initialized = false;
     }
@@ -855,13 +908,16 @@ public:
         m_restart = false;
         return true;
     }
+
+    operator HYPRE_SStructSolver()
+    {
+        return solver;
+    }
 };
 
+} // namespace detail
 } // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructInterface_h
-
-
-
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstructInterface_h
 

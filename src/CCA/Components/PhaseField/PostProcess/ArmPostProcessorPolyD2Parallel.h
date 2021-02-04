@@ -23,13 +23,13 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorParallelTanh.h
+ * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorPolyD2Parallel.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2020/06
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelTanh_h
-#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelTanh_h
+#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD2Parallel_h
+#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD2Parallel_h
 
 #include <sci_defs/lapack_defs.h>
 
@@ -39,8 +39,7 @@
 
 #ifdef HAVE_LAPACK
 #   include <CCA/Components/PhaseField/Lapack/Poly.h>
-#   include <CCA/Components/PhaseField/Lapack/Tanh1.h>
-#   include <CCA/Components/PhaseField/Lapack/Tanh2.h>
+#   include <CCA/Components/PhaseField/Lapack/DMat.h>
 #endif
 
 #include <numeric>
@@ -58,9 +57,8 @@ namespace PhaseField
 {
 
 template<VarType VAR>
-class ArmPostProcessorParallelTanh
-    : public ArmPostProcessor < VAR, D2 >
-    , public ArmPostProcessor < VAR, D3 >
+class ArmPostProcessorPolyD2Parallel
+    : public ArmPostProcessor
 {
 private: // STATIC MEMBERS
 
@@ -75,9 +73,14 @@ protected: // MEMBERS
     const double m_alpha;
 
     const int m_n0; // no. of psi values for computation of 0-level, and psi_n
+    const int m_n1; // no. of psi values for computation of psi_tt
+    const int m_n2; // no. of 0-level, and psi_n values for interpolation at tip
+    const int m_n3; // no. of psi_tt values for interpolation at tip
 
-    const int m_n0l;
-    const int m_n0h;
+    const int m_n0l; // no of pts below contour
+    const int m_n0h; // no of pts above contour
+    const int m_n3l; // no of pts left of tip
+    const int m_n3h; // no of pts right of tip
 
     const int m_nn;  // size of tip data
     const int m_nt;  // size of tip data
@@ -85,8 +88,10 @@ protected: // MEMBERS
     const int m_nnl; // no of pts left of tip
     const int m_nnh; // no of pts right of tip
 
-
-    Lapack::TrustRegionSetup m_psetup;
+    int m_deg0; // interpolant degree for computation of 0-level, and psi_n
+    int m_deg1; // interpolant degree for computation of psi_tt
+    int m_deg2; // interpolant degree for evaluating tip position and value of psi_n
+    int m_deg3; // interpolant degree for evaluating tip value of psi_tt
 
     IntVector m_origin;
     IntVector m_low;
@@ -109,7 +114,9 @@ protected: // MEMBERS
 
 private: // MEMBERS
 
-    int n_ind ( const IntVector & id ) const
+    // n=(x-x0), t=(y-y0)
+
+    int n_ind ( const IntVector & id /*x,y*/ ) const
     {
         return id[0] - m_origin[0];
     }
@@ -119,7 +126,7 @@ private: // MEMBERS
         return x - m_origin[0];
     }
 
-    int t_ind ( const IntVector & id ) const
+    int t_ind ( const IntVector & id /*x,y*/ ) const
     {
         return id[1] - m_origin[1];
     }
@@ -129,7 +136,7 @@ private: // MEMBERS
         return y - m_origin[1];
     }
 
-    int x_ind ( const IntVector & id ) const
+    int x_ind ( const IntVector & id /*n,t*/ ) const
     {
         return id[0] + m_origin[0];
     }
@@ -139,7 +146,7 @@ private: // MEMBERS
         return n + m_origin[0];
     }
 
-    int y_ind ( const IntVector & id ) const
+    int y_ind ( const IntVector & id /*n,t*/ ) const
     {
         return id[1] + m_origin[1];
     }
@@ -214,23 +221,35 @@ private: // MEMBERS
 
 public: // CONSTRUCTORS/DESTRUCTOR
 
-    ArmPostProcessorParallelTanh (
-        const Lapack::TrustRegionSetup psetup,
+    ArmPostProcessorPolyD2Parallel (
         int n0,
-        int nn,
-        int nt,
+        int n1,
+        int n2,
+        int n3,
+        int d0,
+        int d1,
+        int d2,
+        int d3,
         double alpha,
         bool dbg
     ) : m_dbg ( dbg ),
         m_alpha ( alpha ),
         m_n0 ( n0 ),
+        m_n1 ( n1 ),
+        m_n2 ( n2 ),
+        m_n3 ( n3 ),
         m_n0l ( ( m_n0 - 1 ) / 2 ),
         m_n0h ( m_n0 - m_n0l ),
-        m_nn ( nn ),
-        m_nt ( nt ),
-        m_nnl ( ( m_nn - 1 ) / 2 ),
-        m_nnh ( m_nn - m_nnl ),
-        m_psetup ( psetup ),
+        m_n3l ( ( m_n3 - 1 ) / 2 ),
+        m_n3h ( m_n3 - m_n3l ),
+        m_nn ( std::max ( m_n0, m_n3 ) ),
+        m_nt ( std::max ( m_n1, m_n2 ) ),
+        m_nnl ( std::max ( m_n0l, m_n3l ) ),
+        m_nnh ( 2 * m_nn - m_nnl ),
+        m_deg0 ( d0 ),
+        m_deg1 ( d1 ),
+        m_deg2 ( d2 ),
+        m_deg3 ( d3 ),
         m_locations_size ( 0 ),
         m_locations ( nullptr ),
         m_data_t ( nullptr ),
@@ -241,7 +260,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
     /**
     * @brief Destructor
     */
-    virtual ~ArmPostProcessorParallelTanh ()
+    virtual ~ArmPostProcessorPolyD2Parallel ()
     {
         delete[] m_locations;
         delete[] m_data_t;
@@ -255,7 +274,7 @@ public:
         const Level * level
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelTanh::setLevel: " << level->getIndex() << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::setLevel: " << level->getIndex() << " " );
 
         m_origin = level->getCellIndex ( {0., 0., 0.} );
         level->computeVariableExtents ( var_td, m_low, m_high );
@@ -267,7 +286,7 @@ public:
     initializeLocations (
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelTanh::initializeLocations " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::initializeLocations " );
 
         m_location_n0 = std::max ( 0, n_ind ( m_low ) );
         m_locations_size = n_ind ( m_high ) - m_location_n0;
@@ -284,7 +303,7 @@ public:
         View < ScalarField<const double> > const & psi
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelTanh::setLocations: " << low << high << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::setLocations: " << low << high << " " );
 
         bool fc_yplus = patch->getBCType ( Patch::yplus ) == Patch::Coarse &&
                         std::find ( faces.begin(), faces.end(), Patch::yplus ) != faces.end();
@@ -298,8 +317,9 @@ public:
         // move along increasing n
         for ( id[0] = inf[0]; id[0] < sup[0]; ++id[0] )
         {
-            // move along increasing t
+            // move along increasing t (t<=n)
             int end1 = ( VAR == CC ) ? std::min ( sup[1], id[0] ) : std::min ( sup[1], id[0] + 1 );
+
             for ( id[1] = inf[1]; id[1] < end1; ++id[1] )
                 if ( psi[id] * psi[id + et] <= 0. )
                 {
@@ -323,16 +343,16 @@ public:
             return;
         }
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelTanh::reduceMPI " );
+        DOUTR ( g_mpi_dbg, "ArmPostProcessor::reduceMPI " );
 
         int error = Uintah::MPI::Allreduce ( MPI_IN_PLACE, m_locations, m_locations_size, MPI_INT, MPI_MIN, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelTanh::reduceMPI, done " );
+        DOUTR ( g_mpi_dbg, "ArmPostProcessor::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessorParallelTanh::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessorParallelTanh::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUTR ( true, "ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -356,7 +376,7 @@ public:
     initializeData ()
     override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelTanh::initializeData " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::initializeData " );
 
         int i = m_locations_size;
         for ( i = m_locations_size; i > 0 && m_locations[i - 1] == INT_MAX; --i );
@@ -366,7 +386,7 @@ public:
         {
             for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
 
-            m_data_n0 = i - 1;
+            m_data_n0 = i - ( m_locations[i - 1] < INT_MAX ? 1 : 0 );
             m_data_size -= m_data_n0;
         }
         else
@@ -394,7 +414,7 @@ public:
         View< ScalarField<int> > * refine_flag
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelTanh::setData: " << low << high << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::setData: " << low << high << " " );
 
         // arm contour not here
         if ( !m_data_size || n_ind ( high ) < m_data_n0 - m_nnl )
@@ -583,7 +603,7 @@ public:
         if ( !m_data_size || myworld->nRanks() <= 1 )
             return;
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelTanh::reduceMPI " );
+        DOUTR ( g_mpi_dbg, "ArmPostProcessor::reduceMPI " );
 
         int error;
         if ( myworld->myRank() == 0 )
@@ -597,12 +617,12 @@ public:
                     Uintah::MPI::Reduce ( m_data_z, nullptr, m_n0 * m_data_size, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() ) ||
                     Uintah::MPI::Reduce ( m_tip_z, nullptr, m_nn * m_nt, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorParallelTanh::reduceMPI, done " );
+        DOUTR ( g_mpi_dbg, "ArmPostProcessor::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessorParallelTanh::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessorParallelTanh::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUTR ( true, "ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -666,77 +686,139 @@ public:
         if ( !m_data_size )
             return;
 
-        DOUTR ( m_dbg,  "ArmPostProcessorParallelTanh::computeTipInfo " );
+        DOUTR ( m_dbg, "ArmPostProcessor::computeTipInfo " );
 
         // Containers for 0-level
-        double * arm_n = scinew double[m_data_size + m_nt];
-        double * arm_t2 = scinew double[m_data_size + m_nt];
+        double * arm_n = scinew double[m_data_size + m_n2];
+        double * arm_t2 = scinew double[m_data_size + m_n2];
 
         // 1. Compute 0-level using data_t/data_z (first m_data_size points)
 
-        Lapack::Tanh1 tanh1 ( m_psetup );
+        Lapack::Poly p0 ( m_deg0 );
         double n, t;
         for ( int i = 0; i < m_data_size; ++i )
         {
             n = n_coord ( m_data_n0 + i );
 
-            tanh1.fit ( m_n0, data_t ( i ), data_z ( i ) );
-            t = tanh1.zero();
+            p0.fit ( m_n0, data_t ( i ), data_z ( i ) );
+            p0.roots();
+            if ( !p0.root_in_range ( 0., data_t ( i, m_n0 - 1 ), t ) )
+            {
+                SCI_THROW ( InternalError ( "ArmPostProcessor::computeTipInfo: can't find root\n", __FILE__, __LINE__ ) );
+            }
 
             arm_n[i] = n;
             arm_t2[i] = t * t;
 
-            DOUT ( DBG_PRINT, "plot3(" << n << "+0*x,x,y,'ok')" );
+            DOUT ( DBG_PRINT, "plot3(" << n << "+0*x,x,y,'-ok')" );
             DOUT ( DBG_PRINT && i == 0, "hold on" );
-            DOUT ( DBG_PRINT, "yy=linspace(x(1),x(end));" );
-            DOUT ( DBG_PRINT, "zz=-tanh(beta(1)+beta(2)*yy+beta(3)*yy.^2);" );
-            DOUT ( DBG_PRINT, "plot3(" << n << "+0*yy,yy,zz,'-k')\n" );
             DOUT ( DBG_PRINT, "plot3(" << n << "," << t << ",0,'*k')\n" );
         }
 
-        // 2. 2D Interpolation at tip for position and curvature
+        // 2. Compute 0-level, and psi_n close to tip using tip_z (m_n2 points)
 
-        double * tip_n = scinew double[m_nn * m_nt];
-        double * tip_t = scinew double[m_nn * m_nt];
+        double * tip_n = scinew double[m_n0];
+        double * psi_n = scinew double[m_n2];
 
-        int n0 =  m_tip_n - m_nnl;
+        int n0 = m_tip_n - m_n0l;
+        int dz = n0 - m_tip_n + m_nnl;
 
-        for ( int i = 0; i < m_nt; ++i )
+        for ( int i = 0; i < m_n0; ++i )
         {
-            for ( int j = 0; j < m_nn; ++j )
-            {
-                tip_n[m_nn * i + j] = n_coord ( n0 + j );
-            }
-            std::fill ( tip_t + m_nn * i, tip_t + m_nn * ( i + 1 ), t_coord ( i ) );
+            tip_n[i] = n_coord ( n0 + i );
         }
 
-        Lapack::Tanh2 tanh2 ( m_psetup );
-        tanh2.fit ( m_nn * m_nt, tip_n, tip_t, tip_z ( 0 ) );
-
-        DOUT ( DBG_PRINT, "plot3 (x,y,z,'bo');" );
-        DOUT ( DBG_PRINT, "[X,Y]=meshgrid(linspace(x(1),x(end),10),linspace(y(1),y(end),10));" );
-        DOUT ( DBG_PRINT, "Z=-tanh(beta(1)+beta(2)*X+beta(3)*X.^2+beta(4)*Y.^2);" );
-        DOUT ( DBG_PRINT, "mesh(X,Y,Z);" );
-
-        for ( int i = 0; i < m_nt; ++i )
+        for ( int j = 0; j < m_n2; ++j )
         {
-            t = t_coord ( i );
-            n = tanh2.zero ( t );
-            arm_n[m_data_size + m_nt - i - 1] = n;
-            arm_t2[m_data_size + m_nt - i - 1] = t * t;
+            t = t_coord ( j );
 
-            DOUT ( DBG_PRINT, "plot3(" << n << "," << t << ",0,'ro')" );
+            p0.fit ( m_n0, tip_n, tip_z ( j ) + dz );
+            p0.roots();
+            p0.root_in_range ( tip_n[0],  tip_n[m_n0 - 1], n );
+
+            // populate from back to preserve 0-level order
+            arm_n[m_data_size + m_n2 - j - 1] = n;
+            arm_t2[m_data_size + m_n2 - j - 1] = t * t;
+            psi_n[m_n2 - j - 1] = p0.dx ( n );
+
+            DOUT ( DBG_PRINT, "plot3(x," << t << "+0*x,y,'-ob')" );
+            DOUT ( DBG_PRINT, "plot3(" << n << "," << t << ",0,'*b')\n" );
         }
-
-        tip_position = tanh2.zero ( 0. );
-        tip_curvatures[0] = std::abs ( tanh2.dyy0() / tanh2.dx0 ( tip_position ) );
-
-        DOUT ( DBG_PRINT, "plot3(" << tip_position << ",0,0,'o','LineWidth',2,'MarkerEdgeColor','k','MarkerFaceColor','y','MarkerSize',10)" );
 
         delete[] tip_n;
-        delete[] tip_t;
 
-        // 3. Evaluate parabolic curvature using full 0-level
+        // 3. Interpolate tip position and psi_n
+
+        Lapack::Poly p2 ( m_deg2 );
+        double * tip_t2 = arm_t2 + m_data_size;
+        tip_n = arm_n + m_data_size;
+
+        p2.fit ( m_n2, tip_t2, tip_n );
+        tip_position = p2 ( 0. );
+
+        DOUT ( DBG_PRINT, "n=y" );
+        DOUT ( DBG_PRINT, "plot3(y,sqrt(x),0*x,'-<y')" );
+        DOUT ( DBG_PRINT, "plot3(" << tip_position << ",0,0,'o','LineWidth',2,'MarkerEdgeColor','k','MarkerFaceColor','y','MarkerSize',10)" );
+
+        p2.fit ( m_n2, tip_t2, psi_n );
+        double psi_n_tip = p2 ( 0 );
+
+        DOUT ( DBG_PRINT, "plot3(n,sqrt(x),y,'-<','Color',[1,.5,0])" );
+        DOUT ( DBG_PRINT, "plot3(" << tip_position << ",0," << psi_n_tip << ",'*','Color',[1,.5,0])" );
+
+        delete[] psi_n;
+
+        // 4. Compute psi_tt close to tip using tip_z (m_n3 points)
+
+        double * psi = scinew double[m_n1];
+        double * psi_tt = scinew double[m_n3];
+        tip_t2 = scinew double[m_n1];
+        tip_n = scinew double[m_n3];
+        Lapack::Poly p1 ( m_deg1 );
+
+        n0 = m_tip_n - m_n3l;
+        int i0 = m_nnl - m_n3l;
+
+        for ( int j = 0; j < m_n1; ++j )
+        {
+            t = t_coord ( j );
+            tip_t2[j] = t * t;
+        }
+
+        for ( int i = 0; i < m_n3; ++i )
+        {
+            for ( int j = 0; j < m_n1; ++j )
+            {
+                psi[j] = tip_z ( j, i + i0 );
+            }
+
+            p1.fit ( m_n1, tip_t2, psi );
+
+            tip_n[i] = n_coord ( n0 + i );
+            psi_tt[i] = 2 * p1.dx ( 0. );
+
+            DOUT ( DBG_PRINT, "plot3(" << tip_n[i] << "+0*x,sqrt(x),y,'-sr')\n" );
+        }
+
+        delete[] psi;
+        delete[] tip_t2;
+
+        // 5. Interpolate tip psi_tt close to tip
+
+        Lapack::Poly p3 ( m_deg3 );
+        p3.fit ( m_n3, tip_n, psi_tt );
+        double psi_tt_tip = p3 ( tip_position );
+
+        DOUT ( DBG_PRINT, "plot3(x,0*x,y,'->g')\n" );
+
+        delete[] tip_n;
+        delete[] psi_tt;
+
+        // 6. Evaluate tip curvature
+
+        tip_curvatures[0] = std::abs ( psi_tt_tip / psi_n_tip );
+
+        // 7. Evaluate parabolic curvature using full 0-level
 
         int skip = 0;
         while ( arm_t2[skip] <= arm_t2[skip + 1] && skip < m_data_size - 1 )
@@ -763,7 +845,7 @@ public:
             DOUT ( DBG_PRINT, "plot3(polyval(p,tt.^2),tt,0*tt,'r-');\n" );
         }
 
-        // 4. Evaluate parabolic curvature excluding tip neighbor
+        // 8. Evaluate parabolic curvature excluding tip neighbor
 
         int arm_size = m_data_size - 2;
         skip = std::max ( skip, 1 );
@@ -792,14 +874,14 @@ public:
         delete[] arm_n;
         delete[] arm_t2;
     }
-}; // class ArmPostProcessorParallelTanhD2
+}; // class ArmPostProcessorPolyD2Parallel
 
-template<VarType VAR> const IntVector ArmPostProcessorParallelTanh < VAR >::en { 1, 0, 0 };
-template<VarType VAR> const IntVector ArmPostProcessorParallelTanh < VAR >::et { 0, 1, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorPolyD2Parallel < VAR >::en { 1, 0, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorPolyD2Parallel < VAR >::et { 0, 1, 0 };
 
 } // namespace PhaseField
 } // namespace Uintah
 
 #undef DBG_PRINT
 
-#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorParallelTanh_h
+#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD2Parallel_h

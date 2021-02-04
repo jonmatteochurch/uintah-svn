@@ -191,6 +191,10 @@ for VAR in ${VARs[@]}; do
       NF="${NFs[n]}"
       PB="$PP<$VAR, $STN>"
 
+      if [ "$PP" = "HeatTestProblem" ]; then
+        echo "#ifdef PhaseField_Heat_DBG_DERIVATIVES" >> $SRC
+      fi
+
       if [[ $FIELD -eq -1 ]]; then
         FF=`seq 0 $((NF-1))`
       else
@@ -305,6 +309,10 @@ for VAR in ${VARs[@]}; do
         done
 
       done
+
+      if [ "$PP" = "HeatTestProblem" ]; then
+        echo "#endif" >> $SRC
+      fi
     done
   done
 done
@@ -320,6 +328,10 @@ for VAR in ${VARs[@]}; do
     for ((n=0; n<${#PPs[@]}; n++)); do
       PB="${PPs[n]}<$VAR, $STN>"
       NF="${NFs[n]}"
+
+      if [ "$PP" = "HeatTestProblem" ]; then
+        echo "#ifdef PhaseField_Heat_DBG_DERIVATIVES" >> $SRC
+      fi
 
       if [[ $FIELD -eq -1 ]]; then
         FF=`seq 0 $((NF-1))`
@@ -435,6 +447,10 @@ for VAR in ${VARs[@]}; do
         done
 
       done
+
+      if [ "$PP" = "HeatTestProblem" ]; then
+        echo "#endif" >> $SRC
+      fi
     done
   done
 done

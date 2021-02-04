@@ -42,6 +42,7 @@
 #include <Core/Grid/DbgOutput.h>
 #include <Core/Util/Timers/Timers.hpp>
 #include <Core/Exceptions/ConvergenceFailure.h>
+#include <Core/Exceptions/ProblemSetupException.h>
 
 /**
  *  @class  HypreSStruct::Solver
@@ -97,15 +98,11 @@ private:
 
     double m_moving_average;
 
-    const Ghost::GhostType gtype;
-    const int gnum;
-
     SStructInterfaceFactory::FactoryMethod create_sstruct_interface;
 
 public:
     Solver (
         const ProcessorGroup * myworld,
-        const int & ghosts,
         SStructInterfaceFactory::FactoryMethod && sstruct_interface_creator
     )
         : SolverCommon ( myworld )
@@ -114,8 +111,6 @@ public:
         , m_hypre_sstruct_interface_label ()
         , m_params ( scinew SolverParams() )
         , m_moving_average ( 0. )
-        , gtype ( ghosts ? Ghost::AroundCells : Ghost::None )
-        , gnum ( ghosts )
         , create_sstruct_interface ( sstruct_interface_creator )
     {
     }
@@ -136,7 +131,6 @@ public:
         const std::string  & varname
     ) override
     {
-        bool found = false;
         if ( params_ps )
         {
             for ( ProblemSpecP param_ps = params_ps->findBlock ( "Parameters" ); param_ps != nullptr; param_ps = param_ps->findNextBlock ( "Parameters" ) )
@@ -147,45 +141,38 @@ public:
 
                 int sFreq;
                 int coefFreq;
-                param_ps->getWithDefault ( "solveFrequency",      m_params->solveFrequency, 1 );
-                param_ps->getWithDefault ( "setupFrequency",      sFreq,                    1 );
-                param_ps->getWithDefault ( "updateCoefFrequency", coefFreq,                 1 );
+                param_ps->get ( "solveFrequency",      m_params->solveFrequency );
+                param_ps->get ( "setupFrequency",      sFreq );
+                param_ps->get ( "updateCoefFrequency", coefFreq );
                 m_params->setSetupFrequency ( sFreq );
                 m_params->setUpdateCoefFrequency ( coefFreq );
 
                 int cSolverType;
                 int relaxType;
-                ASSERTMSG ( param_ps->get ( "max_levels",    m_params->max_levels ),   "HypreSStruct::Solver ERROR. Missing parameter: max_level" );
-                param_ps->getWithDefault ( "maxiterations", m_params->max_iter,       -1 );
-                param_ps->getWithDefault ( "tolerance",     m_params->tol,            -1. );
-                param_ps->getWithDefault ( "rel_change",    m_params->rel_change,     -1 );
-                param_ps->getWithDefault ( "relax_type",    relaxType,                -1 );
-                param_ps->getWithDefault ( "weight",        m_params->weight,         -1. );
-                param_ps->getWithDefault ( "npre",          m_params->num_pre_relax,  -1 );
-                param_ps->getWithDefault ( "npost",         m_params->num_post_relax, -1 );
-                param_ps->getWithDefault ( "csolver_type",  cSolverType,              -1 );
-                param_ps->getWithDefault ( "logging",       m_params->logging,        -1 );
+                param_ps->get ( "maxlevels",     m_params->max_levels );
+                param_ps->get ( "maxiterations", m_params->max_iter );
+                param_ps->get ( "tolerance",     m_params->tol );
+                param_ps->get ( "rel_change",    m_params->rel_change );
+                param_ps->get ( "relax_type",    relaxType );
+                param_ps->get ( "weight",        m_params->weight );
+                param_ps->get ( "npre",          m_params->num_pre_relax );
+                param_ps->get ( "npost",         m_params->num_post_relax );
+                param_ps->get ( "csolver_type",  cSolverType );
+                param_ps->get ( "logging",       m_params->logging );
                 m_params->relax_type = ( RelaxType ) relaxType;
                 m_params->csolver_type = ( CoarseSolverType ) cSolverType;
 
-                found = true;
-            }
-        }
-        if ( !found )
-        {
-            m_params->solveFrequency = 1;
-            m_params->setSetupFrequency ( 1 );
-            m_params->setUpdateCoefFrequency ( 1 );
+                int amr_maxlevels = -1;
+                ProblemSpecP amr;
+                if ( ( amr = params_ps->getRootNode()->findBlock ( "AMR" ) ) && ( amr = amr->findBlock ( "Regridder" ) ) )
+                    amr->get ( "max_levels", amr_maxlevels );
 
-            m_params->max_levels = -1;
-            m_params->tol = -1.;
-            m_params->max_iter = -1;
-            m_params->rel_change = -1;
-            m_params->relax_type = DefaultRelaxType;
-            m_params->weight = -1.;
-            m_params->num_pre_relax = -1;
-            m_params->num_post_relax = -1;
-            m_params->logging = -1;
+                if ( m_params->max_levels == -1 )
+                    m_params->max_levels = amr_maxlevels;
+
+                if ( m_params->max_levels < amr_maxlevels )
+                    SCI_THROW ( ProblemSetupException ( "Solver parameter 'maxlevels' must not be less than AMR/Regridder 'max_levels' parameter", __FILE__, __LINE__ ) );
+            }
         }
     }
 
@@ -235,8 +222,6 @@ public:
         bool /*is_first_solve*/ = true
     ) override
     {
-        if ( level->hasCoarserLevel() ) return;
-
         m_modifies_solution = modifies_solution;
         m_stencil_entries_label = matrix_label;
         m_additional_entries_label = VarLabel::find ( matrix_label->getName() + Solver::AdditionalEntriesSuffix );
@@ -252,6 +237,7 @@ public:
         auto global_data_label = hypre_global_data_label();
         auto sstruct_interface_label = hypre_sstruct_interface_label ( d_myworld->myRank() );
         auto grid = level->getGrid();
+        auto * patches = scheduler->getLoadBalancer()->getPerProcessorPatchSet ( grid );
 
         Task * task = scinew Task ( "HypreSStruct::Solver::solve", this, &Solver::solve, global_data_label, sstruct_interface_label );
         task->requires ( Task::OldDW, sstruct_interface_label );
@@ -260,7 +246,7 @@ public:
         task->computes ( global_data_label );
         task->computes ( sstruct_interface_label );
 
-        task->requires ( matrix_dw, m_stencil_entries_label, gtype, gnum );
+        task->requires ( matrix_dw, m_stencil_entries_label, Ghost::None, 0 );
         task->requires ( matrix_dw, m_additional_entries_label, ( MaterialSubset * ) nullptr );
 
         task->requires ( m_rhs_dw, m_rhs_label, Ghost::None, 0 );
@@ -276,11 +262,8 @@ public:
         task->setType ( Task::OncePerProc );
         task->usesMPI ( true );
 
-        auto * patches = scheduler->getLoadBalancer()->getPerProcessorPatchSet ( grid );
         scheduler->addTask ( task, patches, materials );
-
         scheduler->overrideVariableBehavior ( m_additional_entries_label->getName(), false, false, false, true, true );
-
     };
 
     virtual
@@ -335,13 +318,6 @@ public:
         return "hypre_sstruct";
     }
 
-    void
-    allocateHypreMatrices
-    (
-        DataWarehouse * new_dw,
-        const Level * level
-    );
-
 private:
     void initialize
     (
@@ -364,15 +340,6 @@ private:
         IntVector low, high;
         level->getGrid()->getLevel ( 0 )->findCellIndexRange ( low, high );
         IntVector periodic = level->getGrid()->getLevel ( 0 )->getPeriodicBoundaries();
-        IntVector refinement = level->getGrid()->getLevel ( 0 )->getRefinementRatio();
-
-        for ( int l = 1; l <= part; ++l )
-        {
-            auto r = level->getGrid()->getLevel ( l )->getRefinementRatio();
-            for ( int i = 0; i < HYPRE_MAXDIM; ++i )
-                refinement[i] *= r[i];
-        }
-
         IntVector prefinement = level->getRefinementRatio();
 
         // time step is not there after regrid
@@ -421,7 +388,7 @@ private:
         {
             sstruct_interface->setPart ( part, npatches, nboxes,
                                          low.get_pointer(), high.get_pointer(),
-                                         refinement.get_pointer(),
+                                         prefinement.get_pointer(),
                                          periodic.get_pointer() );
 
             for ( int p = 0; p < patches->size(); p++ )
@@ -522,8 +489,6 @@ private:
         DataWarehouse * rhs_dw = new_dw->getOtherDataWarehouse ( m_rhs_dw );
         DataWarehouse * guess_dw = new_dw->getOtherDataWarehouse ( m_guess_dw );
 
-        ASSERTEQ ( sizeof ( Stencil7 ), 7 * sizeof ( double ) );
-
         Timers::Simple timer;
         timer.start();
 
@@ -565,7 +530,7 @@ private:
                     for ( int box = 0; box < nboxes; ++box )
                     {
                         const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
-                        matrix_dw->get ( stencil_entries[part][box], m_stencil_entries_label, material, patch, gtype, gnum );
+                        matrix_dw->get ( stencil_entries[part][box], m_stencil_entries_label, material, patch, Ghost::None, 0 );
                         rhs_dw->get ( rhs[part][box], m_rhs_label, material, patch, Ghost::None, 0 );
 
                         PerPatch<AdditionalEntriesP> patch_additional_entries;
@@ -722,7 +687,8 @@ private:
 
             //__________________________________
             // Test for convergence
-            if ( out.res_norm > m_params->tol )
+            // TODO implement use of converged and residual from HYPRE
+            if ( m_params->tol > 0 && out.res_norm > m_params->tol )
             {
                 if ( m_params->getRecomputeTimeStepOnFailure() )
                 {
@@ -730,12 +696,10 @@ private:
                         std::cout << "HypreSolver not converged in " << out.num_iterations
                                   << "iterations, final residual= " << out.res_norm
                                   << ", requesting smaller timestep\n";
-                    //new_dw->abortTimestep();
-                    //new_dw->restartTimestep();
                 }
                 else
                 {
-                    throw ConvergenceFailure ( "HypreSolver variable: " + m_solution_label->getName() + ", solver: " + ( ( nparts > 1 ) ? "FAC" : ( m_params->csolver_type == SysPFMG_PCG ) ? "SysPFMG_PCG" : ( m_params->csolver_type == SysPFMG ) ? "SysPFMG" : "???" ),
+                    throw ConvergenceFailure ( "HypreSolver variable: " + m_solution_label->getName(),
                                                out.num_iterations, out.res_norm,
                                                m_params->tol, __FILE__, __LINE__ );
                 }
@@ -810,4 +774,3 @@ private:
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Solver_h
-

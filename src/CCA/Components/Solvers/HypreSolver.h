@@ -64,40 +64,78 @@ public:
 
     ~HypreParams() {}
 
-    // Parameters common for all Hypre Solvers
     std::string solvertype;         // String corresponding to solver type
     std::string precondtype;        // String corresponding to preconditioner type
-    double      tolerance;          // Residual tolerance for solver
-    double      precond_tolerance;  // Tolerance for preconditioner
-    int         maxiterations;      // Maximum # iterations allowed
-    int         precond_maxiters;   // Preconditioner max iterations
-    int         logging;            // Log Hypre solver (using Hypre options)
-    int         solveFrequency;     // Frequency for solving the linear system. timestep % solveFrequency
-    int         relax_type;         // relaxation type
 
-    // SMG parameters
-    int    npre;               // # pre relaxations for Hypre SMG solver
-    int    npost;              // # post relaxations for Hypre SMG solver
+    int         solveFrequency;     // Frequency for solving the linear system. timestep % solveFrequency
+
+    // Parameters common for all Hypre Solvers
+    double      tolerance;          // Residual tolerance for solver
+    double      absolutetol;        // Absolute tolerance for solver
+    double      abstolf;            // Absolute tolerance factor for solver
+    double      ctolf;              // Convergence tolerance factor for solver
+    int         miniterations;      // Minimum # iterations allowed
+    int         maxiterations;      // Maximum # iterations allowed
+    int         logging;            // Log Hypre solver (using Hypre options)
+
+    // Parameters common for all Hypre Preconditioners
+    double      precond_tolerance;  // Tolerance for preconditioner
+    double      precond_absolutetol;// Absolute tolerance for preconditioner
+    double      precond_abstolf;    // Absolute tolerance factor for preconditioner
+    double      precond_ctolf;      // Convergence tolerance factor for preconditioner
+    int         precond_miniters;   // Preconditioner min iterations
+    int         precond_maxiters;   // Preconditioner max iterations
 
     // PFMG parameters
-    int    skip;               // Hypre PFMG parameter
+    int    maxlevels;               // Maximum number of multigrid grid levels
+    int    raptype;                 // Type of coarse-grid operator: Galerkin = 0; non-Galerkin = 1
+    int    skip;                    // Hypre PFMG parameter
+
+    // PFMG/SparseMSG parameters
+    int    relax_type;              // Telaxation type: Jacobi = 0; weighted Jacobi = 1; symm red-black GS = 2; nonsymm red-black GS = 3
+    double jacobiweight;            // Weight for weighted Jacobi relaxation
+
+    // PFMG/SMG/SparseMSG parameters
+    int    npre;                    // # pre relaxations
+    int    npost;                   // # post relaxations
 
     // SparseMSG parameters
-    int    jump;               // Hypre Sparse MSG parameter
+    int    nfine;                   // # fine relaxations
+
+    // PCG parameters
+    int    recomputeresidualperiod; // Recompute residual period (don’t rely on 3-term recurrence).
+
+    // GMRES parameters
+    int    kdim;                    // Maximum size of the Krylov space
+    int    skiprealrcheck;          // Skipthe evaluation and the check of the actual residual for badly conditioned problems
+
+    // LGMRES parameters
+    int    augdim;                  // # of augmentation vectors
+
+    // Hybrid parameters
+    int    krylovsolver;            // Type of Krylov solver to use: 0 = PCG; 1 = GMRES; 2: BiCGSTAB
+
+    // SparseMSG parameters
+    int    jump;                    // Hypre Sparse MSG parameter
 };
 
 //______________________________________________________________________
 //
 enum SolverType
 {
-    smg,
-    pfmg,
-    sparsemsg,
-    pcg,
-    hybrid,
-    gmres,
+    none,
+    diagonal,
     jacobi,
-    diagonal
+    pfmg,
+    smg,
+    cycred,
+    pcg,
+    gmres,
+    flexgmres,
+    lgmres,
+    bicgstab,
+    hybrid,
+    sparsemsg
 };
 
 //______________________________________________________________________
@@ -147,14 +185,17 @@ struct hypre_solver_struct : public RefCounted
         {
             switch ( solver_type )
             {
-            case smg:
-                HYPRE_StructSMGDestroy ( *solver_p );
+            case jacobi:
+                HYPRE_StructJacobiDestroy ( *solver_p );
                 break;
             case pfmg:
                 HYPRE_StructPFMGDestroy ( *solver_p );
                 break;
-            case sparsemsg:
-                HYPRE_StructSparseMSGDestroy ( *solver_p );
+            case smg:
+                HYPRE_StructSMGDestroy ( *solver_p );
+                break;
+            case cycred:
+                HYPRE_StructCycRedDestroy ( *solver_p );
                 break;
             case pcg:
                 HYPRE_StructPCGDestroy ( *solver_p );
@@ -162,8 +203,20 @@ struct hypre_solver_struct : public RefCounted
             case gmres:
                 HYPRE_StructGMRESDestroy ( *solver_p );
                 break;
-            case jacobi:
-                HYPRE_StructJacobiDestroy ( *solver_p );
+            case flexgmres:
+                HYPRE_StructFlexGMRESDestroy ( *solver_p );
+                break;
+            case lgmres:
+                HYPRE_StructLGMRESDestroy ( *solver_p );
+                break;
+            case bicgstab:
+                HYPRE_StructBiCGSTABDestroy ( *solver_p );
+                break;
+            case hybrid:
+                HYPRE_StructHybridDestroy ( *solver_p );
+                break;
+            case sparsemsg:
+                HYPRE_StructSparseMSGDestroy ( *solver_p );
                 break;
             default:
                 // FYI: This should never happen as the solver type is validated when the struct is initialized.
@@ -177,14 +230,17 @@ struct hypre_solver_struct : public RefCounted
         {
             switch ( precond_solver_type )
             {
-            case smg:
-                HYPRE_StructSMGDestroy ( *precond_solver_p );
+            case none:
+            case diagonal:
+                break;
+            case jacobi:
+                HYPRE_StructJacobiDestroy ( *precond_solver_p );
                 break;
             case pfmg:
                 HYPRE_StructPFMGDestroy ( *precond_solver_p );
                 break;
-            case sparsemsg:
-                HYPRE_StructSparseMSGDestroy ( *precond_solver_p );
+            case smg:
+                HYPRE_StructSMGDestroy ( *precond_solver_p );
                 break;
             case pcg:
                 HYPRE_StructPCGDestroy ( *precond_solver_p );
@@ -192,8 +248,17 @@ struct hypre_solver_struct : public RefCounted
             case gmres:
                 HYPRE_StructGMRESDestroy ( *precond_solver_p );
                 break;
-            case jacobi:
-                HYPRE_StructJacobiDestroy ( *precond_solver_p );
+            case flexgmres:
+                HYPRE_StructFlexGMRESDestroy ( *precond_solver_p );
+                break;
+            case lgmres:
+                HYPRE_StructLGMRESDestroy ( *precond_solver_p );
+                break;
+            case bicgstab:
+                HYPRE_StructBiCGSTABDestroy ( *precond_solver_p );
+                break;
+            case sparsemsg:
+                HYPRE_StructSparseMSGDestroy ( *precond_solver_p );
                 break;
             default:
                 // FYI: This should never happen as the solver type is validated when the struct is initialized.

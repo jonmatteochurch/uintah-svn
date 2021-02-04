@@ -251,7 +251,7 @@ protected: // SCHEDULINGS
         {
             if ( this->m_solver->getName() == "hypre" )
             {
-                scheduler->setRestartInitTimestep(true);
+                scheduler->setRestartInitTimestep ( true );
             }
             else if ( this->m_solver->getName() == "hypre_sstruct" )
             {
@@ -281,26 +281,26 @@ class Application < Problem<VAR, STN, Field... >, false >
     : public Application < Problem<VAR, STN>, false >
 {
 // protected: // STATIC MEMBERS
-// 
+//
 //     /// If SubProblems are required (i.e. if Problem has any boundary Field)
 //     static constexpr bool use_subprblems = sizeof... ( Field );
-// 
+//
 //     /// Number of ghost elements required by STN (on the same level)
 //     static constexpr int FGN = get_stn<STN>::ghosts;
-// 
+//
 //     /// Type of ghost elements required by VAR and STN (on the same level)
 //     static constexpr Ghost::GhostType FGT = FGN ? get_var<VAR>::ghost_type : Ghost::None;
-// 
+//
 //     /// Number of ghost elements required by STN (on coarser level)
 //     /// @remark this should depend on FCI bc type but if fixed for simplicity
 //     static constexpr int CGN = 1;
-// 
+//
 //     /// Type of ghost elements required by VAR and STN (on coarser level)
 //     static constexpr Ghost::GhostType CGT = CGN ? get_var<VAR>::ghost_type : Ghost::None;
-// 
+//
 //     /// Interpolation type for refinement
 //     static constexpr FCIType C2F = ( VAR == CC ) ? I0 : I1; // TODO make template parameter
-// 
+//
 //     /// Restriction type for coarsening
 //     static constexpr FCIType F2C = ( VAR == CC ) ? I1 : I0; // TODO make template parameter
 
@@ -438,19 +438,19 @@ protected: // SCHEDULINGS
     {
         Application< Problem<VAR, STN>, false >::scheduleInitializeSystemVars ( grid, perProcPatchSet, scheduler );
 
-            ASSERTMSG ( m_boundary_labels, "Application uses subproblems. Missing call to setBoundaryVariables()" );
+        ASSERTMSG ( m_boundary_labels, "Application uses subproblems. Missing call to setBoundaryVariables()" );
 
-            // set behaviour noCheckpoint
-            DOUTR ( dbg_scheduling, "scheduleInitializeSystemVars" );
+        // set behaviour noCheckpoint
+        DOUTR ( dbg_scheduling, "scheduleInitializeSystemVars" );
 
-            scheduler->overrideVariableBehavior ( m_subproblems_label->getName(), false, false, false, false, true );
+        scheduler->overrideVariableBehavior ( m_subproblems_label->getName(), false, false, false, false, true );
 
-            for ( int idx = 0; idx < grid->numLevels(); ++idx )
-            {
-                Task * task = scinew Task ( "Application::task_initialize_subproblems", this, &Application::task_initialize_subproblems );
-                task->computes ( m_subproblems_label );
-                scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
-            }
+        for ( int idx = 0; idx < grid->numLevels(); ++idx )
+        {
+            Task * task = scinew Task ( "Application::task_initialize_subproblems", this, &Application::task_initialize_subproblems );
+            task->computes ( m_subproblems_label );
+            scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
+        }
     }
 
     /**
@@ -678,31 +678,27 @@ protected: // SCHEDULINGS
     {
         Application< Problem<VAR, STN, Field...>, false >::scheduleRefineSystemVars ( grid, perProcPatchSet, scheduler );
 
-            DOUTR ( dbg_scheduling, "scheduleRefineSystemVars" );
+        DOUTR ( dbg_scheduling, "scheduleRefineSystemVars" );
 
-            for ( int idx = 0; idx < grid->numLevels(); ++idx )
-            {
-                Task * task = scinew Task ( "Application::task_initialize_subproblems", this, &Application::task_initialize_subproblems );
-                task->computes ( this->m_subproblems_label );
-                scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
-            }
-            for ( int idx = 0; idx < grid->numLevels(); ++idx )
-            {
-                Task * task = scinew Task ( "Application::task_communicate_subproblems", this, &Application::task_communicate_subproblems );
-                task->requires ( Task::NewDW, this->m_subproblems_label, FGT, FGN );
-                if (idx) task->requires ( Task::NewDW, this->m_subproblems_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
-                task->modifies ( this->m_subproblems_label );
-                scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
-            }
+        for ( int idx = 0; idx < grid->numLevels(); ++idx )
+        {
+            Task * task = scinew Task ( "Application::task_initialize_subproblems", this, &Application::task_initialize_subproblems );
+            task->computes ( this->m_subproblems_label );
+            scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
+        }
+        for ( int idx = 0; idx < grid->numLevels(); ++idx )
+        {
+            Task * task = scinew Task ( "Application::task_communicate_subproblems", this, &Application::task_communicate_subproblems );
+            task->requires ( Task::NewDW, this->m_subproblems_label, FGT, FGN );
+            if ( idx ) task->requires ( Task::NewDW, this->m_subproblems_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+            task->modifies ( this->m_subproblems_label );
+            scheduler->addTask ( task, grid->getLevel ( idx )->eachPatch(), this->m_materialManager->allMaterials() );
+        }
 
 #ifdef HAVE_HYPRE
         if ( this->m_solver )
         {
-            if ( this->m_solver->getName() == "hypre" )
-            {
-                scheduler->setRestartInitTimestep(true);
-            }
-            else if ( this->m_solver->getName() == "hypre_sstruct" )
+            if ( this->m_solver->getName() == "hypre_sstruct" )
             {
                 for ( int idx = 0; idx < grid->numLevels(); ++idx )
                 {

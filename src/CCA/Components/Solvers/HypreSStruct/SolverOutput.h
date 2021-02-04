@@ -22,6 +22,8 @@
  * IN THE SOFTWARE.
  */
 
+// TODO implement use of converged and residual from HYPRE
+
 #ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverOutput_h
 #define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverOutput_h
 
@@ -38,14 +40,14 @@ class SolverOutput
 public:
     int          num_iterations; // number of iterations taken
     HYPRE_Real   res_norm;       // norm of the final relative residual
-    int          converged;
-    HYPRE_Vector residual;
+//  int          converged;
+//  HYPRE_Vector residual;
 
     SolverOutput()
         : num_iterations ( -1 )
         , res_norm ( -1. )
-        , converged ( -1 )
-        , residual ( nullptr )
+//      , converged ( -1 )
+//      , residual ( nullptr )
     {}
 
     ~SolverOutput()
@@ -56,5 +58,3 @@ public:
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SolverOutput_h
-
-

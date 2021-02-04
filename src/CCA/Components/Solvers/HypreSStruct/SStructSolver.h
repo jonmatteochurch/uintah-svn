@@ -27,28 +27,24 @@
 
 #include <CCA/Components/Solvers/HypreSStruct/Definitions.h>
 #include <CCA/Components/Solvers/HypreSStruct/SStructInterface.h>
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_solver.h>
 
 #include <Core/Util/Factory/Implementation.h>
+
 
 namespace Uintah
 {
 namespace HypreSStruct
 {
 
-template < S, int DIM, int C2F, P PCN = P::None, bool final = true > class SStructSolver;
+template < S SLV, int DIM, int C2F, P PCN = P::None> class SStructSolver;
 
-template < S SLV, int DIM, int C2F, P PCN, bool final >
-class SStructSolver
-    : public SStructSolver<SLV, DIM, C2F, P::None, false>
-    , public Implementation< SStructSolver<SLV, DIM, C2F, PCN>, SStructInterface, const GlobalDataP & >
+template < S SLV, int DIM, int C2F>
+class SStructSolver<SLV, DIM, C2F, P::None>
+    : public detail::sstruct_ssolver<SLV, DIM, C2F>
+    , Implementation< SStructSolver<SLV, DIM, C2F, P::None>, SStructInterface, const GlobalDataP & >
 {
-    static_assert ( PCN != P::None, "Generic preconditioned SStructSolver implementation initialized for un-preconditioned SStructSolver" );
-    static_assert ( final, "Generic preconditioned SStructSolver implementation must be final" );
-
-    using PSolver = SStructSolver<SLV, DIM, C2F, P::None, false>;
-    using Precond = SStructSolver< ( S ) PCN, DIM, C2F>;
-
-    Precond precond_solver;
+    using SSolver = detail::sstruct_ssolver<SLV, DIM, C2F>;
 
 public: // STATIC MEMBERS
 
@@ -57,14 +53,40 @@ public: // STATIC MEMBERS
 
     SStructSolver (
         const GlobalDataP & gdata
-    ) : PSolver ( gdata ),
-        precond_solver ( gdata )
+    ) : SSolver ( gdata )
+    {}
+
+    virtual ~SStructSolver() = default;
+};
+
+template < S SLV, int DIM, int C2F, P PCN >
+class SStructSolver
+    : public detail::sstruct_ssolver<SLV, DIM, C2F>
+    , Implementation< SStructSolver<SLV, DIM, C2F, PCN>, SStructInterface, const GlobalDataP & >
+{
+    static_assert ( PCN != P::None, "Generic preconditioned SStructSolver implementation initialized for un-preconditioned SStructSolver" );
+    static_assert ( PCN != P::Diagonal, "Generic preconditioned SStructSolver implementation initialized for un-preconditioned SStructSolver" );
+    static_assert ( (int) SLV > 0, "Generic preconditioned SStructSolver implementation initialized for SStructSolver which cannot be preconditioned" );
+
+    using SSolver = detail::sstruct_ssolver<SLV, DIM, C2F>;
+    using Precond = detail::sstruct_precond<PCN, DIM, C2F>;
+
+    Precond precond;
+
+public: // STATIC MEMBERS
+
+    /// Class name as used by ApplicationFactory
+    static const std::string Name;
+
+    SStructSolver (
+        const GlobalDataP & gdata
+    ) : SSolver ( gdata ),
+        precond ( gdata )
     {
     }
 
     virtual ~SStructSolver()
     {
-        precondFinalize();
     }
 
     virtual void
@@ -73,37 +95,42 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        PSolver::solverInitialize ( comm, params );
-        precondInitialize( comm, params );
+        precond.solverInitialize ( comm, params );
+        SSolver::solverInitialize ( comm, params );
+        SSolver::SetPrecond ( SSolver::solver, Precond::precond_solve, Precond::precond_setup, precond );
     }
-
-protected:
 
     virtual void
     solverFinalize (
     ) override
     {
-        PSolver::solverFinalize();
-        precondFinalize();
+        precond.solverFinalize();
+        SSolver::solverFinalize();
+    }
+};
+
+template < S SLV, int DIM, int C2F >
+class SStructSolver<SLV, DIM, C2F, P::Diagonal>
+    : public detail::sstruct_ssolver<SLV, DIM, C2F>
+    , Implementation< SStructSolver<SLV, DIM, C2F, P::Diagonal>, SStructInterface, const GlobalDataP & >
+{
+    static_assert ( (int) SLV > 0, "Generic preconditioned SStructSolver implementation initialized for SStructSolver which cannot be preconditioned" );
+
+    using SSolver = detail::sstruct_ssolver<SLV, DIM, C2F>;
+
+public: // STATIC MEMBERS
+
+    /// Class name as used by ApplicationFactory
+    static const std::string Name;
+
+    SStructSolver (
+        const GlobalDataP & gdata
+    ) : SSolver ( gdata )
+    {
     }
 
-protected:
-
-    virtual void
-    precondInitialize (
-        const MPI_Comm & comm,
-        const SolverParams * params
-    ) override
+    virtual ~SStructSolver()
     {
-        precond_solver.solverInitialize ( comm, params );
-        PSolver::SetPrecond ( PSolver::solver, Precond::precond, Precond::precond_setup, precond_solver );
-    }
-
-    virtual void
-    precondFinalize (
-    ) override
-    {
-        precond_solver.solverFinalize();
     }
 };
 
@@ -111,5 +138,3 @@ protected:
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_PartDataP_h
-
-

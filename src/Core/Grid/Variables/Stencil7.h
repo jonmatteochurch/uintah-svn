@@ -36,17 +36,26 @@ namespace Uintah {
     // The order of this is designed to match the order of faces in Patch
     // Do not change it!
     //     -x +x -y +y -z +z
-    double  w, e, s, n, b, t;
+//  double  w, e, s, n, b, t;
     // diagonal term
-    double p;
-    
+//  double p;
+
+// scjmc: if an instance is optimized out adjacency is not granted thus
+//        operator[] may behave unexpectedly. We need an array to
+//        enforce adjacency, using references to array elements for
+//        previous members
+
+    double m_value[7];
+    double &w, &e, &s, &n, &b, &t;
+    double &p;
+
     double& operator[](int index) {
       ASSERTRANGE(index, 0, 7);
-      return (&w)[index];
+      return m_value[index];
     }
     const double& operator[](int index) const {
       ASSERTRANGE(index, 0, 7);
-      return (&w)[index];
+      return m_value[index];
     }
 
     void initialize(double a){
@@ -60,15 +69,27 @@ namespace Uintah {
     }
 
     // constructors
-    Stencil7(){}
-    
+    Stencil7() :
+      w(m_value[0]),
+      e(m_value[1]),
+      s(m_value[2]),
+      n(m_value[3]),
+      b(m_value[4]),
+      t(m_value[5]),
+      p(m_value[6])
+    {}
+
     inline Stencil7(double init) : 
-      w(init), e(init),
-      s(init), n(init),
-      b(init), t(init),
-      p(init){}
-    
-    
+      Stencil7()
+    {
+      std::fill(m_value,m_value+7,init);
+    }
+
+    Stencil7& operator=(const Stencil7& that )
+    {
+      std::memcpy ( m_value, that.m_value, sizeof m_value );
+      return *this;
+    }
   };
 
   std::ostream & operator << (std::ostream &out, const Uintah::Stencil7 &a);

@@ -64,7 +64,7 @@ class ArmPostProcessModule
     ProblemSpecP d_param;
     const VarLabel * const d_psi_label;
 
-    ArmPostProcessor<VAR, DIM> * arm_postproc;
+    ArmPostProcessor * arm_postproc;
     const VarLabel * tip_position_label;
     const VarLabel * tip_velocity_label;
     const VarLabel * tip_curvatures_label;

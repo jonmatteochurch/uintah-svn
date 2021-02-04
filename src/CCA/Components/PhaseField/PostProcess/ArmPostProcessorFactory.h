@@ -31,11 +31,11 @@
 #ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorFactory_h
 #define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorFactory_h
 
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorParallelPoly.h>
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPolyD2.h>
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPolyD3.h>
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorParallelTanh.h>
-#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalTanh.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorPolyD2Parallel.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorPolyD2Diagonal.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorPolyD3.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorTanhParallel.h>
+#include <CCA/Components/PhaseField/PostProcess/ArmPostProcessorTanhDiagonal.h>
 
 #include <Core/Exceptions/ProblemSetupException.h>
 #include <Core/Grid/GridP.h>
@@ -50,7 +50,7 @@ template<VarType VAR, DimType DIM>
 class ArmPostProcessorFactory
 {
 public:
-    static ArmPostProcessor<VAR, DIM> *
+    static ArmPostProcessor *
     create (
         ProblemSpecP spec,
         const double & epsilon,
@@ -103,11 +103,12 @@ public:
             double alpha = 0.125;
             spec->getWithDefault ( "alpha", alpha, alpha );
 
-            if ( epsilon < 0 )
-                return scinew ArmPostProcessorDiagonalPoly<VAR,DIM> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
-            else if ( VAR != CC || DIM!=D3 )
-                return scinew ArmPostProcessorParallelPoly<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
-            SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessorParallelPoly for 3D parallel growth", __FILE__, __LINE__ ) );
+            if ( DIM==D3 )
+                return scinew ArmPostProcessorPolyD3<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
+            else if ( epsilon < 0 )
+                return scinew ArmPostProcessorPolyD2Diagonal<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
+            else
+                return scinew ArmPostProcessorPolyD2Parallel<VAR> ( npts0, npts1, npts2, npts3, deg0, deg1, deg2, deg3, alpha, dbg );
         }
         if ( type == "tanh" )
         {
@@ -130,11 +131,13 @@ public:
             double alpha = 0.125;
             spec->getWithDefault ( "alpha", alpha, alpha );
 
+            if ( VAR == CC && DIM==D3 )
+                SCI_THROW ( ProblemSetupException ( "Cannot Create Tanh ArmPostProcessor for 3D CC", __FILE__, __LINE__ ) );
+
             if ( epsilon < 0 )
-                return scinew ArmPostProcessorDiagonalTanh<VAR> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts3, npts1, alpha, dbg );
-            else if ( VAR != CC || DIM!=D3 )
-                return scinew ArmPostProcessorParallelTanh<VAR> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts3, npts1, alpha, dbg );
-            SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessorParallelPoly for 3D parallel growth", __FILE__, __LINE__ ) );
+                return scinew ArmPostProcessorTanhDiagonal<VAR> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts3, npts1, alpha, dbg );
+            else
+                return scinew ArmPostProcessorTanhParallel<VAR> ( {ftol, xtol, gtol, trtol, max_nfev, max_triter}, npts0, npts3, npts1, alpha, dbg );
         }
 
         SCI_THROW ( ProblemSetupException ( "Cannot Create ArmPostProcessor of type '" + type + "'", __FILE__, __LINE__ ) );

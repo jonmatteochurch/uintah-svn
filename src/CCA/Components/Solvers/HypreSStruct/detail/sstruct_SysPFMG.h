@@ -22,50 +22,51 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructSysPFMG_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructSysPFMG_h
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstruct_SysPFMG_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstruct_SysPFMG_h
+
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_implementation.h>
 
 #include <CCA/Components/Solvers/HypreSStruct/SolverParams.h>
 #include <CCA/Components/Solvers/HypreSStruct/SolverOutput.h>
 
-#include <HYPRE_sstruct_mv.h>
+#include <HYPRE_sstruct_ls.h>
 
 namespace Uintah
 {
 namespace HypreSStruct
 {
-
-template<int DIM, int C2F>
-class SStructSolver<S::SysPFMG, DIM, C2F>
-    : public SStructImplementation<DIM, C2F>
-    , public Implementation< SStructSolver<S::SysPFMG, DIM, C2F>, SStructInterface, const GlobalDataP & >
+namespace detail
 {
-public:
-    using SStruct = SStructImplementation<DIM, C2F>;
 
-    using SStruct::solver;
-    using SStruct::A;
-    using SStruct::b;
-    using SStruct::x;
+template<int DIM, int C2F, bool precond>
+class sstruct_solver< ( int ) S::SysPFMG, DIM, C2F, precond>
+    : public sstruct_implementation<DIM, C2F>
+{
+protected:
+    using sstruct = sstruct_implementation<DIM, C2F>;
 
-    using SStruct::solver_initialized;
-    using SStruct::guess_updated;
+    using sstruct::gdata;
+
+    using sstruct::solver;
+    using sstruct::A;
+    using sstruct::b;
+    using sstruct::x;
+
+    using sstruct::solver_initialized;
+    using sstruct::guess_updated;
 
 public: // STATIC MEMBERS
-
-    /// Class name as used by ApplicationFactory
-    static const std::string Name;
-
-    static const HYPRE_PtrToSolverFcn precond;
+    static const HYPRE_PtrToSolverFcn precond_solve;
     static const HYPRE_PtrToSolverFcn precond_setup;
 
-    SStructSolver (
+    sstruct_solver (
         const GlobalDataP & gdata
-    ) : SStruct ( gdata )
+    ) : sstruct ( gdata )
     {
     }
 
-    virtual ~SStructSolver()
+    virtual ~sstruct_solver()
     {
         solverFinalize();
     }
@@ -77,30 +78,39 @@ public: // STATIC MEMBERS
     ) override
     {
         ASSERT ( !solver_initialized );
+        ASSERTMSG ( gdata->nParts() == 1, "SysPFMG can be used only for problems with one grid part." );
+
+        IGNOREPARAM ( SStructSysPFMG, params, csolver_type );
+        IGNOREPARAM ( SStructSysPFMG, params, max_levels );
+        IGNOREPARAM ( SStructSysPFMG, params, ssolver );
+        IGNOREPARAM ( SStructSysPFMG, params, abs_tol );
+        IGNOREPARAM ( SStructSysPFMG, params, two_norm );
+        IGNOREPARAM ( SStructSysPFMG, params, recompute_residual );
+        IGNOREPARAM ( SStructSysPFMG, params, recompute_residual_p );
 
         HYPRE_SStructSysPFMGCreate ( comm, &solver );
 
-        if ( params->tol > 0 )
+        if ( params->tol != -1 )
             HYPRE_SStructSysPFMGSetTol ( solver, params->tol );
-        if ( params->max_iter > 0 )
+        if ( params->max_iter != -1 )
             HYPRE_SStructSysPFMGSetMaxIter ( solver, params->max_iter );
-        if ( params->rel_change > -1 )
+        if ( params->rel_change != -1 )
             HYPRE_SStructSysPFMGSetRelChange ( solver, params->rel_change );
-        if ( !guess_updated )
+        if ( precond || !guess_updated )
             HYPRE_SStructSysPFMGSetZeroGuess ( solver );
         else
             HYPRE_SStructSysPFMGSetNonZeroGuess ( solver );
-        if ( params->relax_type >  -1 )
+        if ( params->relax_type != -1 )
             HYPRE_SStructSysPFMGSetRelaxType ( solver, params->relax_type );
-        if ( params->relax_type == WeightedJacobi )
+        if ( params->relax_type == WeightedJacobi && params->weight != -1 )
             HYPRE_SStructSysPFMGSetJacobiWeight ( solver, params->weight );
-        if ( params->num_pre_relax >  -1 )
+        if ( params->num_pre_relax != -1 )
             HYPRE_SStructSysPFMGSetNumPreRelax ( solver, params->num_pre_relax );
-        if ( params->num_post_relax >  -1 )
+        if ( params->num_post_relax !=  -1 )
             HYPRE_SStructSysPFMGSetNumPostRelax ( solver, params->num_post_relax );
-        if ( params->skip_relax >  -1 )
+        if ( params->skip_relax != -1 )
             HYPRE_SStructSysPFMGSetSkipRelax ( solver, params->skip_relax );
-        if ( params->logging >  -1 )
+        if ( params->logging != -1 )
             HYPRE_SStructSysPFMGSetLogging ( solver, params->logging );
 
         solver_initialized = true;
@@ -142,12 +152,11 @@ public: // required if precond
     }
 };
 
-template<int DIM, int C2F> const HYPRE_PtrToSolverFcn SStructSolver<S::SysPFMG, DIM, C2F>::precond = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSolve;
-template<int DIM, int C2F> const HYPRE_PtrToSolverFcn SStructSolver<S::SysPFMG, DIM, C2F>::precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSetup;
+template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::SysPFMG, DIM, C2F, precond>::precond_solve = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSolve;
+template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::SysPFMG, DIM, C2F, precond>::precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructSysPFMGSetup;
 
+} // namespace detail
 } // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructSysPFMG_h
-
-
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstructSysPFMG_h

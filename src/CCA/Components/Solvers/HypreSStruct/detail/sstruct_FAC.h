@@ -25,12 +25,17 @@
 #ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructFAC_h
 #define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructFAC_h
 
+#include <CCA/Components/Solvers/HypreSStruct/detail/sstruct_implementation.h>
+
 #include <CCA/Components/Solvers/HypreSStruct/SolverParams.h>
 #include <CCA/Components/Solvers/HypreSStruct/SolverOutput.h>
 
-#include <HYPRE_sstruct_mv.h>
+#include <Core/Exceptions/ProblemSetupException.h>
+
+#include <HYPRE_sstruct_ls.h>
 
 #ifdef PRINTSYSTEM
+#   include "/home/jonmatteochurch/Developer/hypre/fork/src/sstruct_ls/_hypre_sstruct_ls.h"
 #   include "/home/jonmatteochurch/Developer/hypre/fork/src/sstruct_ls/fac.h"
 #endif
 
@@ -38,42 +43,39 @@ namespace Uintah
 {
 namespace HypreSStruct
 {
+namespace detail
+{
 
-template<int DIM, int C2F >
-class SStructSolver<S::FAC, DIM, C2F>
-    : public SStructImplementation<DIM, C2F>
-    , public Implementation< SStructSolver<S::FAC, DIM, C2F>, SStructInterface, const GlobalDataP & >
+template<int DIM, int C2F, bool precond>
+class sstruct_solver< ( int ) S::FAC, DIM, C2F, precond>
+    : public sstruct_implementation<DIM, C2F>
 {
 protected:
-    using SStruct = SStructImplementation<DIM, C2F>;
+    using sstruct = sstruct_implementation<DIM, C2F>;
 
-    using SStruct::gdata;
-    using SStruct::plevels;
-    using SStruct::prefinements;
+    using sstruct::gdata;
+    using sstruct::plevels;
+    using sstruct::prefinements;
 
-    using SStruct::solver;
-    using SStruct::A;
-    using SStruct::b;
-    using SStruct::x;
+    using sstruct::solver;
+    using sstruct::A;
+    using sstruct::b;
+    using sstruct::x;
 
-    using SStruct::solver_initialized;
-    using SStruct::guess_updated;
+    using sstruct::solver_initialized;
+    using sstruct::guess_updated;
 
 public: // STATIC MEMBERS
-
-    /// Class name as used by ApplicationFactory
-    static const std::string Name;
-
-    static const HYPRE_PtrToSolverFcn precond;
+    static const HYPRE_PtrToSolverFcn precond_solve;
     static const HYPRE_PtrToSolverFcn precond_setup;
 
-    SStructSolver (
+    sstruct_solver (
         const GlobalDataP & gdata
-    ) : SStruct ( gdata )
+    ) : sstruct ( gdata )
     {
     }
 
-    virtual ~SStructSolver()
+    virtual ~sstruct_solver()
     {
         solverFinalize();
     }
@@ -94,6 +96,8 @@ public: // STATIC MEMBERS
 
         if ( params->max_levels > 0 )
             HYPRE ( SStructFACSetMaxLevels ) ( solver, params->max_levels );
+        else
+            SCI_THROW ( ProblemSetupException ( "HypreSStruct FAC solver: missing required parameter 'max_levels' cannot be deduced", __FILE__, __LINE__ ) );
         if ( params->tol > 0 )
             HYPRE ( SStructFACSetTol ) ( solver, params->tol );
         if ( params->max_iter > 0 )
@@ -144,7 +148,7 @@ public: // STATIC MEMBERS
         std::string * fname
     ) override
     {
-        SStruct::printSystem ( fname );
+        sstruct::printSystem ( fname );
 
         std::string name = "fac_" + fname[0];
         HYPRE_SStructMatrix fac_A = ( ( hypre_FACData * ) solver )->A_rap;
@@ -159,6 +163,7 @@ public: // exposing this for when used as precond
     override
     {
         if ( solver_initialized ) HYPRE ( SStructFACDestroy2 ) ( solver );
+        solver_initialized = false;
     }
 
 public: // required if precond
@@ -169,13 +174,11 @@ public: // required if precond
     }
 };
 
+template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::FAC, DIM, C2F, precond>::precond_solve = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructFACSolve3;
+template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::FAC, DIM, C2F, precond>::precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructFACSetup2;
 
-template<int DIM, int C2F > const HYPRE_PtrToSolverFcn SStructSolver<S::FAC, DIM, C2F>::precond = (HYPRE_PtrToSolverFcn) HYPRE_SStructFACSolve3;
-template<int DIM, int C2F > const HYPRE_PtrToSolverFcn SStructSolver<S::FAC, DIM, C2F>::precond_setup = (HYPRE_PtrToSolverFcn) HYPRE_SStructFACSetup2;
-
+} // namespace detail
 } // namespace HypreSStruct
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_SStructFAC_h
-
-

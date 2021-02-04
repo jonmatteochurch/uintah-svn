@@ -23,13 +23,13 @@
  */
 
 /**
- * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorDiagonalPolyD2.h
+ * @file CCA/Components/PhaseField/PostProcess/ArmPostProcessorPolyD2Diagonal.h
  * @author Jon Matteo Church [j.m.church@leeds.ac.uk]
  * @date 2020/06
  */
 
-#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPolyD2_h
-#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPolyD2_h
+#ifndef Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD2Diagonal_h
+#define Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD2Diagonal_h
 
 #include <sci_defs/lapack_defs.h>
 
@@ -49,7 +49,6 @@
 #define ONLY_EVEN 1
 #define DBG_PRINT 0
 
-#include<sstream>
 namespace Uintah
 {
 
@@ -58,11 +57,9 @@ extern Dout g_mpi_dbg;
 namespace PhaseField
 {
 
-template<VarType, DimType> class ArmPostProcessorDiagonalPoly;
-
 template<VarType VAR>
-class ArmPostProcessorDiagonalPoly < VAR, D2 >
-    : public ArmPostProcessor < VAR, D2 >
+class ArmPostProcessorPolyD2Diagonal
+    : public ArmPostProcessor
 {
 private: // STATIC MEMBERS
 
@@ -76,7 +73,7 @@ protected: // MEMBERS
 
     const double m_alpha;
 
-    const int m_n0; // no. of psi values for computation of 0 level, psi_n, and psi_nn
+    const int m_n0; // no. of psi values for computation of 0-level, psi_n, and psi_nn
     const int m_n1; // no. of psi values for computation of psi_tt
     const int m_n2; // no. of 0-level, psi_n, and psi_nn values for interpolation at tip
     const int m_n3; // no. of psi_tt values for interpolation at tip
@@ -92,7 +89,7 @@ protected: // MEMBERS
     const int m_nnl; // no of pts left of tip
     const int m_nnh; // no of pts right of tip
 
-    int m_deg0; // interpolant degree for computation of 0 level, psi_n, and psi_nn
+    int m_deg0; // interpolant degree for computation of 0-level, psi_n, and psi_nn
     int m_deg1; // interpolant degree for computation of psi_tt
     int m_deg2; // interpolant degree for evaluating tip values of psi_n, and psi_nn
     int m_deg3; // interpolant degree for evaluating tip value of psi_tt
@@ -118,9 +115,11 @@ protected: // MEMBERS
 
 private: // MEMBERS
 
-    int n_ind ( const IntVector & id ) const
+    // n=(x-x0)+(y-y0), t=(x-x0)-(y-y0)
+
+    int n_ind ( const IntVector & id /*x,y*/ ) const
     {
-        return ( id[0] - m_origin[0] ) + ( id[1] - m_origin[1] );
+        return ( id[X] - m_origin[0] ) + ( id[1] - m_origin[1] );
     }
 
     int n_ind ( const int & x, const int & y ) const
@@ -128,7 +127,7 @@ private: // MEMBERS
         return ( x - m_origin[0] ) + ( y - m_origin[1] );
     }
 
-    int t_ind ( const IntVector & id ) const
+    int t_ind ( const IntVector & id /*x,y*/ ) const
     {
         return ( id[0] - m_origin[0] ) - ( id[1] - m_origin[1] );
     }
@@ -138,7 +137,7 @@ private: // MEMBERS
         return ( x - m_origin[0] ) - ( y - m_origin[1] );
     }
 
-    int x_ind ( const IntVector & id ) const
+    int x_ind ( const IntVector & id /*n,t*/ ) const
     {
         return ( id[0] + id[1] ) / 2 + m_origin[0];
     }
@@ -148,7 +147,7 @@ private: // MEMBERS
         return ( n + t ) / 2 + m_origin[0];
     }
 
-    int y_ind ( const IntVector & id ) const
+    int y_ind ( const IntVector & id /*n,t*/ ) const
     {
         return ( id[0] - id[1] ) / 2 + m_origin[1];
     }
@@ -223,7 +222,7 @@ private: // MEMBERS
 
 public: // CONSTRUCTORS/DESTRUCTOR
 
-    ArmPostProcessorDiagonalPoly (
+    ArmPostProcessorPolyD2Diagonal (
         int n0,
         int n1,
         int n2,
@@ -268,7 +267,7 @@ public: // CONSTRUCTORS/DESTRUCTOR
     /**
     * @brief Destructor
     */
-    virtual ~ArmPostProcessorDiagonalPoly ()
+    virtual ~ArmPostProcessorPolyD2Diagonal ()
     {
         delete[] m_locations;
         delete[] m_data_t;
@@ -282,7 +281,7 @@ public:
         const Level * level
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::setLevel: " << level->getIndex() << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::setLevel: " << level->getIndex() << " " );
 
         m_origin = level->getCellIndex ( {0., 0., 0.} );
         level->computeVariableExtents ( var_td, m_low, m_high );
@@ -293,7 +292,7 @@ public:
     initializeLocations (
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::initializeLocations " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::initializeLocations " );
 
         m_location_n0 = std::max ( 0, n_ind ( m_low ) );
         m_locations_size = n_ind ( m_high ) - m_location_n0;
@@ -310,7 +309,7 @@ public:
         View < ScalarField<const double> > const & psi
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::setLocations: " << low << high << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::setLocations: " << low << high << " " );
 
         bool fc_xplus = patch->getBCType ( Patch::xplus ) == Patch::Coarse &&
                         std::find ( faces.begin(), faces.end(), Patch::xplus ) != faces.end();
@@ -402,16 +401,16 @@ public:
             return;
         }
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalPoly::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI " );
 
         int error = Uintah::MPI::Allreduce ( MPI_IN_PLACE, m_locations, m_locations_size, MPI_INT, MPI_MIN, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalPoly::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessorDiagonalPoly::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalPoly::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "Rank-" << myworld->myRank() << " ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -435,7 +434,7 @@ public:
     initializeData ()
     override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::initializeData " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::initializeData " );
 
         int i = m_locations_size;
         for ( i = m_locations_size; i > 0 && m_locations[i - 1] == INT_MAX; --i );
@@ -444,9 +443,8 @@ public:
         if ( m_data_size )
         {
             for ( ; i > 1 && m_locations[i - 2] < INT_MAX && m_locations[i - 2] >= m_locations[i]; --i );
-            if ( m_locations[i - 1] < INT_MAX ) --i;
 
-            m_data_n0 = i;
+            m_data_n0 = i - ( m_locations[i - 1] < INT_MAX ? 1 : 0 );
             m_data_size -= m_data_n0;
         }
         else
@@ -474,7 +472,7 @@ public:
         View< ScalarField<int> > * refine_flag
     ) override
     {
-        DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::setData: " << low << high << " " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::setData: " << low << high << " " );
 
         // arm contour not here
         if ( !m_data_size || n_ind ( high ) < m_data_n0 - m_nnl )
@@ -569,7 +567,7 @@ public:
                     }
 
                 // extend psi to -1 out computational boundary
-                for ( ; t_ < m_n0; it += 2, id += et, ++t_ )
+                for ( ; t_ < m_n0; it += 2, ++t_ )
                 {
                     data_t ( n_, t_ ) = t_coord ( it );
                     data_z ( n_, t_ ) = -1.;
@@ -770,7 +768,7 @@ public:
         if ( !m_data_size || myworld->nRanks() <= 1 )
             return;
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalPoly::reduceMPI " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorPolyD2Diagonal::reduceMPI " );
 
         int error;
         if ( myworld->myRank() == 0 )
@@ -784,12 +782,12 @@ public:
                     Uintah::MPI::Reduce ( m_data_z, nullptr, m_n0 * m_data_size, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() ) ||
                     Uintah::MPI::Reduce ( m_tip_z, nullptr, m_nn * m_nt, MPI_DOUBLE, MPI_MAX, 0, myworld->getComm() );
 
-        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorDiagonalPoly::reduceMPI, done " );
+        DOUT ( g_mpi_dbg, "Rank-" << myworld->myRank() << " ArmPostProcessorPolyD2Diagonal::reduceMPI, done " );
 
         if ( error )
         {
-            DOUT ( true, "ArmPostProcessorDiagonalPoly::reduceMPI: Uintah::MPI::Allreduce error: " << error );
-            SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalPoly::reduceMPI: MPI error", __FILE__, __LINE__ ) );
+            DOUT ( true, "ArmPostProcessor::reduceMPI: Uintah::MPI::Allreduce error: " << error );
+            SCI_THROW ( InternalError ( "ArmPostProcessor::reduceMPI: MPI error", __FILE__, __LINE__ ) );
         }
     }
 
@@ -853,7 +851,7 @@ public:
         if ( !m_data_size )
             return;
 
-        DOUTR ( m_dbg,  "ArmPostProcessorDiagonalPoly::computeTipInfo " );
+        DOUTR ( m_dbg,  "ArmPostProcessor::computeTipInfo " );
 
         // Containers for 0-level
         double * arm_n = scinew double[m_data_size + m_n2];
@@ -871,7 +869,7 @@ public:
             p0.roots();
             if ( !p0.root_in_range ( 0., data_t ( i, m_n0 - 1 ), t ) )
             {
-                SCI_THROW ( InternalError ( "ArmPostProcessorDiagonalPoly::computeTipInfo: can't find root\n", __FILE__, __LINE__ ) );
+                SCI_THROW ( InternalError ( "ArmPostProcessor::computeTipInfo: can't find root\n", __FILE__, __LINE__ ) );
             }
 
             arm_n[i] = n;
@@ -1156,10 +1154,10 @@ public:
         delete[] arm_n;
         delete[] arm_t2;
     }
-}; // struct ArmPostProcessorDiagonalPolyD2
+}; // struct ArmPostProcessorPolyD2Diagonal
 
-template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR, D2 >::en { 1, 1, 0 };
-template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR, D2 >::et { 1, -1, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorPolyD2Diagonal<VAR>::en { 1, 1, 0 };
+template<VarType VAR> const IntVector ArmPostProcessorPolyD2Diagonal<VAR>::et { 1, -1, 0 };
 
 } // namespace PhaseField
 } // namespace Uintah
@@ -1167,4 +1165,4 @@ template<VarType VAR> const IntVector ArmPostProcessorDiagonalPoly < VAR, D2 >::
 #undef ONLY_EVEN
 #undef DBG_PRINT
 
-#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorDiagonalPolyD2_h
+#endif // Packages_Uintah_CCA_Components_PhaseField_PostProcess_ArmPostProcessorPolyD2Diagonal_h

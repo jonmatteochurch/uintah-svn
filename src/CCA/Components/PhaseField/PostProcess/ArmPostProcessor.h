@@ -40,13 +40,8 @@ namespace Uintah
 namespace PhaseField
 {
 
-template<VarType VAR, DimType DIM>
 class ArmPostProcessor
-    : protected DWInterface < VAR, DIM >
 {
-protected: // STATIC MEMBERS
-    static constexpr TypeDescription::Type TD = VAR == CC ? TypeDescription::CCVariable : TypeDescription::NCVariable;
-
 public:
     virtual ~ArmPostProcessor() = default;
     virtual void setLevel ( const Level * level ) = 0;

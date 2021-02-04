@@ -22,23 +22,25 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_ExtraIndices_h
-#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_ExtraIndices_h
+#ifndef Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_extra_indices_h
+#define Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_extra_indices_h
 
 #include <Core/Geometry/IntVector.h>
-// 
+
 #include <tuple>
 
 namespace Uintah
 {
 namespace HypreSStruct
 {
+namespace detail
+{
 
-class AddIndex
-    : public std::tuple<int, IntVector, int, IntVector>
+class add_index
+    : public std::tuple<int, IntVector, int, int, IntVector>
 {
 public:
-    using std::tuple<int, IntVector, int, IntVector>::tuple;
+    using std::tuple<int, IntVector, int, int, IntVector>::tuple;
 
     const int &
     box() const
@@ -53,19 +55,25 @@ public:
     }
 
     const int &
-    toPart() const
+    rank() const
     {
         return std::get<2> ( *this );
     }
 
-    const IntVector &
-    toIndex() const
+    const int &
+    to_part() const
     {
         return std::get<3> ( *this );
     }
+
+    const IntVector &
+    to_index() const
+    {
+        return std::get<4> ( *this );
+    }
 };
 
-class StnIndex
+class stn_index
     : public std::tuple<int, IntVector, int>
 {
 public:
@@ -90,22 +98,20 @@ public:
     }
 };
 
-inline std::ostream & operator<< ( std::ostream & os, const AddIndex & add )
+inline std::ostream & operator<< ( std::ostream & os, const add_index & add )
 {
-    os << "{" << add.box() << "," << add.index() << "," << add.toPart() << "," << add.toIndex() << "}";
+    os << "{" << add.box() << "," << add.index() << "," << add.rank() << "," << add.to_part() << "," << add.to_index() << "}";
     return os;
 }
 
-inline std::ostream & operator<< ( std::ostream & os, const StnIndex & add )
+inline std::ostream & operator<< ( std::ostream & os, const stn_index & add )
 {
     os << "{" << add.box() << "," << add.index() << "," << add.rank() << "}";
     return os;
 }
 
+} // namespace detail
 } // namespace HypreSStruct
 } // namespace Uintah
 
-#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_ExtraIndices_h
-
-
-
+#endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_extra_indices_h

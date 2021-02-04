@@ -1798,6 +1798,11 @@ SchedulerCommon::scheduleAndDoDataCopy( const GridP & grid )
   for (unsigned int i = 0; i < levelVariableInfo.size(); i++) {
     VarLabelMatl<Level> currentGlobalVar = levelVariableInfo[i];
 
+    if (m_no_copy_data_vars.count(currentGlobalVar.m_label->getName()) > 0) {
+        DOUT(g_schedulercommon_dbg, "SchedulerCommon Skipping Copy of global variable " << currentGlobalVar.m_label->getName());
+        continue;
+    }
+
     if (currentGlobalVar.m_label->typeDescription()->getType() == TypeDescription::ReductionVariable ||
         currentGlobalVar.m_label->typeDescription()->getType() == TypeDescription::SoleVariable) {
 

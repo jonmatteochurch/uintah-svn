@@ -36,6 +36,15 @@ namespace HypreSStruct
 
 using MatrixEntry = std::pair < MatrixIndex, double>;
 
+inline MatrixEntry
+operator * (
+    const double & factor,
+    const MatrixEntry & entry
+)
+{
+    return std::make_pair ( entry.first, factor * entry.second );
+}
+
 } // namespace HypreSStruct
 } // namespace Uintah
 

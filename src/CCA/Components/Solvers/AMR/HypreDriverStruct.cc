@@ -136,7 +136,7 @@ HypreDriverStruct::makeLinearSystem_CC(const int matl)
   //___________________________________________________________________
 {
   typedef CCTypes::double_type double_type;
-  ASSERTEQ(sizeof(Stencil7), 7*sizeof(double));
+  // ASSERTEQ(sizeof(Stencil7), 7*sizeof(double));
 
   //==================================================================
   // Set up the grid

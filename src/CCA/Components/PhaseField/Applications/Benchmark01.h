@@ -1307,6 +1307,7 @@ Benchmark01<VAR, STN, AMR>::problemSetup (
             SCI_THROW ( InternalError ( "Benchmark01:couldn't get solver port", __FILE__, __LINE__ ) );
         }
         this->m_solver->readParameters ( solv, "u" );
+        this->m_solver->getParameters()->setSymmetric ( false );
         this->m_solver->getParameters()->setSolveOnExtraCells ( false );
     }
 #else

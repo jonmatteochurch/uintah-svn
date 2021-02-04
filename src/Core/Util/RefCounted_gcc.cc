@@ -37,7 +37,7 @@ RefCounted::RefCounted()
 
 RefCounted::~RefCounted()
 {
-  ASSERTEQ(d_refCount, 0);
+  ASSERTEQ_NOTHROW(d_refCount, 0);
 }
 
 void

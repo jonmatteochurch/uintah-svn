@@ -31,6 +31,8 @@
 #ifndef Packages_Uintah_CCA_Components_PhaseField_Util_Expressions_h
 #define Packages_Uintah_CCA_Components_PhaseField_Util_Expressions_h
 
+#include <CCA/Components/PhaseField/Util/Definitions.h>
+
 namespace Uintah
 {
 namespace PhaseField
@@ -67,7 +69,7 @@ struct integer_sequence
 
 /**
  * A helper alias template index_sequence is defined for the common case where T
- * is std::size_t.
+ * is size_t.
  *
  * @tparam I a non-type parameter pack representing the sequence
  */
@@ -117,6 +119,7 @@ using make_index_sequence = make_integer_sequence<size_t, N>;
 template<typename... T>
 using index_sequence_for = make_index_sequence<sizeof... ( T ) >;
 #else
+#include <utility>
 using std::integer_sequence;
 using std::index_sequence;
 using std::make_integer_sequence;

@@ -34,29 +34,34 @@ namespace Uintah
 namespace HypreSStruct
 {
 
-// positive also precond, GMRES default
+// positive may have precond
 enum class S : int
 {
-    GMRES = 0, 
-    PCG = -1, 
-    FlexGMRES = -2, 
-    LGMRES = -3, 
-    BiCGSTAB = -4, 
-    SysPFMG = 1, 
-    Split = 2, 
-    FAC = 3, 
-    Maxwell = 4
+    SysPFMG = 1,
+    Split = -2,
+    FAC = -3,
+    Maxwell = -4,
+    PCG = 5,
+    GMRES = 6,
+    FlexGMRES = 7,
+    LGMRES = 8,
+    BiCGSTAB = 9
 };
 
-// negative non solver, None default
+// negative non solver
 enum class P : int
 {
-    None = 0, 
-    Diag = -1, 
-    SysPFMG = ( int ) S::SysPFMG, 
-    Split = ( int ) S::Split, 
-    FAC = ( int ) S::FAC, 
-    Maxwell = ( int ) S::Maxwell
+    None = 0,
+    Diagonal = -1,
+    SysPFMG = ( int ) S::SysPFMG,
+    Split = ( int ) S::Split,
+    FAC = ( int ) S::FAC,
+    Maxwell = ( int ) S::Maxwell,
+    PCG = ( int ) S::PCG,
+    GMRES = ( int ) S::GMRES,
+    FlexGMRES = ( int ) S::FlexGMRES,
+    LGMRES = ( int ) S::LGMRES,
+    BiCGSTAB = ( int ) S::BiCGSTAB,
 };
 
 enum CoarseSolverType : int
@@ -78,19 +83,10 @@ enum RelaxType : int
     DefaultRelaxType    = -1,
     Jacobi              =  0,
     WeightedJacobi      =  1,
-    RedBlackGaussSeidel =  2  // symmetrix: RB pre-relaxation, BR post-relaxation
-};
-
-template <int DIM>
-struct SStructStencil
-{
-    static constexpr int size = 2 * DIM + 1;
-    static int offsets[size][DIM];
-    static const int entry[size];
+    RedBlackGaussSeidel =  2  // symmetric: RB pre-relaxation, BR post-relaxation
 };
 
 } // namespace HypreSStruct
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_Definitions_h
-

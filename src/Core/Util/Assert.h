@@ -65,8 +65,13 @@
      if(!(condition)){ \
         SCI_THROW(Uintah::AssertionFailed(#condition, __FILE__, __LINE__)); \
      }
+#  define ASSERTL2_NOTHROW(condition) \
+     if(!(condition)){ \
+       printf("%s\n", Uintah::AssertionFailed(#condition, __FILE__, __LINE__).message()); \
+     }
 #else
 #  define ASSERTL2(condition)
+#  define ASSERTL2_NOTHROW(condition)
 #endif
 
 #if SCI_ASSERTION_LEVEL >= 3
@@ -91,6 +96,8 @@
 #  define ASSERTEQ(c1, c2)
 #  define ASSERTRANGE(c, l, h)
 #  define IFASSERT(x)
+#  define ASSERTL2_NOTHROW(condition)
+#  define ASSERTEQ_NOTHROW(c1, c2)
 #else
 #  define USE_IF_ASSERTS_ON(line) line
 #endif
@@ -101,5 +108,6 @@
    the line or put the line in. */
 
 #define ASSERT(condition) ASSERTL2(condition)
+#  define ASSERT_NOTHROW(condition) ASSERTL2_NOTHROW(condition)
 
 #endif

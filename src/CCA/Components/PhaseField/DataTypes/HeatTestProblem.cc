@@ -39,10 +39,12 @@ namespace PhaseField
 {
 
 /// @cond DOXYIGNORE
+#ifdef PhaseField_Heat_DBG_DERIVATIVES
 template<> const FactoryString HeatProblem<CC, P5, TST>::Name = "HeatTestProblem";
 template<> const FactoryString HeatProblem<NC, P5, TST>::Name = "HeatTestProblem";
 template<> const FactoryString HeatProblem<CC, P7, TST>::Name = "HeatTestProblem";
 template<> const FactoryString HeatProblem<NC, P7, TST>::Name = "HeatTestProblem";
+#endif
 /// @endcond
 
 } // namespace Uintah

@@ -42,7 +42,11 @@ namespace PhaseField
 {
 
 /// Type of Problem used by Heat application
+#ifdef PhaseField_Heat_DBG_DERIVATIVES
 template<VarType VAR, StnType STN> using HeatTestProblem = Problem < VAR, STN, ScalarField<const double>, VectorField<const double, get_stn<STN>::dim >, VectorField<const double, get_stn<STN>::dim > >;
+#else
+template<VarType VAR, StnType STN> using HeatTestProblem = Problem < VAR, STN, ScalarField<const double> >;
+#endif
 
 } // namespace PhaseFieldSTNSTN
 } // namespace Uintah

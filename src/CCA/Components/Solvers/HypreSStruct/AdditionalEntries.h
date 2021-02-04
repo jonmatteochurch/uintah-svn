@@ -41,6 +41,20 @@ class AdditionalEntries
 {
 public:
     using std::map<MatrixEntry::first_type, MatrixEntry::second_type>::map;
+
+    inline AdditionalEntries &
+    operator += (
+        MatrixEntry && entry
+    )
+    {
+        bool inserted;
+        std::map<MatrixEntry::first_type, MatrixEntry::second_type>::map::iterator it;
+
+        std::tie ( it, inserted ) = this->insert ( entry );
+        if ( !inserted )
+            it->second = entry.second;
+        return *this;
+    }
 };
 
 } // namespace HypreSStruct

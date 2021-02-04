@@ -36,7 +36,7 @@ namespace Uintah {
 
   static MPI_Datatype makeMPI_Stencil7()
   {
-    ASSERTEQ(sizeof(Stencil7), sizeof(double)*7);
+//  ASSERTEQ(sizeof(Stencil7), sizeof(double)*7);
     MPI_Datatype mpitype;
     Uintah::MPI::Type_vector(1, 7, 7, MPI_DOUBLE, &mpitype);
     Uintah::MPI::Type_commit(&mpitype);

@@ -55,6 +55,13 @@
       SCI_THROW(Uintah::AssertionFailed(msg.str().c_str(), __FILE__, __LINE__)); \
    }
 
+#define ASSERTEQ_NOTHROW(c1, c2) \
+   if(c1 != c2){ \
+      std::ostringstream msg; \
+      msg << #c1 "(value=" << c1 << ") == " #c2 "(value=" << c2 << ")"; \
+      printf("%s\n", msg.str().c_str()); \
+   }
+
 #define ASSERTNE(c1, c2) \
    if(c1 != c2){ \
       std::ostringstream msg; \
@@ -70,6 +77,8 @@
    }
 #else
 #define ASSERTEQ(c1, c2)
+#define ASSERTEQ_NOTHROW(c1, c2)
+#define ASSERTNE(c1, c2)
 #define ASSERTRANGE(c, l, h)
 #endif
 

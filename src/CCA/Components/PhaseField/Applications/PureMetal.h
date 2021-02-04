@@ -956,13 +956,32 @@ protected: // IMPLEMENTATIONS
      * @param[out] b view of B in the new dw
      */
     void
-    time_advance_anisotropy_terms (
+    time_advance_anisotropy_terms_dflt (
         const IntVector & id,
         View < VectorField<const double, DIM> > & grad_psi,
         View < ScalarField<const double> > & grad_psi_norm2,
         View < ScalarField<double> > & a,
         View < ScalarField<double> > & a2,
         View < VectorField<double, BSZ> > & b
+    );
+
+    void
+    time_advance_anisotropy_terms_diag (
+        const IntVector & id,
+        View < VectorField<const double, DIM> > & grad_psi,
+        View < ScalarField<const double> > & grad_psi_norm2,
+        View < ScalarField<double> > & a,
+        View < ScalarField<double> > & a2,
+        View < VectorField<double, BSZ> > & b
+    );
+
+    void (PureMetal::*time_advance_anisotropy_terms) (
+        const IntVector &,
+        View < VectorField<const double, DIM> > &,
+        View < ScalarField<const double> > &,
+        View < ScalarField<double> > &,
+        View < ScalarField<double> > &,
+        View < VectorField<double, BSZ> > &
     );
 
     /**
@@ -1062,13 +1081,16 @@ protected: // IMPLEMENTATIONS
 
 // CONSTRUCTORS/DESTRUCTOR
 
+using namespace std::placeholders;
+
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 PureMetal<VAR, DIM, STN, AMR>::PureMetal (
     const ProcessorGroup * my_world,
     MaterialManagerP const material_manager,
     int verbosity
 ) : Application< PureMetalProblem<VAR, STN>, AMR > ( my_world, material_manager, verbosity ),
-    post_process ( nullptr )
+    post_process ( nullptr ),
+    time_advance_anisotropy_terms ( &PureMetal::time_advance_anisotropy_terms_dflt )
 {
     psi_label = VarLabel::create ( "psi", Variable<VAR, double>::getTypeDescription() );
     u_label = VarLabel::create ( "u", Variable<VAR, double>::getTypeDescription() );
@@ -1126,6 +1148,12 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     pure_metal->require ( "epsilon", epsilon );
     pure_metal->getWithDefault ( "gamma_psi", gamma_psi, 1. );
     pure_metal->getWithDefault ( "gamma_u", gamma_u, 1. );
+
+    if (DIM==D3 && epsilon<0)
+    {
+        epsilon = -epsilon;
+        time_advance_anisotropy_terms = &PureMetal::time_advance_anisotropy_terms_diag;
+    }
 
     post_process = scinew ArmPostProcessModule<VAR, DIM, STN, AMR> ( this, this->m_regridder, params, psi_label );
     post_process->problemSetup();
@@ -1708,7 +1736,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_anisotropy_terms (
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over range " << range );;
-        parallel_for ( range, [&grad_psi, &grad_psi_norm2, &a, &a2, &b, this] ( int i, int j, int k )->void { time_advance_anisotropy_terms ( {i, j, k}, grad_psi, grad_psi_norm2, a, a2, b ); } );
+        parallel_for ( range, [&grad_psi, &grad_psi_norm2, &a, &a2, &b, this] ( int i, int j, int k )->void { (this->*time_advance_anisotropy_terms) ( {i, j, k}, grad_psi, grad_psi_norm2, a, a2, b ); } );
     }
 
     DOUT ( this->m_dbg_lvl2,  myrank );;
@@ -1943,7 +1971,7 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_grad_psi (
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms (
+void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_dflt (
     const IntVector & id,
     View < VectorField<const double, DIM> > & grad_psi,
     View < ScalarField<const double> > & grad_psi_norm2,
@@ -1987,6 +2015,51 @@ void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms (
             b[XZ][id] = 16. * epsilon * tmp * ( grad[X] * grad[Z] ) * ( grad2[X] - grad2[Z] ) / n4;
             b[YZ][id] = 16. * epsilon * tmp * ( grad[Y] * grad[Z] ) * ( grad2[Y] - grad2[Z] ) / n4;
         }
+    }
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_diag (
+    const IntVector & id,
+    View < VectorField<const double, DIM> > & grad_psi,
+    View < ScalarField<const double> > & grad_psi_norm2,
+    View < ScalarField<double> > & a,
+    View < ScalarField<double> > & a2,
+    View < VectorField<double, BSZ> > & b
+)
+{
+    double tmp = 1. + epsilon;
+    double n2 = grad_psi_norm2[id];
+    if ( n2 < tol )
+    {
+        a[id] = tmp;
+        a2[id] = tmp * tmp;
+        for ( size_t d = 0; d < BSZ; ++d )
+            b[d][id] = 0.;
+    }
+    else
+    {
+        double n4 = 9. * n2 * n2 ;
+
+        double grad[DIM], grad2[DIM];
+        for ( size_t d = 0; d < DIM; ++d )
+        {
+            grad[d] = grad_psi[d][id];
+            grad2[d] = grad[d] * grad[d];
+        }
+
+        double sum4 = grad[X]+grad[Y]; sum4*=sum4; sum4*=sum4;
+        double dif4 = grad[X]-grad[Y]; dif4*=dif4; dif4*=dif4;
+        double tmp4 = grad2[X]; tmp4*=tmp4; tmp4*=4.;
+        tmp4 = sum4 + dif4;
+        tmp4 /= n4;
+
+        double tmp = 1. + epsilon * ( tmp4 - 3. );
+        a[id] = tmp;
+        a2[id] = tmp * tmp;
+        b[XY][id] = ( 16. * epsilon * grad[X] * grad[Y] * ( grad2[Y] - grad2[X] ) ) / n4;
+        b[XZ][id] = ( 8. * epsilon * grad[X] * grad[Z] * ( grad2[X] + 3. * grad2[Y] - 2. * grad2[X] ) ) / n4;
+        b[YZ][id] = ( 8. * epsilon * grad[Y] * grad[Z] * ( 3. * grad2[X] + grad2[Y] - 2. * grad2[X] ) ) / n4;
     }
 }
 

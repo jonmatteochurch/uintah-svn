@@ -35,18 +35,18 @@ using namespace Uintah;
 BufferInfo::~BufferInfo()
 {
   if (m_free_datatype) {
-    ASSERT(m_datatype != MPI_DATATYPE_NULL);
-    ASSERT(m_datatype != MPI_INT);
-    ASSERT(m_datatype != MPI_DOUBLE);
+    ASSERT_NOTHROW(m_datatype != MPI_DATATYPE_NULL);
+    ASSERT_NOTHROW(m_datatype != MPI_INT);
+    ASSERT_NOTHROW(m_datatype != MPI_DOUBLE);
     Uintah::MPI::Type_free(&m_datatype);
     m_datatype = MPI_DATATYPE_NULL;
   }
 
   for (unsigned int i = 0; i < m_datatypes.size(); i++) {
     if (m_free_datatypes[i]) {
-      ASSERT(m_datatypes[i] != MPI_DATATYPE_NULL);
-      ASSERT(m_datatypes[i] != MPI_INT);
-      ASSERT(m_datatypes[i] != MPI_DOUBLE);
+      ASSERT_NOTHROW(m_datatypes[i] != MPI_DATATYPE_NULL);
+      ASSERT_NOTHROW(m_datatypes[i] != MPI_INT);
+      ASSERT_NOTHROW(m_datatypes[i] != MPI_DOUBLE);
       Uintah::MPI::Type_free(&m_datatypes[i]);
       m_datatypes[i] = MPI_DATATYPE_NULL;
     }
