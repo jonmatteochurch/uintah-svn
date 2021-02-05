@@ -67,8 +67,8 @@ public: // STATIC MEMBERS
     operator HYPRE_Solver() { return nullptr; }
 };
 
-template<int DIM, int C2F> const HYPRE_PtrToSolverFcn sstruct_precond<P::Diagonal, DIM, C2F>::precond_solve = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructDiagScale;
-template<int DIM, int C2F> const HYPRE_PtrToSolverFcn sstruct_precond<P::Diagonal, DIM, C2F>::precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructDiagScaleSetup;
+template<int DIM, int C2F> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) P::Diagonal, DIM, C2F, true>::precond_solve = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructDiagScale;
+template<int DIM, int C2F> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) P::Diagonal, DIM, C2F, true>::precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE_SStructDiagScaleSetup;
 
 } // namespace detail
 } // namespace HypreSStruct
