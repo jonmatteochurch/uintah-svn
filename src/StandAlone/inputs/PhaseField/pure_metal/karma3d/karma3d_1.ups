@@ -26,7 +26,7 @@
     <Level>
       <Box label="1">
         <lower>[0., 0., 0.]</lower>
-        <upper>[153.6,153.6,153.6]</upper>
+        <upper>[153.6,153.6,230.4]</upper>
         <patches>[2,2,2]</patches>
       </Box>
       <spacing>[9.6,9.6,9.6]</spacing>
@@ -94,7 +94,7 @@
       </Face>
       <Face side="x+">
         <BCType id="0" label="u" var="Dirichlet">
-          <value>-0.65</value>
+          <value>-0.45</value>
         </BCType>
         <BCType id="0" label="psi" var="Dirichlet">
           <value>-1.</value>
@@ -114,7 +114,7 @@
       </Face>
       <Face side="y+">
         <BCType id="0" label="u" var="Dirichlet">
-          <value>-0.65</value>
+          <value>-0.45</value>
         </BCType>
         <BCType id="0" label="psi" var="Dirichlet">
           <value>-1.</value>
@@ -134,7 +134,7 @@
       </Face>
       <Face side="z+">
         <BCType id="0" label="u" var="Dirichlet">
-          <value>-0.65</value>
+          <value>-0.45</value>
         </BCType>
         <BCType id="0" label="psi" var="Dirichlet">
           <value>-1.</value>
