@@ -2039,7 +2039,7 @@ void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_diag (
     }
     else
     {
-        double n4 = 9. * n2 * n2 ;
+        double n4 = n2 * n2 ;
 
         double grad[DIM], grad2[DIM];
         for ( size_t d = 0; d < DIM; ++d )
@@ -2050,16 +2050,16 @@ void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_diag (
 
         double sum4 = grad[X]+grad[Y]; sum4*=sum4; sum4*=sum4;
         double dif4 = grad[X]-grad[Y]; dif4*=dif4; dif4*=dif4;
-        double tmp4 = grad2[X]; tmp4*=tmp4; tmp4*=4.;
-        tmp4 = sum4 + dif4;
+        double tmp4 = grad2[Z]; tmp4*=tmp4; tmp4*=4.;
+        tmp4 += sum4 + dif4;
         tmp4 /= n4;
 
         double tmp = 1. + epsilon * ( tmp4 - 3. );
         a[id] = tmp;
         a2[id] = tmp * tmp;
         b[XY][id] = ( 16. * epsilon * grad[X] * grad[Y] * ( grad2[Y] - grad2[X] ) ) / n4;
-        b[XZ][id] = ( 8. * epsilon * grad[X] * grad[Z] * ( grad2[X] + 3. * grad2[Y] - 2. * grad2[X] ) ) / n4;
-        b[YZ][id] = ( 8. * epsilon * grad[Y] * grad[Z] * ( 3. * grad2[X] + grad2[Y] - 2. * grad2[X] ) ) / n4;
+        b[XZ][id] = ( 8. * epsilon * grad[X] * grad[Z] * ( grad2[X] + 3. * grad2[Y] - 2. * grad2[Z] ) ) / n4;
+        b[YZ][id] = ( 8. * epsilon * grad[Y] * grad[Z] * ( 3. * grad2[X] + grad2[Y] - 2. * grad2[Z] ) ) / n4;
     }
 }
 
