@@ -4,8 +4,6 @@
 #$ -l h_rt=12:00:00
 #$ -l h_vmem=4.8G
 
-set -x
-
 if [ -z "$UPATH" ]; then
     UPATH=$HOME/uintah/trunk
 fi
@@ -18,8 +16,8 @@ NP=1
 
 for LD in $LDs; do
 echo $LD
-	for UPS in $INP/scalability2d_*_load${LD}.ups; do
-		LOG=$(basename $UPS).log
+	for UPS in $INP/amr_scalability2d_*_load${LD}.ups; do
+		LOG=$(basename $UPS)_np$NP.log
 		[[ -f $LOG && -s $LOG ]] || mpirun -np $NP $SUS $UPS &> $LOG
 	done
 done
