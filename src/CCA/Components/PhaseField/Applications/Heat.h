@@ -2625,7 +2625,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives (
         sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
 
-    is_time_advance_dbg_derivatives_scheduled = true
+    is_time_advance_dbg_derivatives_scheduled = true;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -2670,15 +2670,9 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_dbg_derivatives_error (
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error on all levels " );
 
     GridP grid = level->getGrid();
-    int l = level->getIndex();
 
-    if ( this->m_regridder->maxLevels() - l - 1 == 0 )
-    {
-        scheduleTimeAdvance_dbg_derivatives_error < !MG, T > ( level, sched );
-        --l;
-    }
-
-    for ( ; l >= 0; --l )
+    scheduleTimeAdvance_dbg_derivatives_error < !MG, T > ( grid->getLevel ( 0 ), sched );
+    for ( int l = 1; l < grid->numLevels(); ++l )
     {
         DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_dbg_derivatives_error on level " << level->getIndex() << " " );
 
