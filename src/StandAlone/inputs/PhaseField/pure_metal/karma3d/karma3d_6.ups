@@ -26,10 +26,10 @@
     <Level>
       <Box label="1">
         <lower>[0., 0., 0.]</lower>
-        <upper>[204.8,204.8,307.2]</upper>
+        <upper>[614.4,614.4,614.4]</upper>
         <patches>[2,2,2]</patches>
       </Box>
-      <spacing>[12.8,12.8,12.8]</spacing>
+      <spacing>[25.6,25.6,25.6]</spacing>
     </Level>
     <BoundaryConditions>
       <Face side="x-">
@@ -157,7 +157,7 @@
   <AMR>
     <Regridder type="Tiled">
       <adaptive>true</adaptive>
-      <max_levels>5</max_levels>
+      <max_levels>6</max_levels>
       <cell_refinement_ratio>[[2,2,2]]</cell_refinement_ratio>
       <cell_stability_dilation>[1,1,1]</cell_stability_dilation>
        <cell_regrid_dilation>[3,3,3]</cell_regrid_dilation> 

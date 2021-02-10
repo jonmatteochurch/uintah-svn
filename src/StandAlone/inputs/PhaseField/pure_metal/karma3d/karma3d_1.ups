@@ -11,7 +11,7 @@
     <alpha>3.</alpha> <!--D-->
     <R0>24.</R0> <!--40 lattice units-->
     <Delta>0.45</Delta>
-    <epsilon>-0.0066</epsilon>
+    <epsilon>0.0066</epsilon>
     <refine_threshold>0.0025</refine_threshold>
   </PhaseField>
   <ArmPostProcessor type="polynomial"/>
@@ -26,10 +26,10 @@
     <Level>
       <Box label="1">
         <lower>[0., 0., 0.]</lower>
-        <upper>[153.6,153.6,230.4]</upper>
+        <upper>[460.8,460.8,460.8]</upper>
         <patches>[2,2,2]</patches>
       </Box>
-      <spacing>[9.6,9.6,9.6]</spacing>
+      <spacing>[19.2,19.2,19.2]</spacing>
     </Level>
     <BoundaryConditions>
       <Face side="x-">
@@ -157,7 +157,7 @@
   <AMR>
     <Regridder type="Tiled">
       <adaptive>true</adaptive>
-      <max_levels>5</max_levels>
+      <max_levels>6</max_levels>
       <cell_refinement_ratio>[[2,2,2]]</cell_refinement_ratio>
       <cell_stability_dilation>[1,1,1]</cell_stability_dilation>
        <cell_regrid_dilation>[3,3,3]</cell_regrid_dilation> 
