@@ -9,7 +9,7 @@ if [ -z "$UPATH" ]; then
 fi
 
 SUS=$UPATH/arc/build/StandAlone/sus
-INP=$UPATH/src/StandAlone/inputs/PhaseField/pure_metal/karma3d
+INP=$UPATH/src/StandAlone/inputs/PhaseField/pure_metal/karma3d_para
 
-FN=karma3d_3
-mpirun $SUS $INP/$FN.ups
+FN=karma3d_1
+mpirun $SUS -restart $(readlink $FN.restart)
