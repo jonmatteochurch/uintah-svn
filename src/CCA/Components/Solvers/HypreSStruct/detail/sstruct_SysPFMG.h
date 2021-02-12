@@ -39,21 +39,21 @@ namespace HypreSStruct
 namespace detail
 {
 
-template<int DIM, int C2F, bool precond>
-class sstruct_solver< ( int ) S::SysPFMG, DIM, C2F, precond>
-    : public sstruct_implementation<DIM, C2F>
+template<int DIM, int C2F, bool P>
+class sstruct_solver< ( int ) S::SysPFMG, DIM, C2F, P>
+    : virtual public sstruct_implementation<DIM, C2F>
 {
 protected:
     using sstruct = sstruct_implementation<DIM, C2F>;
 
     using sstruct::gdata;
 
-    using sstruct::solver;
+    HYPRE_SStructSolver & solver, precond;
     using sstruct::A;
     using sstruct::b;
     using sstruct::x;
 
-    using sstruct::solver_initialized;
+    bool & initialized, precond_initialized;
     using sstruct::guess_updated;
 
 public: // STATIC MEMBERS
@@ -62,7 +62,10 @@ public: // STATIC MEMBERS
 
     sstruct_solver (
         const GlobalDataP & gdata
-    ) : sstruct ( gdata )
+    ) : sstruct ( gdata ),
+        solver ( P ? precond : sstruct::solver ),
+        initialized ( P ? precond_initialized : sstruct::solver_initialized ),
+        precond_initialized ( false )
     {
     }
 
@@ -77,7 +80,7 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        ASSERT ( !solver_initialized );
+        ASSERT ( !initialized );
         ASSERTMSG ( gdata->nParts() == 1, "SysPFMG can be used only for problems with one grid part." );
 
         IGNOREPARAM ( SStructSysPFMG, params, csolver_type );
@@ -96,7 +99,7 @@ public: // STATIC MEMBERS
             HYPRE_SStructSysPFMGSetMaxIter ( solver, params->max_iter );
         if ( params->rel_change != -1 )
             HYPRE_SStructSysPFMGSetRelChange ( solver, params->rel_change );
-        if ( precond || !guess_updated )
+        if ( P || !guess_updated )
             HYPRE_SStructSysPFMGSetZeroGuess ( solver );
         else
             HYPRE_SStructSysPFMGSetNonZeroGuess ( solver );
@@ -113,7 +116,7 @@ public: // STATIC MEMBERS
         if ( params->logging != -1 )
             HYPRE_SStructSysPFMGSetLogging ( solver, params->logging );
 
-        solver_initialized = true;
+        initialized = true;
     }
 
     virtual void
@@ -134,21 +137,12 @@ public: // STATIC MEMBERS
         guess_updated = false;
     }
 
-public: // exposing this for when used as precond
-
     virtual void
     solverFinalize()
     override
     {
-        if ( solver_initialized ) HYPRE_SStructSysPFMGDestroy ( solver );
-        solver_initialized = false;
-    }
-
-public: // required if precond
-
-    operator HYPRE_Solver ()
-    {
-        return ( HYPRE_Solver ) solver;
+        if ( initialized ) HYPRE_SStructSysPFMGDestroy ( solver );
+        initialized = false;
     }
 };
 

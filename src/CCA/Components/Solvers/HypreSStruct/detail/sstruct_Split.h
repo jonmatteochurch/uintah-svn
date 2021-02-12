@@ -39,19 +39,19 @@ namespace HypreSStruct
 namespace detail
 {
 
-template<int DIM, int C2F, bool precond>
-class sstruct_solver< ( int ) S::Split, DIM, C2F, precond>
-    : public sstruct_implementation<DIM, C2F>
+template<int DIM, int C2F, bool P>
+class sstruct_solver< ( int ) S::Split, DIM, C2F, P>
+    : virtual public sstruct_implementation<DIM, C2F>
 {
 protected:
     using sstruct = sstruct_implementation<DIM, C2F>;
 
-    using sstruct::solver;
+    HYPRE_SStructSolver & solver, precond;
     using sstruct::A;
     using sstruct::b;
     using sstruct::x;
 
-    using sstruct::solver_initialized;
+    bool & initialized, precond_initialized;
     using sstruct::guess_updated;
 
 public: // STATIC MEMBERS
@@ -60,7 +60,10 @@ public: // STATIC MEMBERS
 
     sstruct_solver (
         const GlobalDataP & gdata
-    ) : sstruct ( gdata )
+    ) : sstruct ( gdata ),
+        solver ( P ? precond : sstruct::solver ),
+        initialized ( P ? precond_initialized : sstruct::solver_initialized ),
+        precond_initialized ( false )
     {
     }
 
@@ -75,7 +78,7 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        ASSERT ( !solver_initialized );
+        ASSERT ( !initialized );
 
         IGNOREPARAM ( SStructSplit, params, csolver_type );
         IGNOREPARAM ( SStructSplit, params, max_levels );
@@ -98,14 +101,14 @@ public: // STATIC MEMBERS
             HYPRE_SStructSplitSetTol ( solver, params->tol );
         if ( params->max_iter != -1 )
             HYPRE_SStructSplitSetMaxIter ( solver, params->max_iter );
-        if ( precond || !guess_updated )
+        if ( P || !guess_updated )
             HYPRE_SStructSplitSetZeroGuess ( solver );
         else
             HYPRE_SStructSplitSetNonZeroGuess ( solver );
         if ( params->ssolver != -1 )
             HYPRE_SStructSplitSetStructSolver ( solver, params->ssolver );
 
-        solver_initialized = true;
+        initialized = true;
     }
 
     virtual void
@@ -126,21 +129,12 @@ public: // STATIC MEMBERS
         guess_updated = false;
     }
 
-public: // exposing this for when used as precond
-
     virtual void
     solverFinalize()
     override
     {
-        if ( solver_initialized ) HYPRE_SStructSplitDestroy ( solver );
-        solver_initialized = false;
-    }
-
-public: // required if precond
-
-    operator HYPRE_Solver ()
-    {
-        return ( HYPRE_Solver ) solver;
+        if ( initialized ) HYPRE_SStructSplitDestroy ( solver );
+        initialized = false;
     }
 };
 

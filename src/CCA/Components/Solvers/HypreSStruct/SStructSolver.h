@@ -40,10 +40,11 @@ namespace HypreSStruct
 template < S SLV, int DIM, int C2F, P PCN = P::None> class SStructSolver;
 
 template < S SLV, int DIM, int C2F>
-class SStructSolver<SLV, DIM, C2F, P::None>
+class SStructSolver<SLV, DIM, C2F, P::None> final
     : public detail::sstruct_ssolver<SLV, DIM, C2F>
     , Implementation< SStructSolver<SLV, DIM, C2F, P::None>, SStructInterface, const GlobalDataP & >
 {
+    using SStruct = detail::sstruct_implementation<DIM, C2F>;
     using SSolver = detail::sstruct_ssolver<SLV, DIM, C2F>;
 
 public: // STATIC MEMBERS
@@ -53,25 +54,26 @@ public: // STATIC MEMBERS
 
     SStructSolver (
         const GlobalDataP & gdata
-    ) : SSolver ( gdata )
+    ) : SStruct ( gdata ),
+        SSolver ( gdata )
     {}
 
     virtual ~SStructSolver() = default;
 };
 
 template < S SLV, int DIM, int C2F, P PCN >
-class SStructSolver
+class SStructSolver final
     : public detail::sstruct_ssolver<SLV, DIM, C2F>
+    , public detail::sstruct_precond<PCN, DIM, C2F>
     , Implementation< SStructSolver<SLV, DIM, C2F, PCN>, SStructInterface, const GlobalDataP & >
 {
     static_assert ( PCN != P::None, "Generic preconditioned SStructSolver implementation initialized for un-preconditioned SStructSolver" );
     static_assert ( PCN != P::Diagonal, "Generic preconditioned SStructSolver implementation initialized for un-preconditioned SStructSolver" );
     static_assert ( (int) SLV > 0, "Generic preconditioned SStructSolver implementation initialized for SStructSolver which cannot be preconditioned" );
 
+    using SStruct = detail::sstruct_implementation<DIM, C2F>;
     using SSolver = detail::sstruct_ssolver<SLV, DIM, C2F>;
     using Precond = detail::sstruct_precond<PCN, DIM, C2F>;
-
-    Precond precond;
 
 public: // STATIC MEMBERS
 
@@ -80,8 +82,9 @@ public: // STATIC MEMBERS
 
     SStructSolver (
         const GlobalDataP & gdata
-    ) : SSolver ( gdata ),
-        precond ( gdata )
+    ) : SStruct ( gdata ),
+        SSolver ( gdata ),
+        Precond ( gdata )
     {
     }
 
@@ -93,29 +96,45 @@ public: // STATIC MEMBERS
     solverInitialize (
         const MPI_Comm & comm,
         const SolverParams * params
-    ) override
+    ) final
     {
-        precond.solverInitialize ( comm, params );
+        Precond::solverInitialize ( comm, params );
         SSolver::solverInitialize ( comm, params );
-        SSolver::SetPrecond ( SSolver::solver, Precond::precond_solve, Precond::precond_setup, precond );
+        SSolver::SetPrecond ( SSolver::solver, Precond::precond_solve, Precond::precond_setup, (HYPRE_Solver) Precond::solver );
+    }
+
+    virtual void
+    solverUpdate (
+    ) final
+    {
+        return SSolver::solverUpdate();
+    }
+
+    virtual void
+    solve (
+        SolverOutput * out
+    ) final
+    {
+        return SSolver::solve( out );
     }
 
     virtual void
     solverFinalize (
-    ) override
+    ) final
     {
-        precond.solverFinalize();
+        Precond::solverFinalize();
         SSolver::solverFinalize();
     }
 };
 
 template < S SLV, int DIM, int C2F >
-class SStructSolver<SLV, DIM, C2F, P::Diagonal>
+class SStructSolver<SLV, DIM, C2F, P::Diagonal> final
     : public detail::sstruct_ssolver<SLV, DIM, C2F>
     , Implementation< SStructSolver<SLV, DIM, C2F, P::Diagonal>, SStructInterface, const GlobalDataP & >
 {
-    static_assert ( (int) SLV > 0, "Generic preconditioned SStructSolver implementation initialized for SStructSolver which cannot be preconditioned" );
+    static_assert ( (int) SLV > 0, "Generic preconditioned SStructSolver implementation initialized for solver type  that cannot be preconditioned" );
 
+    using SStruct = detail::sstruct_implementation<DIM, C2F>;
     using SSolver = detail::sstruct_ssolver<SLV, DIM, C2F>;
 
 public: // STATIC MEMBERS
@@ -125,7 +144,8 @@ public: // STATIC MEMBERS
 
     SStructSolver (
         const GlobalDataP & gdata
-    ) : SSolver ( gdata )
+    ) : SStruct ( gdata ),
+        SSolver ( gdata )
     {
     }
 

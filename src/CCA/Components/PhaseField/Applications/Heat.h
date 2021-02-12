@@ -265,8 +265,6 @@ protected: // MEMBERS
 #endif
 
     bool is_time_advance_solution_scheduled;
-    bool is_time_advance_solution_assemble_scheduled;
-    bool is_time_advance_solve_scheduled;
     bool is_time_advance_solution_error_scheduled;
     bool is_time_advance_dbg_derivatives_scheduled;
     bool is_time_advance_dbg_derivatives_error_scheduled;
@@ -612,7 +610,7 @@ protected: // SCHEDULINGS
 
 #ifdef HAVE_HYPRE
     /**
-     * @brief Schedule task_time_advance_solution_backward_euler_assemble
+     * @brief Schedule task_time_advance_solution_implicit
      * (non AMR implementation)
      *
      * Switches between available implementations depending on the given time
@@ -623,13 +621,13 @@ protected: // SCHEDULINGS
      */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
-    scheduleTimeAdvance_solution_backward_euler_assemble (
+    scheduleTimeAdvance_solution_implicit (
         const LevelP & level,
         SchedulerP & sched
     );
 
     /**
-     * @brief Schedule task_time_advance_solution_backward_euler_assemble
+     * @brief Schedule task_time_advance_solution_implicit
      * (AMR implementation)
      *
      * Switches between available implementations depending on the given time
@@ -640,7 +638,7 @@ protected: // SCHEDULINGS
      */
     template < bool MG >
     typename std::enable_if < MG, void >::type
-    scheduleTimeAdvance_solution_backward_euler_assemble (
+    scheduleTimeAdvance_solution_implicit (
         const LevelP & level,
         SchedulerP & sched
     );
@@ -714,40 +712,6 @@ protected: // SCHEDULINGS
     );
 
     /**
-     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble
-     * (non AMR implementation)
-     *
-     * Switches between available implementations depending on the given time
-     * solver
-     *
-     * @param level grid level to be updated
-     * @param sched scheduler to manage the tasks
-     */
-    template < bool MG >
-    typename std::enable_if < !MG, void >::type
-    scheduleTimeAdvance_solution_crank_nicolson_assemble (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    /**
-     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble
-     * (AMR implementation)
-     *
-     * Switches between available implementations depending on the given time
-     * solver
-     *
-     * @param level grid level to be updated
-     * @param sched scheduler to manage the tasks
-     */
-    template < bool MG >
-    typename std::enable_if < MG, void >::type
-    scheduleTimeAdvance_solution_crank_nicolson_assemble (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    /**
      * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypre
      * (coarsest level implementation)
      *
@@ -815,23 +779,8 @@ protected: // SCHEDULINGS
         SchedulerP & sched
     );
 
-    /**
-     * @brief Schedule implicit solve task
-     *
-     * Defines the dependencies and output of the task which solve the implicit
-     * system to update u
-     *
-     * @param level grid level to be updated
-     * @param sched scheduler to manage the tasks
-     */
     void
-    scheduleTimeAdvance_solve (
-        const LevelP & level,
-        SchedulerP & sched
-    );
-
-    void
-    scheduleTimeAdvannce_comunicate_before_solve (
+    scheduleTimeAdvannce_comunicate_before_solve_hypresstruct (
         const LevelP & level,
         SchedulerP & sched
     );
@@ -2544,8 +2493,6 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleComputeStableTimeStep (
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
 
     is_time_advance_solution_scheduled = false;
-    is_time_advance_solution_assemble_scheduled = false;
-    is_time_advance_solve_scheduled = false;
     is_time_advance_solution_error_scheduled = false;
     is_time_advance_dbg_derivatives_scheduled = false;
     is_time_advance_dbg_derivatives_error_scheduled = false;
@@ -2709,30 +2656,12 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution (
     DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution on level " << level->getIndex() << " " );
 
 #ifdef HAVE_HYPRE
-    switch ( time_scheme )
-    {
-    case TS::ForwardEuler:
+    if ( time_scheme == TS::ForwardEuler )
 #endif
         scheduleTimeAdvance_solution_forward_euler<AMR> ( level, sched );
 #ifdef HAVE_HYPRE
-        break;
-    case TS::BackwardEuler:
-        scheduleTimeAdvance_solution_backward_euler_assemble<AMR> ( level, sched );
-        scheduleTimeAdvance_solve ( level, sched );
-#   ifdef PhaseField_Heat_DBG_MATRIX
-        scheduleTimeAdvance_update_dbg_matrix ( level, sched );
-#   endif
-        break;
-    case TS::CrankNicolson:
-        scheduleTimeAdvance_solution_crank_nicolson_assemble<AMR> ( level, sched );
-        scheduleTimeAdvance_solve ( level, sched );
-#   ifdef PhaseField_Heat_DBG_MATRIX
-        scheduleTimeAdvance_update_dbg_matrix ( level, sched );
-#   endif
-        break;
-    default:
-        SCI_THROW ( InternalError ( "\n ERROR: Unknown time scheme\n", __FILE__, __LINE__ ) );
-    }
+    else
+        scheduleTimeAdvance_solution_implicit<AMR> ( level, sched );
 #endif
 }
 
@@ -2786,53 +2715,149 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_forward_euler (
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG >
 typename std::enable_if < !MG, void >::type
-Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_backward_euler_assemble
+Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_implicit
 (
     const LevelP & level,
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble on level " << level->getIndex() << " " );
+    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_implicit on level " << level->getIndex() << " " );
 
-    if ( this->m_solver->getName() == "hypre" )
-        scheduleTimeAdvance_solution_backward_euler_assemble_hypre<AMR> ( level, sched );
-    else
-        SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
+    void ( Heat::*scheduleTimeAdvance_assemble ) ( const LevelP &, SchedulerP & );
+
+    switch ( time_scheme )
+    {
+    case TS::BackwardEuler:
+        scheduleTimeAdvance_assemble = &Heat::scheduleTimeAdvance_solution_backward_euler_assemble_hypre<AMR>;
+        break;
+    case TS::CrankNicolson:
+        scheduleTimeAdvance_assemble = &Heat::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre<AMR>;
+        break;
+    default:
+        SCI_THROW ( InternalError ( "\n ERROR: Unknown time scheme\n", __FILE__, __LINE__ ) );
+    }
+
+    ( this->*scheduleTimeAdvance_assemble ) ( level, sched );
+
+    this->m_solver->scheduleSolve ( level, sched,
+                                    this->m_materialManager->allMaterials(),
+                                    matrix_label, Task::NewDW, // A
+                                    u_label, false,            // x
+                                    rhs_label, Task::NewDW,    // b
+                                    u_label, Task::OldDW       // guess
+                                  );
+
+#   ifdef PhaseField_Heat_DBG_MATRIX
+    scheduleTimeAdvance_update_dbg_matrix ( level, sched );
+#   endif
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG >
 typename std::enable_if < MG, void >::type
-Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_backward_euler_assemble
+Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_implicit
 (
     const LevelP & level,
     SchedulerP & sched
 )
 {
-    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble " );
+    if ( is_time_advance_solution_scheduled ) return;
 
-    if ( this->m_solver->getName() == "hypre" )
+    if ( this->m_solver->getName() == "hypre_sstruct" )
     {
-        if ( !level->hasCoarserLevel() )
-            scheduleTimeAdvance_solution_backward_euler_assemble_hypre < !MG > ( level, sched );
-        else
-            scheduleTimeAdvance_solution_backward_euler_assemble_hypre < MG > ( level, sched );
+        void ( Heat::*scheduleTimeAdvance_assemble_sg ) ( const LevelP &, SchedulerP & );
+        void ( Heat::*scheduleTimeAdvance_assemble_mg ) ( const LevelP &, SchedulerP & );
+
+        switch ( time_scheme )
+        {
+        case TS::BackwardEuler:
+            scheduleTimeAdvance_assemble_sg = &Heat::scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct < !MG >;
+            scheduleTimeAdvance_assemble_mg = &Heat::scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct<MG>;
+            break;
+        case TS::CrankNicolson:
+            scheduleTimeAdvance_assemble_sg = &Heat::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct < !MG >;
+            scheduleTimeAdvance_assemble_mg = &Heat::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct<MG>;
+            break;
+        default:
+            SCI_THROW ( InternalError ( "\n ERROR: Unknown time scheme\n", __FILE__, __LINE__ ) );
+        }
+
+        DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_implicit on all levels " );
+        GridP grid = level->getGrid();
+
+        ( this->*scheduleTimeAdvance_assemble_sg ) ( grid->getLevel ( 0 ), sched );
+
+        for ( int l = 1; l < grid->numLevels(); ++l )
+            ( this->*scheduleTimeAdvance_assemble_mg ) ( grid->getLevel ( l ), sched );
+
+        for ( int l = 0; l < grid->numLevels(); ++l )
+            scheduleTimeAdvannce_comunicate_before_solve_hypresstruct ( grid->getLevel ( l ), sched );
+
+        this->m_solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
+                                        matrix_label, Task::NewDW, // A
+                                        u_label, false,            // x
+                                        rhs_label, Task::NewDW,    // b
+                                        u_label, Task::OldDW       // guess
+                                      );
+#   ifdef PhaseField_Heat_DBG_MATRIX
+        for ( int l = 0; l < grid->numLevels(); ++l )
+            scheduleTimeAdvance_update_dbg_matrix ( grid->getLevel ( l ), sched );
+#   endif
     }
-    else if ( this->m_solver->getName() == "hypre_sstruct" )
+    else
     {
-        // all assemble task must be sent to the scheduler before the solve task
-        if ( is_time_advance_solution_assemble_scheduled ) return;
+        void ( Heat::*scheduleTimeAdvance_assemble_sg ) ( const LevelP &, SchedulerP & );
+        void ( Heat::*scheduleTimeAdvance_assemble_mg ) ( const LevelP &, SchedulerP & );
+
+        switch ( time_scheme )
+        {
+        case TS::BackwardEuler:
+            scheduleTimeAdvance_assemble_sg = &Heat::scheduleTimeAdvance_solution_backward_euler_assemble_hypre < !MG >;
+            scheduleTimeAdvance_assemble_mg = &Heat::scheduleTimeAdvance_solution_backward_euler_assemble_hypre < MG >;
+            break;
+        case TS::CrankNicolson:
+            scheduleTimeAdvance_assemble_sg = &Heat::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < !MG >;
+            scheduleTimeAdvance_assemble_mg = &Heat::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < MG >;
+            break;
+        default:
+            SCI_THROW ( InternalError ( "\n ERROR: Unknown time scheme\n", __FILE__, __LINE__ ) );
+        }
 
         GridP grid = level->getGrid();
 
-        scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct < !MG > ( grid->getLevel ( 0 ), sched );
-        for ( int l = 1; l < grid->numLevels(); ++l )
-            scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct < MG > ( grid->getLevel ( l ), sched );
+        ( this->*scheduleTimeAdvance_assemble_sg ) ( grid->getLevel ( 0 ), sched );
 
-        is_time_advance_solution_assemble_scheduled = true;
+        this->m_solver->scheduleSolve ( grid->getLevel ( 0 ), sched,
+                                        this->m_materialManager->allMaterials(),
+                                        matrix_label, Task::NewDW, // A
+                                        u_label, false,            // x
+                                        rhs_label, Task::NewDW,    // b
+                                        u_label, Task::OldDW       // guess
+                                      );
+
+#   ifdef PhaseField_Heat_DBG_MATRIX
+        scheduleTimeAdvance_update_dbg_matrix ( grid->getLevel ( 0 ), sched );
+#   endif
+
+        for ( int l = 1; l < grid->numLevels(); ++l )
+        {
+            ( this->*scheduleTimeAdvance_assemble_mg ) ( grid->getLevel ( l ), sched );
+
+            this->m_solver->scheduleSolve ( grid->getLevel ( l ), sched,
+                                            this->m_materialManager->allMaterials(),
+                                            matrix_label, Task::NewDW, // A
+                                            u_label, false,            // x
+                                            rhs_label, Task::NewDW,    // b
+                                            u_label, Task::OldDW       // guess
+                                          );
+
+#   ifdef PhaseField_Heat_DBG_MATRIX
+            scheduleTimeAdvance_update_dbg_matrix ( grid->getLevel ( l ), sched );
+#   endif
+        }
     }
-    else
-        SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver " + this->m_solver->getName() + "\n", __FILE__, __LINE__ ) );
+
+    is_time_advance_solution_scheduled = true;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
@@ -2926,57 +2951,6 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_backward_euler_assem
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 template < bool MG >
 typename std::enable_if < !MG, void >::type
-Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assemble
-(
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble on level " << level->getIndex() << " " );
-
-    if ( this->m_solver->getName() == "hypre" )
-        scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre<AMR> ( level, sched );
-    else
-        SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-template < bool MG >
-typename std::enable_if < MG, void >::type
-Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assemble
-(
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    DOUTR ( dbg_heat_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble on level " << level->getIndex() << " " );
-
-    if ( this->m_solver->getName() == "hypre" )
-    {
-        if ( !level->hasCoarserLevel() )
-            scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < !MG > ( level, sched );
-        else
-            scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < MG > ( level, sched );
-    }
-    else if ( this->m_solver->getName() == "hypre_sstruct" )
-    {
-        if ( is_time_advance_solution_assemble_scheduled ) return;
-
-        GridP grid = level->getGrid();
-        // all assemble task must be sent to the scheduler before the solve task
-        scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct < !MG > ( grid->getLevel ( 0 ), sched );
-        for ( int l = 1; l < grid->numLevels(); ++l )
-            scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct < MG > ( grid->getLevel ( l ), sched );
-
-        is_time_advance_solution_assemble_scheduled = true;
-    }
-    else
-        SCI_THROW ( InternalError ( "\n ERROR: Unsupported implicit solver\n", __FILE__, __LINE__ ) );
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-template < bool MG >
-typename std::enable_if < !MG, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre
 (
     const LevelP & level,
@@ -3062,43 +3036,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assem
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
 void
-Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solve
-(
-    const LevelP & level,
-    SchedulerP & sched
-)
-{
-    if ( this->m_solver->getName() == "hypre_sstruct" )
-    {
-        if ( is_time_advance_solve_scheduled ) return;
-
-        GridP grid = level->getGrid();
-        for ( int l = 0; l < grid->numLevels(); ++l )
-            scheduleTimeAdvannce_comunicate_before_solve( grid->getLevel(l), sched );
-
-        this->m_solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
-                                matrix_label, Task::NewDW, // A
-                                u_label, false,            // x
-                                rhs_label, Task::NewDW,    // b
-                                u_label, Task::OldDW       // guess
-                                );
-
-        is_time_advance_solve_scheduled = true;
-    }
-    else
-    {
-        this->m_solver->scheduleSolve ( level, sched, this->m_materialManager->allMaterials(),
-                                    matrix_label, Task::NewDW, // A
-                                    u_label, false,            // x
-                                    rhs_label, Task::NewDW,    // b
-                                    u_label, Task::OldDW       // guess
-                                  );
-    }
-}
-
-template<VarType VAR, DimType DIM, StnType STN, bool AMR, bool TST>
-void
-Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvannce_comunicate_before_solve
+Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvannce_comunicate_before_solve_hypresstruct
 (
     const LevelP & level,
     SchedulerP & sched
@@ -3180,7 +3118,7 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_error (
 
     if ( l == this->m_regridder->maxLevels() - 1 )
     {
-        scheduleTimeAdvance_solution_error < !MG, T > ( grid->getLevel( l ), sched );
+        scheduleTimeAdvance_solution_error < !MG, T > ( grid->getLevel ( l ), sched );
         --l;
     }
 

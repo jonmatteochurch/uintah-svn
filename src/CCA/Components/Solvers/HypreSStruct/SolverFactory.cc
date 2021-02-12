@@ -56,6 +56,7 @@ SolverFactory::create (
     std::string impl = solver + "|"  + ( precond == "none" ? "" : precond + "|" ) + ndim + "|" + c2f;
 
     SStructInterfaceFactory::FactoryMethod interface_creator;
+
     if ( solver == "fac" )
     {
         int csolver_type;
@@ -73,11 +74,30 @@ SolverFactory::create (
             SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct FAC coarse solver with csolver_type='" + std::to_string ( csolver_type ) + "'", __FILE__, __LINE__ ) );
         }
 
-        GlobalDataP gdata;
         auto creator = SStructInterfaceFactory::Creator ( impl );
         if ( !creator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + impl + "'", __FILE__, __LINE__ ) );
+
         auto ccreator = SStructInterfaceFactory::Creator ( cimpl );
         if ( !ccreator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + cimpl + "'", __FILE__, __LINE__ ) );
+
+        interface_creator = [creator, ccreator] ( const GlobalDataP & gdata )
+        {
+            if ( gdata->nParts() > 1 )
+                return creator ( gdata );
+            else
+                return ccreator ( gdata );
+        };
+    }
+    else if ( precond == "fac" )
+    {
+        std::string cimpl = solver + "|syspfmg|" + ndim + "|" + c2f;
+
+        auto creator = SStructInterfaceFactory::Creator ( impl );
+        if ( !creator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + impl + "'", __FILE__, __LINE__ ) );
+
+        auto ccreator = SStructInterfaceFactory::Creator ( cimpl );
+        if ( !ccreator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + cimpl + "'", __FILE__, __LINE__ ) );
+
         interface_creator = [creator, ccreator] ( const GlobalDataP & gdata )
         {
             if ( gdata->nParts() > 1 )
@@ -89,8 +109,8 @@ SolverFactory::create (
     else
     {
         interface_creator = SStructInterfaceFactory::Creator ( impl );
+        if ( !interface_creator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + impl + "'", __FILE__, __LINE__ ) );
     }
-    if ( !interface_creator ) SCI_THROW ( ProblemSetupException ( "Cannot Create HypreSStruct Interface impl='" + impl + "'", __FILE__, __LINE__ ) );
 
     if ( ndim == "2" )
         return scinew Solver<2> ( myWorld, std::move ( interface_creator ) );

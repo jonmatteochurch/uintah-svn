@@ -42,13 +42,15 @@ namespace detail
 template<int DIM, int C2F>
 class sstruct_solver< ( int ) P::Diagonal, DIM, C2F, true>
 {
+    HYPRE_Solver solver;
+
 public: // STATIC MEMBERS
     static const HYPRE_PtrToSolverFcn precond_solve;
     static const HYPRE_PtrToSolverFcn precond_setup;
 
     sstruct_solver (
         const GlobalDataP & /*gdata*/
-    )
+    ) : solver ( nullptr )
     {}
 
     void

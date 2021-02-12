@@ -219,7 +219,7 @@ protected:
         int & to_part  = std::get<3> ( ind );
         int * to_index = std::get<4> ( ind ).get_pointer();
 
-        int ( & refinement ) [HYPRE_MAXDIM] = prefinements[to_part];
+        const int ( & refinement ) [HYPRE_MAXDIM] = prefinements[to_part];
         const double & weight = pdatas[to_part]->pRefinementWeight();
 
         int lower[3] = { fine_index[0], fine_index[1], fine_index[2] };

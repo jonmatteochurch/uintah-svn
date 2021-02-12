@@ -926,7 +926,7 @@ Grid::problemSetup(const ProblemSpecP& params, const ProcessorGroup *pg, bool do
         //        1 + 0.000000001 =>        1.000000001  (This works correctly!)
         // 99999999 + 0.000000001 => 99999999            (This returns the 'wrong' answer!)
 
-        double epsilon = 1.e-14;
+        double epsilon = 1.e-12;
 
         Vector ep_v  = Vector( epsilon, epsilon, epsilon );
         IntVector lowCell  = level->getCellIndex( lower + Vector( fabs(lower.x())*epsilon,

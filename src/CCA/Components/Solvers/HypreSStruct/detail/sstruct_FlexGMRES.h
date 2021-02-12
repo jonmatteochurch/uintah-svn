@@ -39,19 +39,19 @@ namespace HypreSStruct
 namespace detail
 {
 
-template<int DIM, int C2F, bool precond>
-class sstruct_solver< ( int ) S::FlexGMRES, DIM, C2F, precond>
-    : public sstruct_implementation<DIM, C2F>
+template<int DIM, int C2F, bool P>
+class sstruct_solver< ( int ) S::FlexGMRES, DIM, C2F, P>
+    : virtual public sstruct_implementation<DIM, C2F>
 {
 protected:
     using sstruct = sstruct_implementation<DIM, C2F>;
 
-    HYPRE_Solver * psolver, & solver;
+    HYPRE_Solver * psolver, & solver, precond;
     HYPRE_Matrix * pA, & A;
     HYPRE_Vector * pb, & b;
     HYPRE_Vector * px, & x;
 
-    using sstruct::solver_initialized;
+    bool & initialized, precond_initialized;
     using sstruct::guess_updated;
 
 public: // STATIC MEMBERS
@@ -63,10 +63,12 @@ public: // STATIC MEMBERS
     sstruct_solver (
         const GlobalDataP & gdata
     ) : sstruct ( gdata ),
-        psolver ( reinterpret_cast<HYPRE_Solver *> ( & ( sstruct::solver ) ) ), solver ( *psolver ),
+        psolver ( P ? & precond : reinterpret_cast<HYPRE_Solver *> ( & ( sstruct::solver ) ) ), solver ( *psolver ),
         pA ( reinterpret_cast<HYPRE_Matrix *> ( & ( sstruct::A ) ) ), A ( *pA ),
         pb ( reinterpret_cast<HYPRE_Vector *> ( & ( sstruct::b ) ) ), b ( *pb ),
-        px ( reinterpret_cast<HYPRE_Vector *> ( & ( sstruct::x ) ) ), x ( *px )
+        px ( reinterpret_cast<HYPRE_Vector *> ( & ( sstruct::x ) ) ), x ( *px ),
+        initialized ( P ? precond_initialized : sstruct::solver_initialized ),
+        precond_initialized ( false )
     {
     }
 
@@ -81,7 +83,7 @@ public: // STATIC MEMBERS
         const SolverParams * params
     ) override
     {
-        ASSERT ( !solver_initialized );
+        ASSERT ( !initialized );
 
         IGNOREPARAM ( SStructFlexGMRES, params, csolver_type );
         IGNOREPARAM ( SStructFlexGMRES, params, max_levels );
@@ -92,7 +94,7 @@ public: // STATIC MEMBERS
         IGNOREPARAM ( SStructFlexGMRES, params, ssolver );
         IGNOREPARAM ( SStructFlexGMRES, params, weight );
 
-        HYPRE_SStructFlexGMRESCreate ( comm, & ( sstruct::solver ) );
+        HYPRE_SStructFlexGMRESCreate ( comm, ( HYPRE_SStructSolver * ) psolver );
 
         if ( params->tol != -1 )
             HYPRE_FlexGMRESSetTol ( solver, params->tol );
@@ -109,7 +111,7 @@ public: // STATIC MEMBERS
         if ( params->logging != -1 )
             HYPRE_FlexGMRESSetLogging ( solver, params->logging );
 
-        solver_initialized = true;
+        initialized = true;
     }
 
     virtual void
@@ -136,15 +138,8 @@ public: // exposing this for when used as precond
     solverFinalize()
     override
     {
-        if ( solver_initialized ) HYPRE_SStructFlexGMRESDestroy ( sstruct::solver );
-        solver_initialized = false;
-    }
-
-public: // required if precond
-
-    operator HYPRE_Solver ()
-    {
-        return ( HYPRE_Solver ) solver;
+        if ( initialized ) HYPRE_SStructFlexGMRESDestroy ( ( HYPRE_SStructSolver ) solver );
+        initialized = false;
     }
 };
 
