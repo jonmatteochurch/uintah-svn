@@ -1,0 +1,122 @@
+
+<Uintah_specification>
+  <Meta>
+    <title>struct_pfmg_3d_3_nlvl5_load0001</title>
+  </Meta>
+  <SimulationComponent type="phasefield"/>
+  <PhaseField type="heat">
+    <var>cc</var>
+    <dim>3</dim>
+    <delt>.2</delt>
+    <alpha>1.</alpha>
+    <refine_threshold>0.01</refine_threshold>
+    <scheme>backward_euler</scheme>
+  </PhaseField>
+  <Time>
+    <maxTime>101.</maxTime>
+    <initTime>0.</initTime>
+    <delt_min>0.</delt_min>
+    <delt_max>1.</delt_max>
+    <timestep_multiplier>1.</timestep_multiplier>
+  </Time>
+  <Grid>
+    <Level>
+      <Box label="1">
+        <lower>[0.000000,0.000000,0.000000]</lower>
+        <upper>[204.800000,204.800000,204.800000]</upper>
+        <patches>[2,2,2]</patches>
+      </Box>
+      <spacing>[6.400000,6.400000,6.400000]</spacing>
+    </Level>
+    <Level>
+      <Box label="2">
+        <lower>[51.200000,51.200000,51.200000]</lower>
+        <upper>[153.600000,153.600000,153.600000]</upper>
+        <patches>[2,2,2]</patches>
+      </Box>
+      <spacing>[3.200000,3.200000,3.200000]</spacing>
+    </Level>
+    <Level>
+      <Box label="3">
+        <lower>[76.800000,76.800000,76.800000]</lower>
+        <upper>[128.000000,128.000000,128.000000]</upper>
+        <patches>[2,2,2]</patches>
+      </Box>
+      <spacing>[1.600000,1.600000,1.600000]</spacing>
+    </Level>
+    <Level>
+      <Box label="4">
+        <lower>[89.600000,89.600000,89.600000]</lower>
+        <upper>[115.200000,115.200000,115.200000]</upper>
+        <patches>[2,2,2]</patches>
+      </Box>
+      <spacing>[0.800000,0.800000,0.800000]</spacing>
+    </Level>
+    <Level>
+      <Box label="5">
+        <lower>[96.000000,96.000000,96.000000]</lower>
+        <upper>[108.800000,108.800000,108.800000]</upper>
+        <patches>[2,2,2]</patches>
+      </Box>
+      <spacing>[0.400000,0.400000,0.400000]</spacing>
+    </Level>
+    <BoundaryConditions>
+      <Face side="x-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="y-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="z-">
+        <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+      </Face>
+      <Face side="x+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>-0.65</value>
+        </BCType>
+      </Face>
+      <Face side="y+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>-0.65</value>
+        </BCType>
+      </Face>
+      <Face side="z+">
+        <BCType id="0" label="u" var="Dirichlet">
+          <value>-0.65</value>
+        </BCType>
+      </Face>
+    </BoundaryConditions>
+  </Grid>
+  <AMR>
+    <Regridder type="Tiled">
+      <adaptive>false</adaptive>
+      <max_levels>5</max_levels>
+      <min_patch_size>[[16,16,16]]</min_patch_size>
+      <min_boundary_cells>[1,1,1]</min_boundary_cells>
+      <cell_refinement_ratio>[[2,2,2]]</cell_refinement_ratio>
+      <cell_stability_dilation>[1,1,1]</cell_stability_dilation>
+    </Regridder>
+    <FineCoarseInterfaces>
+      <FCIType id="1" label="u" var="FC1New"/>
+    </FineCoarseInterfaces>
+  </AMR>
+  <Solver type="hypre">
+    <Parameters variable="u">
+      <solver>pfmg</solver>
+      <preconditioner>diagonal</preconditioner>
+      <setupFrequency>0</setupFrequency>
+      <updateCoefFrequency>0</updateCoefFrequency>
+      <solveFrequency>1</solveFrequency>
+    </Parameters>
+  </Solver>
+  <DataArchiver>
+    <filebase>struct_pfmg_3d_3_nlvl5_load0001.uda</filebase>
+    <outputTimestepInterval>0</outputTimestepInterval>
+  </DataArchiver>
+</Uintah_specification>

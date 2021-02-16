@@ -1,0 +1,23 @@
+#$ -cwd -V
+#$ -m be -M scjmc@leeds.ac.uk
+#$ -l nodes=1,ppn=16
+#$ -l h_rt=12:00:00
+#$ -l h_vmem=4.8G
+
+if [ -z "$UPATH" ]; then
+    UPATH=$HOME/uintah/trunk
+fi
+
+SUS=$UPATH/arc/build/StandAlone/sus
+INP=$UPATH/src/StandAlone/inputs/PhaseField/amr_scalability
+
+LDs="0016 0064 0256 1024 4096"
+NP=16
+
+for LD in $LDs; do
+echo $LD
+	for UPS in $INP/struct_*_2d_*_load${LD}.ups; do
+		LOG=$(basename $UPS)_np$NP.log
+		[[ -f $LOG && -s $LOG ]] || mpirun -np $NP $SUS $UPS &> $LOG
+	done
+done
