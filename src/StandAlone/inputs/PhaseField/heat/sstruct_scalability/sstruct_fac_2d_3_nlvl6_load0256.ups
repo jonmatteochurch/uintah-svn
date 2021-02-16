@@ -104,10 +104,9 @@
       <FCIType id="0" label="u" var="FC1"/>
     </FineCoarseInterfaces>
   </AMR>
-  <Solver type="hypre">
+  <Solver type="hypre_sstruct" ndim="2" c2f="1">
     <Parameters variable="u">
       <solver>fac</solver>
-      <preconditioner>diagonal</preconditioner>
       <setupFrequency>0</setupFrequency>
       <updateCoefFrequency>0</updateCoefFrequency>
       <solveFrequency>1</solveFrequency>
