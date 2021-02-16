@@ -13,7 +13,7 @@
     <scheme>backward_euler</scheme>
   </PhaseField>
   <Time>
-    <maxTime>101.</maxTime>
+    <maxTime>20.2</maxTime>
     <initTime>0.</initTime>
     <delt_min>0.</delt_min>
     <delt_max>1.</delt_max>

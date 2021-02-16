@@ -9,7 +9,7 @@ if [ -z "$UPATH" ]; then
 fi
 
 SUS=$UPATH/arc/build/StandAlone/sus
-INP=$UPATH/src/StandAlone/inputs/PhaseField/amr_scalability
+INP=$UPATH/src/StandAlone/inputs/PhaseField/heat/struct_scalability
 
 LDs="1024 4096"
 NP=1024
