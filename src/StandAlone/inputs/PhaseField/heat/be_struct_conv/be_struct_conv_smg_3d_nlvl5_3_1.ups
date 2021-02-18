@@ -85,7 +85,7 @@
   </Solver>
   <DataArchiver>
     <filebase>be_struct_conv_smg_3d_nlvl5_3_1.uda</filebase>
-    <outputTimestepInterval>0</outputTimestepInterval>
+    <outputInterval>50</outputInterval>
     <save label="u_norm2_L2"/>
     <save label="u_norm2_H10"/>
     <save label="u_norm2_H20"/>
