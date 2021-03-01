@@ -3,19 +3,16 @@
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -pe ib 2
 #$ -l h_rt=12:00:00
-#$ -l h_vmem=4.8G
+#$ -l h_vmem=8G
 
 if [ -z "$UPATH" ]; then
     UPATH=$HOME/uintah/trunk
 fi
 
-SUS=$UPATH/arc/build/StandAlone/sus
+SUS=$UPATH/arc.dbgder/build/StandAlone/sus
 INP=$UPATH/src/StandAlone/inputs/PhaseField/heat/be_struct_conv
 
-for LD in $LDs; do
-echo $LD
-	for UPS in $INP/be_struct_conv_gmres_3d_nlvl*_1_*.ups; do
-		LOG=$(basename $UPS).log
-		[[ -f $LOG && -s $LOG ]] || mpirun -np $(np)d $SUS $UPS &> $LOG
-	done
+for UPS in $INP/be_struct_conv_gmres_3d_nlvl*_1_*.ups; do
+    LOG=$(basename $UPS).log
+    [[ -f $LOG && -s $LOG ]] || mpirun -np 2 $SUS $UPS &> $LOG
 done

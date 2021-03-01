@@ -4,12 +4,12 @@
     <title>be_sstruct_conv_gmres_2d_nlvl4_4_2</title>
   </Meta>
   <SimulationComponent type="phasefield"/>
-  <PhaseField type="heat">
+  <PhaseField type="heat_test">
     <var>cc</var>
     <dim>2</dim>
     <delt>0.250000</delt>
     <alpha>1.</alpha>
-    <refine_threshold>0.01</refine_threshold>
+    <refine_threshold>0.5</refine_threshold>
     <scheme>backward_euler</scheme>
   </PhaseField>
   <Time>
@@ -23,14 +23,26 @@
     <Level>
       <Box label="0">
         <lower>[  0.,  0.,  0.]</lower>
-        <upper>[ 16., 16.,  1.]</upper>
+        <upper>[ 64., 64.,  1.]</upper>
         <patches>[16,16,1]</patches>
       </Box>
-      <spacing>[0.062500,0.062500,1]</spacing>
+      <spacing>[0.500000,0.500000,1]</spacing>
     </Level>
     <BoundaryConditions>
       <Face side="x-">
         <BCType id="0" label="u" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Neumann">
           <value>0.</value>
         </BCType>
       </Face>
@@ -38,14 +50,50 @@
         <BCType id="0" label="u" var="Neumann">
           <value>0.</value>
         </BCType>
+        <BCType id="0" label="ux" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Neumann">
+          <value>0.</value>
+        </BCType>
       </Face>
       <Face side="x+">
         <BCType id="0" label="u" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Dirichlet">
           <value>-0.65</value>
         </BCType>
       </Face>
       <Face side="y+">
         <BCType id="0" label="u" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="ux" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uy" var="Neumann">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uxx" var="Dirichlet">
+          <value>0.</value>
+        </BCType>
+        <BCType id="0" label="uyy" var="Dirichlet">
           <value>-0.65</value>
         </BCType>
       </Face>
@@ -61,7 +109,11 @@
       <cell_stability_dilation>[1,1,0]</cell_stability_dilation>
     </Regridder>
     <FineCoarseInterfaces>
-      <FCIType id="0" label="u" var="FC1"/>
+      <FCIType id="1" label="u" var="FC1"/>
+      <FCIType id="1" label="ux" var="FC1"/>
+      <FCIType id="1" label="uy" var="FC1"/>
+      <FCIType id="1" label="uxx" var="FC1"/>
+      <FCIType id="1" label="uyy" var="FC1"/>
     </FineCoarseInterfaces>
   </AMR>
   <Solver type="hypre_sstruct" ndim="2" c2f="1">

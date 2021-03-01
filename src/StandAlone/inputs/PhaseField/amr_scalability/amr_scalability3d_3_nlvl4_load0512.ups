@@ -15,7 +15,7 @@
     <refine_threshold>0.01</refine_threshold>
   </PhaseField>
   <Time>
-    <maxTime>1.60</maxTime>
+    <maxTime>0.32</maxTime>
     <initTime>0.</initTime>
     <delt_min>0.</delt_min>
     <delt_max>1.</delt_max>
