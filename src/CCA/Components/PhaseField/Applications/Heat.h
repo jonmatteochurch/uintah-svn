@@ -2114,7 +2114,8 @@ protected: // IMPLEMENTATIONS
     template < VarType V >
     typename std::enable_if < V == CC, void >::type
     error_estimate_solution (
-        const IntVector id,
+        const IntVector & id,
+        const double & r,
         FDView < ScalarField<const double>, STN > & u,
         View < ScalarField<int> > & refine_flag
     );
@@ -2133,7 +2134,8 @@ protected: // IMPLEMENTATIONS
     template < VarType V >
     typename std::enable_if < V == NC, void >::type
     error_estimate_solution (
-        const IntVector id,
+        const IntVector & id,
+        const double & r,
         FDView < ScalarField<const double>, STN > & u,
         View < ScalarField<int> > & refine_flag
     );
@@ -2981,9 +2983,9 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assem
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hypre", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hypre );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
-    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
-    task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
     task->computes ( matrix_label );
     task->computes ( rhs_label );
@@ -3025,7 +3027,9 @@ Heat<VAR, DIM, STN, AMR, TST>::scheduleTimeAdvance_solution_crank_nicolson_assem
 
     Task * task = scinew Task ( "Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct", this, &Heat::task_time_advance_solution_crank_nicolson_assemble_hypresstruct );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
     task->requires ( Task::OldDW, matrix_label, Ghost::None, 0 );
     task->requires ( Task::OldDW, additional_entries_label, Ghost::None, 0 );
     task->computes ( matrix_label );
@@ -4349,7 +4353,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_error_estimate_solution
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset * /*matls*/,
-    DataWarehouse * /*dw_old*/,
+    DataWarehouse * dw_old,
     DataWarehouse * dw_new
 )
 {
@@ -4357,10 +4361,22 @@ Heat<VAR, DIM, STN, AMR, TST>::task_error_estimate_solution
 
     DOUT ( this->m_dbg_lvl1, myrank << "==== Heat::task_error_estimate_solution " );
 
+    BBox box;
+    const Level * level = getLevel ( patches );
+    Grid * grid = level->getGrid().get_rep();
+    grid->getSpatialRange ( box );
+    Vector L = box.max() - box.min();
+    if ( L != box.max().asVector() ) L /= 2;
+
+    double a = M_PI_2 / L[X];
+
     for ( int p = 0; p < patches->size(); ++p )
     {
         const Patch * patch = patches->get ( p );
         DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        int k = patch->getLevel()->getIndex();
+        double r2 = a*a*(1-std::pow(refine_threshold,k+1));
 
         DWView < ScalarField<int>, CC, DIM > refine_flag ( dw_new, this->m_regridder->getRefineFlagLabel(), material, patch );
         refine_flag.initialize ( 0 );
@@ -4370,7 +4386,7 @@ Heat<VAR, DIM, STN, AMR, TST>::task_error_estimate_solution
         {
             DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
             FDView < ScalarField<const double>, STN > & u = p.template get_fd_view<U> ( dw_new );
-            parallel_for ( p.get_range(), [&u, &refine_flag, this] ( int i, int j, int k )->void { error_estimate_solution<VAR> ( {i, j, k}, u, refine_flag ); } );
+            parallel_for ( p.get_range(), [&r2, &u, &refine_flag, this] ( int i, int j, int k )->void { error_estimate_solution<VAR> ( {i, j, k}, r2, u, refine_flag ); } );
         }
     }
 
@@ -4833,19 +4849,15 @@ Heat<VAR, DIM, STN, AMR, TST>::time_advance_solution_crank_nicolson_assemble_hyp
     std::tuple<Stencil7, HypreSStruct::AdditionalEntries, double> sys = u_old.laplacian_sys_hypresstruct ( id );
 
     const Stencil7 & lap_stn = std::get<0> ( sys );
-    HypreSStruct::AdditionalEntries & lap_extra = std::get<1> ( sys );
+    HypreSStruct::AdditionalEntries & lap_add = std::get<1> ( sys );
     const double & rhs = std::get<2> ( sys );
     const double a = 0.5 * alpha * delt;
 
     for ( int i = 0; i < 7; ++i )
         A_stencil[id][i] = -a * lap_stn[i];
     A_stencil[id].p += 1;
-    for ( auto & entry : lap_extra )
-    {
-        auto it = A_additional->find ( entry.first );
-        if ( it != A_additional->end() ) it->second -= a * entry.second;
-        else A_additional->emplace ( entry.first, -a * entry.second );
-    }
+    for ( auto & entry : lap_add )
+        *A_additional += -a * entry;
     b[id] = u_old[id] + a * ( rhs + u_old.laplacian ( id ) );
 }
 
@@ -5230,7 +5242,8 @@ template<VarType V>
 typename std::enable_if < V == CC, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
 (
-    const IntVector id,
+    const IntVector & id,
+    const double & r2,
     FDView < ScalarField<const double>, STN > & u,
     View < ScalarField<int> > & refine_flag
 )
@@ -5240,7 +5253,7 @@ Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
     double err2 = 0;
     for ( size_t d = 0; d < DIM; ++d )
         err2 += grad[d] * grad[d];
-    refine = err2 > refine_threshold * refine_threshold;
+    refine = err2 > r2;
     refine_flag[id] = refine;
 }
 
@@ -5249,7 +5262,8 @@ template<VarType V>
 typename std::enable_if < V == NC, void >::type
 Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
 (
-    const IntVector id,
+    const IntVector & id,
+    const double & r2,
     FDView < ScalarField<const double>, STN > & u,
     View < ScalarField<int> > & refine_flag
 )
@@ -5258,7 +5272,7 @@ Heat<VAR, DIM, STN, AMR, TST>::error_estimate_solution
     double err2 = 0;
     for ( size_t d = 0; d < DIM; ++d )
         err2 += grad[d] * grad[d];
-    if ( err2 > refine_threshold * refine_threshold )
+    if ( err2 > r2 )
     {
         // loop over all cells sharing node id
         IntVector id0 = id - get_dim<DIM>::unit_vector();

@@ -41,16 +41,23 @@ ContourAtts.contourValue = (0)
 ContourAtts.contourMethod = ContourAtts.Value  # Level, Value, Percent
 SetPlotOptions(ContourAtts)
 
+DrawPlots()
+SetActivePlots(0)
+Query("SpatialExtents")
+Extents = GetQueryOutputValue()
+Width = (Extents[1]-Extents[0], Extents[3]-Extents[2], Extents[5]-Extents[4])
+Center = ((Extents[1]+Extents[0])/2, (Extents[3]+Extents[2])/2, (Extents[5]+Extents[4])/2)
+
 View3DAtts = View3DAttributes()
 View3DAtts.viewNormal = (2, 1, 1)
-View3DAtts.focus = (75, 75, 75)
+View3DAtts.focus = Center
 View3DAtts.viewUp = (0, 0, 1)
 View3DAtts.viewAngle = 30
-View3DAtts.parallelScale = 150
-View3DAtts.nearPlane = -300
-View3DAtts.farPlane = 300
+View3DAtts.parallelScale = Width[0]
+View3DAtts.nearPlane = -2*Width[0]
+View3DAtts.farPlane = 2*Width[0]
 View3DAtts.imagePan = (0.05, 0)
-View3DAtts.centerOfRotation = (75, 75, 75)
+View3DAtts.centerOfRotation = Center
 SetView3D(View3DAtts)
 
 LightAtts = LightAttributes(0)
@@ -74,9 +81,50 @@ r.specularPower = 5
 SetRenderingAttributes(r)
 
 SaveWindowAtts = SaveWindowAttributes()
+SaveWindowAtts.format = SaveWindowAtts.VTK
+SaveWindowAtts.fileName = out
+SetSaveWindowAttributes(SaveWindowAtts)
+SaveWindow()
+
 SaveWindowAtts.format = SaveWindowAtts.BMP
 SaveWindowAtts.fileName = out
-#SaveWindowAtts.width, SaveWindowAtts.height = 3000,3000
 SaveWindowAtts.screenCapture = 1
+SetSaveWindowAttributes(SaveWindowAtts)
+SaveWindow()
+
+SetActivePlots(1)
+HideActivePlots()
+
+AnnotationAtts.legendInfoFlag=0
+AnnotationAtts.timeInfoFlag=0
+AnnotationAtts.databaseInfoFlag=0
+AnnotationAtts.axes3D.bboxFlag=0
+AnnotationAtts.axes3D.triadFlag=0
+SetAnnotationAttributes(AnnotationAtts)
+
+View3DAtts.viewNormal = (0, 0, 1)
+View3DAtts.viewUp = (0, 1, 0)
+View3DAtts.parallelScale = Center[0]
+View3DAtts.imagePan = (0, 0)
+View3DAtts.perspective = 0
+SetView3D(View3DAtts)
+
+SaveWindowAtts.fileName = out + "_xy_"
+SetSaveWindowAttributes(SaveWindowAtts)
+SaveWindow()
+
+View3DAtts.viewNormal = (0, -1, 0)
+View3DAtts.viewUp = (0, 0, 1)
+SetView3D(View3DAtts)
+
+SaveWindowAtts.fileName = out + "_xz_"
+SetSaveWindowAttributes(SaveWindowAtts)
+SaveWindow()
+
+View3DAtts.viewNormal = (1, 0, 0)
+View3DAtts.viewUp = (0, 0, 1)
+SetView3D(View3DAtts)
+
+SaveWindowAtts.fileName = out + "_xz_"
 SetSaveWindowAttributes(SaveWindowAtts)
 SaveWindow()
