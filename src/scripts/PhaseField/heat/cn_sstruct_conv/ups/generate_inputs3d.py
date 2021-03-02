@@ -210,16 +210,29 @@ UPS = """
 
 NAME = "cn_sstruct_conv_%(solver)s_3d_nlvl%(nlvl)1d_%(ph)d_%(pk)d"
 
+MPSZ = {}
+MPSZ[1] = "[[1,1,1],[2,2,2],[4,4,4],[8,8,8],[16,16,16]]"
+MPSZ[2] = "[[2,2,2],[4,4,4],[8,8,8],[16,16,16]]"
+MPSZ[4] = "[[4,4,4],[8,8,8],[16,16,16]]"
+MPSZ[8] = "[[8,8,8],[16,16,16]]"
+MPSZ[16] = "[[16,16,16]]"
+
 for solver in ("fac","split","gmres","flexgmres","lgmres","bicgstab"):
-	for nlvl in range(1,9):
+	for nlvl in range(1,8):
 		for ph in range(0,5):
 			for pk in range(0,5):
 				name = NAME % { "nlvl": nlvl, "solver": solver, "ph": ph, "pk": pk };
-				patches = 2**(ph)
 				spacing = 2**(nlvl-ph-1)
+				ncells = int(64/spacing)
+				patches = max(1,ncells//16)
+				ps = ncells//patches
+				if ps < 16:
+					min_patch_size = MPSZ[ps]
+				else:
+					min_patch_size = MPSZ[16]
 				delt = 2**(-pk)
 				maxt = 100 + delt
 
 				ups = open(name+".ups", "w")
-				ups.write(UPS % { "title": name, "delt": delt, "maxt": maxt, "patches": patches, "spacing": spacing, 'nlvl': nlvl, 'name': name, "solver": solver})
+				ups.write(UPS % { "title": name, "delt": delt, "maxt": maxt, "patches": patches, "spacing": spacing, 'nlvl': nlvl, 'min_patch_size': min_patch_size, 'name': name, "solver": solver})
 				ups.close()

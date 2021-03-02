@@ -24,7 +24,7 @@
       <Box label="0">
         <lower>[  0.,  0.,  0.]</lower>
         <upper>[ 64., 64.,  1.]</upper>
-        <patches>[4,4,1]</patches>
+        <patches>[1,1,1]</patches>
       </Box>
       <spacing>[4.000000,4.000000,1]</spacing>
     </Level>

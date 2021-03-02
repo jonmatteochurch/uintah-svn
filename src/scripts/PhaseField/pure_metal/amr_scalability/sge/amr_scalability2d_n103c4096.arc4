@@ -1,7 +1,7 @@
 #$ -cwd -V
 #$ -m be -M scjmc@leeds.ac.uk
 #$ -l nodes=103
-#$ -l h_rt=3:00:00
+#$ -l h_rt=12:00:00
 #$ -l h_vmem=4.8G
 
 if [ -z "$UPATH" ]; then
