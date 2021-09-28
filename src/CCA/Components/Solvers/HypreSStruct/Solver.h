@@ -168,6 +168,7 @@ public:
                 int relaxType;
                 param_ps->get ( "maxlevels",     m_params->max_levels );
                 param_ps->get ( "maxiterations", m_params->max_iter );
+                param_ps->get ( "miniterations", m_params->min_iter );
                 param_ps->get ( "tolerance",     m_params->tol );
                 param_ps->get ( "rel_change",    m_params->rel_change );
                 param_ps->get ( "relax_type",    relaxType );
@@ -740,7 +741,7 @@ private:
                 sstruct_interface->stencilInitialize ( comm );
 
                 DOUT ( dbg_assembling, rank << "   hypre graph setup" );
-                sstruct_interface->graphInitialize ( comm, grd, stencil_entries, additional_entries );
+                sstruct_interface->graphInitialize ( comm, grd, additional_entries );
 
                 DOUT ( dbg_assembling, rank << "   hypre matrix setup" );
                 sstruct_interface->matrixInitialize ( comm );
@@ -841,6 +842,21 @@ private:
             //__________________________________
             //   Solve
             SolverOutput out;
+
+#ifdef PRINTSYSTEM
+            //__________________________________
+            //   Debugging
+            {
+                std::ostringstream sname;
+            std::vector<std::string> fname;
+            sname << "." << rank << "." << timeStep << "before";
+            m_params->setOutputFileName ( sname.str() );
+            m_params->getOutputFileName ( fname );
+
+            DOUT ( dbg_doing, "   hypre print system" );
+            sstruct_interface->printSystem ( fname.data() );
+            }
+#endif
 
             DOUT ( dbg_assembling, rank << "   hypre solve" );
             sstruct_interface->solve ( &out );

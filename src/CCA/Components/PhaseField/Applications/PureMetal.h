@@ -2222,6 +2222,8 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_forward_euler (
         task->computes ( u_label );
         sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
+
+    is_time_advance_solution_scheduled = true;
 }
 
 #ifdef HAVE_HYPRE
@@ -3600,7 +3602,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assembl
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
             FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
             FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
-            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &A_stencil, &A_additional, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypresstruct_full ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, A_stencil, A_additional, rhs ); } );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &A_stencil, &A_additional, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypresstruct_full ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, A_stencil, A_additional, rhs ); } );
         }
 
         delete A_stencil[PSI][PSI];
@@ -4032,7 +4034,7 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hyp
 
     ( *A[PSI][PSI] ) [id].p += 1. - c1_psi * source_psi;
     ( *A[PSI][U] ) [id].p += - c1_psi * source_u;
-    ( *A[U][PSI] ) [id].p += -1.;
+    ( *A[U][PSI] ) [id].p += -0.5;
     ( *A[U][U] ) [id].p += 1.;
     ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
     ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
@@ -4060,7 +4062,7 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hyp
     const double & u_rhs = u_old.laplacian_rhs_hypre ( id );
 
     ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
-    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
+    ( *rhs[U] ) [id] = u_old[id] - 0.5 * psi_old[id] + c_u * u_rhs;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -4110,11 +4112,15 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hyp
 
     ( *A[PSI][PSI] ) [id].p += 1. - c1_psi * source_psi;
     ( *A[PSI][U] ) [id].p += - c1_psi * source_u;
-    ( *A[U][PSI] ) [id].p += -1.;
+    ( *A[U][PSI] ) [id].p += -0.5;
     ( *A[U][U] ) [id].p += 1.;
 
-    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
-    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
+    ( *rhs[PSI] ) [id] = psi_old[id]
+                       + c1_psi * anisotropy_term ( id, grad_psi, a2, b )
+                       + c0_psi * psi_rhs;
+    ( *rhs[U] ) [id] = u_old[id]
+                     - 0.5 * psi_old[id]
+                     + c_u * u_rhs;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -4138,8 +4144,12 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hyp
     double psi_rhs = psi_old.laplacian_rhs_hypresstruct ( id );
     double u_rhs = u_old.laplacian_rhs_hypresstruct ( id );
 
-    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
-    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
+    ( *rhs[PSI] ) [id] = psi_old[id]
+                       + c1_psi * anisotropy_term ( id, grad_psi, a2, b )
+                       + c0_psi * psi_rhs;
+    ( *rhs[U] ) [id] = u_old[id]
+                     - 0.5 * psi_old[id]
+                     + c_u * u_rhs;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -4211,8 +4221,9 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hyp
     double psi_rhs = psi_old.laplacian_rhs_hypre ( id );
     double u_rhs = u_old.laplacian_rhs_hypre ( id );
 
-    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
-                         + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
+    ( *rhs[PSI] ) [id] = psi_old[id]
+                       + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
+                       + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
     ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs + c_u * u_old.laplacian ( id );
 }
 
@@ -4261,13 +4272,18 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hyp
     for ( auto & entry : u_add )
         *A_additional[U] += -c_u * entry;
 
-    ( *A[PSI][PSI] ) [id].p += 1. - c1_psi * source_psi;
+    ( *A[PSI][PSI] ) [id].p += 1. -c1_psi * source_psi;
     ( *A[PSI][U] ) [id].p += - c1_psi * source_u;
-    ( *A[U][PSI] ) [id].p += -1.;
+    ( *A[U][PSI] ) [id].p += -0.5;
     ( *A[U][U] ) [id].p += 1.;
-    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
-                         + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
-    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs + c_u * u_old.laplacian ( id );
+
+    ( *rhs[PSI] ) [id] = psi_old[id]
+                       + 2. * c1_psi * anisotropy_term ( id, grad_psi, a2, b )
+                       + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] )
+                       + c0_psi * ( psi_rhs + psi_old.laplacian ( id ) );
+    ( *rhs[U] ) [id] = u_old[id]
+                     - 0.5 * psi_old[id]
+                     + c_u * ( u_rhs + u_old.laplacian ( id ) );
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -4294,9 +4310,13 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hyp
     double psi_rhs = psi_old.laplacian_rhs_hypresstruct ( id );
     double u_rhs = u_old.laplacian_rhs_hypresstruct ( id );
 
-    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
-                         + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
-    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs + c_u * u_old.laplacian ( id );
+    ( *rhs[PSI] ) [id] = psi_old[id]
+                       + 2. * c1_psi * anisotropy_term ( id, grad_psi, a2, b )
+                       + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] )
+                       + c0_psi * ( psi_rhs + psi_old.laplacian ( id ) );
+    ( *rhs[U] ) [id] = u_old[id]
+                     - 0.5 * psi_old[id]
+                     + c_u * ( u_rhs + u_old.laplacian ( id ) );
 }
 #endif
 

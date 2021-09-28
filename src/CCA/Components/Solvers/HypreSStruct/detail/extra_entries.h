@@ -387,7 +387,7 @@ class extra_entries
         std::get<2> ( ind ) = -1;
         pair_it it = m_extra_entries.lower_bound ( ind );
 
-        std::get<2> ( ind ) = sstruct_stencil<DIM>::size + m_nvars - 1;
+        std::get<2> ( ind ) = sstruct_stencil<DIM>::size * m_nvars;
         for ( ; it->first.index() == ind.index(); ++it, ++std::get<2> ( ind ) )
         {
             if ( it->first == ind )

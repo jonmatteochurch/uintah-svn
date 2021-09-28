@@ -55,7 +55,7 @@ protected:
     using sstruct::guess_updated;
 
 public: // STATIC MEMBERS
-    static constexpr auto SetPrecond = HYPRE_GMRESSetPrecond;
+    static constexpr auto SetPrecond = HYPRE(GMRESSetPrecond);
 
     static const HYPRE_PtrToSolverFcn precond_solve;
     static const HYPRE_PtrToSolverFcn precond_setup;
@@ -97,23 +97,23 @@ public: // STATIC MEMBERS
         HYPRE_SStructGMRESCreate ( comm, ( HYPRE_SStructSolver * ) psolver );
 
         if ( params->tol != -1 )
-            HYPRE_GMRESSetTol ( solver, params->tol );
+            HYPRE(GMRESSetTol) ( solver, params->tol );
         if ( params->abs_tol != -1 )
-            HYPRE_GMRESSetAbsoluteTol ( solver, params->abs_tol );
+            HYPRE(GMRESSetAbsoluteTol) ( solver, params->abs_tol );
         if ( params->cf_tol != -1 )
-            HYPRE_GMRESSetConvergenceFactorTol ( solver, params->cf_tol );
+            HYPRE(GMRESSetConvergenceFactorTol) ( solver, params->cf_tol );
         if ( params->min_iter != -1 )
-            HYPRE_GMRESSetMinIter ( solver, params->min_iter );
+            HYPRE(GMRESSetMinIter) ( solver, params->min_iter );
         if ( params->max_iter != -1 )
-            HYPRE_GMRESSetMaxIter ( solver, params->max_iter );
+            HYPRE(GMRESSetMaxIter) ( solver, params->max_iter );
         if ( params->two_norm != -1 )
-            HYPRE_GMRESSetKDim ( solver, params->k_dim );
+            HYPRE(GMRESSetKDim) ( solver, params->k_dim );
         if ( params->rel_change != -1 )
-            HYPRE_GMRESSetRelChange ( solver, params->rel_change );
+            HYPRE(GMRESSetRelChange) ( solver, params->rel_change );
         if ( params->skip_real_r_check != -1 )
-            HYPRE_GMRESSetSkipRealResidualCheck ( solver, params->skip_real_r_check );
+            HYPRE(GMRESSetSkipRealResidualCheck) ( solver, params->skip_real_r_check );
         if ( params->logging != -1 )
-            HYPRE_GMRESSetLogging ( solver, params->logging );
+            HYPRE(GMRESSetLogging) ( solver, params->logging );
 
         initialized = true;
     }
@@ -122,7 +122,7 @@ public: // STATIC MEMBERS
     solverUpdate (
     ) override
     {
-        HYPRE_GMRESSetup ( solver, A, b, x );
+        HYPRE(GMRESSetup) ( solver, A, b, x );
     }
 
     virtual void
@@ -130,9 +130,9 @@ public: // STATIC MEMBERS
         SolverOutput * out
     ) override
     {
-        HYPRE_GMRESSolve ( solver, A, b, x );
-        HYPRE_GMRESGetNumIterations ( solver, &out->num_iterations );
-        HYPRE_GMRESGetFinalRelativeResidualNorm ( solver, &out->res_norm );
+        HYPRE(GMRESSolve) ( solver, A, b, x );
+        HYPRE(GMRESGetNumIterations) ( solver, &out->num_iterations );
+        HYPRE(GMRESGetFinalRelativeResidualNorm) ( solver, &out->res_norm );
         guess_updated = false;
     }
 
@@ -145,8 +145,8 @@ public: // STATIC MEMBERS
     }
 };
 
-template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::GMRES, DIM, C2F, precond>::precond_solve = ( HYPRE_PtrToSolverFcn ) HYPRE_GMRESSolve;
-template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::GMRES, DIM, C2F, precond>::precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE_GMRESSetup;
+template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::GMRES, DIM, C2F, precond>::precond_solve = ( HYPRE_PtrToSolverFcn ) HYPRE(GMRESSolve);
+template<int DIM, int C2F, bool precond> const HYPRE_PtrToSolverFcn sstruct_solver< ( int ) S::GMRES, DIM, C2F, precond>::precond_setup = ( HYPRE_PtrToSolverFcn ) HYPRE(GMRESSetup);
 
 } // namespace detail
 } // namespace HypreSStruct

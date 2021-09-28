@@ -129,12 +129,12 @@ protected:
 
     virtual ~sstruct_implementation()
     {
-        if ( x_initialized ) HYPRE ( SStructVectorDestroy ) ( x );
-        if ( b_initialized ) HYPRE ( SStructVectorDestroy ) ( b );
-        if ( A_initialized ) HYPRE ( SStructMatrixDestroy ) ( A );
-        if ( graph_initialized ) HYPRE ( SStructGraphDestroy ) ( graph );
-        if ( stencil_initialized ) HYPRE ( SStructStencilDestroy ) ( stencil );
-        if ( grid_initialized ) HYPRE ( SStructGridDestroy ) ( grid );
+        if ( x_initialized ) HYPRE(SStructVectorDestroy) ( x );
+        if ( b_initialized ) HYPRE(SStructVectorDestroy) ( b );
+        if ( A_initialized ) HYPRE(SStructMatrixDestroy) ( A );
+        if ( graph_initialized ) HYPRE(SStructGraphDestroy) ( graph );
+        if ( stencil_initialized ) HYPRE(SStructStencilDestroy) ( stencil );
+        if ( grid_initialized ) HYPRE(SStructGridDestroy) ( grid );
 
         if ( extra_stn_entries )
         {
@@ -165,7 +165,7 @@ protected:
         const IntVector & fine_index
     )
     {
-        stn_index stn { coarse_box, coarse_index, 0 };
+        stn_index stn { coarse_box, coarse_index, 0 + var * sstruct_stencil<DIM>::size };
         add_index ind { coarse_box, coarse_index, -1, coarse_part + 1, fine_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
@@ -173,7 +173,7 @@ protected:
         int * to_index = std::get<4> ( ind ).get_pointer();
 
         ASSERT ( extra_add_entries[var][coarse_part].emplace_back ( SET, ind, stn, 0. ) )
-        HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
+        HYPRE(SStructGraphAddEntries) ( graph, coarse_part, index, var, to_part, to_index, var );
     }
 
     template<int C = C2F, typename std::enable_if<C == 0, int>::type = 0>
@@ -190,7 +190,7 @@ protected:
         const int & /*face_sgn*/
     )
     {
-        stn_index stn { coarse_box, coarse_index, coarse_rank };
+        stn_index stn { coarse_box, coarse_index, coarse_rank + var * sstruct_stencil<DIM>::size };
         add_index ind { coarse_box, coarse_index, -1, coarse_part + 1, fine_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
@@ -198,7 +198,7 @@ protected:
         int * to_index = std::get<4> ( ind ).get_pointer();
 
         if ( extra_add_entries[var][coarse_part].emplace_back ( ADDTO, ind, stn, 1. ) )
-            HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
+            HYPRE(SStructGraphAddEntries) ( graph, coarse_part, index, var, to_part, to_index, var );
 
         ASSERT ( extra_stn_entries[var][coarse_part].emplace_back ( SET, stn, stn, 0 ) );
     }
@@ -217,7 +217,7 @@ protected:
         const int & face_sgn
     )
     {
-        stn_index stn { coarse_box, coarse_index, coarse_rank };
+        stn_index stn { coarse_box, coarse_index, coarse_rank + var * sstruct_stencil<DIM>::size };
         add_index ind { coarse_box, coarse_index, -1, coarse_part + 1, fine_index };
 
         int * index    = std::get<1> ( ind ).get_pointer();
@@ -236,7 +236,7 @@ protected:
                 for ( to_index[0] = lower[0]; to_index[0] < upper[0]; ++to_index[0] )
                 {
                     if ( extra_add_entries[var][coarse_part].emplace_back ( ADDTO, ind, stn, weight ) )
-                        HYPRE ( SStructGraphAddEntries ) ( graph, coarse_part, index, var, to_part, to_index, var );
+                        HYPRE(SStructGraphAddEntries) ( graph, coarse_part, index, var, to_part, to_index, var );
                 }
         ASSERT ( extra_stn_entries[var][coarse_part].emplace_back ( SET, stn, stn, 0 ) );
     }
@@ -271,7 +271,7 @@ protected:
 
             if ( is_stencil )
             {
-                stn_index stn { std::get<0> ( add ), std::get<1> ( add ), rank };
+                stn_index stn { std::get<0> ( add ), std::get<1> ( add ), rank + var * sstruct_stencil<DIM>::size };
                 // add entry to existing stencil
                 extra_stn_entries[var][part].emplace_back ( ADDTO, stn, add, weight );
                 return;
@@ -280,7 +280,7 @@ protected:
 
         // otherwise is additional entry
         if ( extra_add_entries[var][part].emplace_back ( ADDTO, ind, add, weight ) )
-            HYPRE ( SStructGraphAddEntries ) ( graph, part, index, var, part, to_index, var );
+            HYPRE(SStructGraphAddEntries) ( graph, part, index, var, part, to_index, var );
     }
 
     template<int C = C2F, typename std::enable_if<C == 0, int>::type = 0>
@@ -343,7 +343,7 @@ protected:
         int * to_index = std::get<4> ( add ).get_pointer();
 
         if ( extra_add_entries[var][fine_part].emplace_back ( ADDTO, add, add, 1. ) )
-            HYPRE ( SStructGraphAddEntries ) ( graph, fine_part, index, var, to_part, to_index, var );
+            HYPRE(SStructGraphAddEntries) ( graph, fine_part, index, var, to_part, to_index, var );
     };
 
     std::vector<double>
@@ -364,29 +364,6 @@ protected:
                     for ( int e = 0; e < 2 * DIM; ++e )
                         *it++ = stencil_entries[IntVector ( i, j, k )][e];
                 }
-        return values;
-    }
-
-    std::vector<double>
-    get_coupling_values (
-        const PartDataP & pdata,
-        const int & nvars,
-        const int & var,
-        const int & part,
-        const int & box,
-        constCCVariable<Stencil7> **** stencil_entries
-    )
-    {
-        std::vector<double> values ( pdata->boxSize ( box ) * ( nvars - 1 ) );
-
-        std::vector<double>::iterator it = values.begin();
-        for ( int k = pdata->iLowerD ( box, 2 ); k <= pdata->iUpperD ( box, 2 ); ++k )
-            for ( int j = pdata->iLowerD ( box, 1 ); j <= pdata->iUpperD ( box, 1 ); ++j )
-                for ( int i = pdata->iLowerD ( box, 0 ); i <= pdata->iUpperD ( box, 0 ); ++i )
-                    for ( int to_var = 0; to_var < nvars; ++to_var )
-                        if ( to_var != var )
-                            *it++ = stencil_entries[var][to_var][part][box][IntVector ( i, j, k )].p;
-
         return values;
     }
 
@@ -451,15 +428,15 @@ public:
     {
         ASSERT ( !grid_initialized );
 
-        HYPRE ( SStructGridCreate ) ( comm, DIM, gdata->nParts(), &grid );
+        HYPRE(SStructGridCreate) ( comm, DIM, gdata->nParts(), &grid );
         for ( int part = 0; part < gdata->nParts(); ++part )
         {
             for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
-                HYPRE ( SStructGridSetExtents ) ( grid, part, const_cast<int *> ( pdatas[part]->iLower ( box ) ), const_cast<int *> ( pdatas[part]->iUpper ( box ) ) );
-            HYPRE ( SStructGridSetVariables ) ( grid, part, gdata->nVars(), const_cast<HYPRE_SStructVariable *> ( gdata->varTypes() ) );
-            HYPRE ( SStructGridSetPeriodic ) ( grid, part, const_cast<int *> ( pdatas[part]->periodic() ) );
+                HYPRE(SStructGridSetExtents) ( grid, part, const_cast<int *> ( pdatas[part]->iLower ( box ) ), const_cast<int *> ( pdatas[part]->iUpper ( box ) ) );
+            HYPRE(SStructGridSetVariables) ( grid, part, gdata->nVars(), const_cast<HYPRE_SStructVariable *> ( gdata->varTypes() ) );
+            HYPRE(SStructGridSetPeriodic) ( grid, part, const_cast<int *> ( pdatas[part]->periodic() ) );
         }
-        HYPRE ( SStructGridAssemble ) ( grid );
+        HYPRE(SStructGridAssemble) ( grid );
         grid_initialized = true;
     }
 
@@ -469,11 +446,11 @@ public:
     ) override
     {
         ASSERT ( !stencil_initialized );
-        HYPRE ( SStructStencilCreate ) ( DIM, sstruct_stencil<DIM>::size, &stencil );
-        for ( int var = 0; var < gdata->nVars(); ++var )
-            for ( int entry = 0; entry < sstruct_stencil<DIM>::size; ++entry )
-                HYPRE ( SStructStencilSetEntry ) ( stencil, entry, sstruct_stencil<DIM>::offsets[entry], var );
-
+        HYPRE(SStructStencilCreate) ( DIM, sstruct_stencil<DIM>::size * gdata->nVars(), &stencil );
+        int global_entry = 0;
+        for ( int to_var = 0; to_var < gdata->nVars(); ++to_var )
+            for ( int entry = 0; entry < sstruct_stencil<DIM>::size; ++entry, ++global_entry )
+                HYPRE(SStructStencilSetEntry) ( stencil, global_entry, sstruct_stencil<DIM>::offsets[entry], to_var );
         stencil_initialized = true;
     }
 
@@ -485,35 +462,13 @@ public:
     ) override
     {
         ASSERT ( !graph_initialized );
-        HYPRE ( SStructGraphCreate ) ( comm, grid, &graph );
-        HYPRE ( SStructGraphSetObjectType ) ( graph, HYPRE_SSTRUCT );
+        HYPRE(SStructGraphCreate) ( comm, grid, &graph );
+        HYPRE(SStructGraphSetObjectType) ( graph, HYPRE_SSTRUCT );
 
         /* set stencils */
         for ( int part = 0; part < gdata->nParts(); ++part )
             for ( int var = 0; var < gdata->nVars(); ++var )
-                HYPRE ( SStructGraphSetStencil ) ( graph, part, var, stencil );
-
-        /* set couplings */
-        if ( gdata->nVars() > 1 )
-            for ( int part = 0; part < gdata->nParts(); ++part )
-                for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
-                {
-                    int lower[HYPRE_MAXDIM], upper[HYPRE_MAXDIM];
-                    for ( size_t d = 0; d < HYPRE_MAXDIM; ++d )
-                    {
-                        lower[d] = pdatas[part]->iLowerD ( box, d );
-                        upper[d] = pdatas[part]->iUpperD ( box, d );
-                    }
-
-                    int index[HYPRE_MAXDIM];
-                    for ( index[0] = lower[0]; index[0] <= upper[0]; ++index[0] )
-                        for ( index[1] = lower[1]; index[1] <= upper[1]; ++index[1] )
-                            for ( index[2] = lower[2]; index[2] <= upper[2]; ++index[2] )
-                                for ( int var = 0; var < gdata->nVars(); ++var )
-                                    for ( int to_var = 0; to_var < gdata->nVars(); ++to_var )
-                                        if ( to_var != var )
-                                            HYPRE ( SStructGraphAddEntries ) ( graph, part, index, var, part, index, to_var );
-                }
+                HYPRE(SStructGraphSetStencil) ( graph, part, var, stencil );
 
         if ( additional_entries )
         {
@@ -689,7 +644,7 @@ public:
             }
         }
 
-        HYPRE ( SStructGraphAssemble ) ( graph );
+        HYPRE(SStructGraphAssemble) ( graph );
         graph_initialized = true;
     }
 
@@ -699,9 +654,9 @@ public:
     ) override
     {
         ASSERT ( !A_initialized );
-        HYPRE ( SStructMatrixCreate ) ( comm, graph, &A );
-        HYPRE ( SStructMatrixSetObjectType ) ( A, HYPRE_SSTRUCT );
-        HYPRE ( SStructMatrixInitialize ) ( A );
+        HYPRE(SStructMatrixCreate) ( comm, graph, &A );
+        HYPRE(SStructMatrixSetObjectType) ( A, HYPRE_SSTRUCT );
+        HYPRE(SStructMatrixInitialize) ( A );
         A_initialized = true;
     }
 
@@ -711,9 +666,9 @@ public:
     ) override
     {
         ASSERT ( !b_initialized );
-        HYPRE ( SStructVectorCreate ) ( comm, grid, &b );
-        HYPRE ( SStructVectorSetObjectType ) ( b, HYPRE_SSTRUCT );
-        HYPRE ( SStructVectorInitialize ) ( b );
+        HYPRE(SStructVectorCreate) ( comm, grid, &b );
+        HYPRE(SStructVectorSetObjectType) ( b, HYPRE_SSTRUCT );
+        HYPRE(SStructVectorInitialize) ( b );
         b_initialized = true;
     }
 
@@ -723,9 +678,9 @@ public:
     ) override
     {
         ASSERT ( !x_initialized );
-        HYPRE ( SStructVectorCreate ) ( comm, grid, &x );
-        HYPRE ( SStructVectorSetObjectType ) ( x, HYPRE_SSTRUCT );
-        HYPRE ( SStructVectorInitialize ) ( x );
+        HYPRE(SStructVectorCreate) ( comm, grid, &x );
+        HYPRE(SStructVectorSetObjectType) ( x, HYPRE_SSTRUCT );
+        HYPRE(SStructVectorInitialize) ( x );
         x_initialized = true;
     }
 
@@ -737,7 +692,7 @@ public:
     {
         ASSERT ( A_initialized );
 
-        std::vector<int> stencil_indices ( sstruct_stencil<DIM>::size + gdata->nVars() - 1 );
+        std::vector<int> stencil_indices ( sstruct_stencil<DIM>::size * gdata->nVars() );
         std::iota ( std::begin ( stencil_indices ), std::end ( stencil_indices ), 0 );
 
         for ( int part = 0; part < gdata->nParts(); ++part )
@@ -747,17 +702,13 @@ public:
             {
                 for ( int var = 0; var < gdata->nVars(); ++var )
                 {
-                    std::vector<double> values = get_stencil_values ( pdata, box, stencil_entries[var][var][part][box] );
-                    HYPRE ( SStructMatrixSetBoxValues ) (
-                        A, part, const_cast<int *> ( pdata->iLower ( box ) ), const_cast<int *> ( pdata->iUpper ( box ) ),
-                        var, sstruct_stencil<DIM>::size, stencil_indices.data(), values.data() );
-
-                    if ( gdata->nVars() > 1 )
+                    int * indices = stencil_indices.data();
+                    for ( int to_var = 0; to_var < gdata->nVars(); ++to_var, indices += sstruct_stencil<DIM>::size )
                     {
-                        values = get_coupling_values ( pdata, gdata->nVars(), var, part, box, stencil_entries );
-                        HYPRE ( SStructMatrixSetBoxValues ) (
+                        std::vector<double> values = get_stencil_values ( pdata, box, stencil_entries[var][to_var][part][box] );
+                        HYPRE(SStructMatrixSetBoxValues) (
                             A, part, const_cast<int *> ( pdata->iLower ( box ) ), const_cast<int *> ( pdata->iUpper ( box ) ),
-                            var, gdata->nVars() - 1, stencil_indices.data() + sstruct_stencil<DIM>::size, values.data() );
+                            var, sstruct_stencil<DIM>::size, indices, values.data() );
                     }
                 }
             }
@@ -778,6 +729,16 @@ public:
                     int * entries;
                     double * values;
 
+                    // clear before add
+                    for ( const auto & extra : extra_add_entries[var][part] ( stencil_entries[var][var][part], additional_entries[var][part] ) )
+                    {
+                        if ( extra.get_addto_values ( index, nentries, entries, values ) )
+                        {
+                            std::fill_n ( values, nentries, 0 );
+                            HYPRE(SStructMatrixSetValues) ( A, part, index, var, nentries, entries, values );
+                        }
+                    }
+
 #ifdef EXTRA_ENTRIES_DBG
                     std::cout << "STN" << std::endl;
                     std::cout << extra_stn_entries[var][part] << std::endl;
@@ -787,10 +748,10 @@ public:
                     for ( const auto & extra : extra_stn_entries[var][part] ( stencil_entries[var][var][part], additional_entries[var][part] ) )
                     {
                         if ( extra.get_set_values ( index, nentries, entries, values ) )
-                            HYPRE_SStructMatrixSetValues ( A, part, index, var, nentries, entries, values );
+                            HYPRE(SStructMatrixSetValues) ( A, part, index, var, nentries, entries, values );
 
                         if ( extra.get_addto_values ( index, nentries, entries, values ) )
-                            HYPRE_SStructMatrixAddToValues ( A, part, index, var, nentries, entries, values );
+                            HYPRE(SStructMatrixAddToValues) ( A, part, index, var, nentries, entries, values );
                     }
 
 #ifdef EXTRA_ENTRIES_DBG
@@ -803,12 +764,12 @@ public:
                     for ( const auto & extra : extra_add_entries[var][part] ( stencil_entries[var][var][part], additional_entries[var][part] ) )
                     {
                         if ( extra.get_set_values ( index, nentries, entries, values ) )
-                            HYPRE_SStructMatrixSetValues ( A, part, index, var, nentries, entries, values );
+                            HYPRE(SStructMatrixSetValues) ( A, part, index, var, nentries, entries, values );
 
                         if ( extra.get_addto_values ( index, nentries, entries, values ) )
-                            HYPRE_SStructMatrixAddToValues ( A, part, index, var, nentries, entries, values );
-
+                            HYPRE(SStructMatrixAddToValues) ( A, part, index, var, nentries, entries, values );
                     }
+
 #ifdef EXTRA_ENTRIES_DBG
                     std::cout << "}" << std::endl;
 #endif
@@ -821,9 +782,9 @@ public:
             for ( int part = gdata->nParts() - 1; part > 0; part-- )
             {
                 // THIS SHOULD WORK FOR ALL SOLVERS NOT ONLY FAC
-                HYPRE ( SStructFACZeroCFSten ) ( A, grid, part, prefinements[part] );
-                HYPRE ( SStructFACZeroFCSten ) ( A, grid, part );
-                HYPRE ( SStructFACZeroAMRMatrixData ) ( A, part - 1, prefinements[part] );
+                HYPRE(SStructFACZeroCFSten) ( A, grid, part, prefinements[part] );
+                HYPRE(SStructFACZeroFCSten) ( A, grid, part );
+                HYPRE(SStructFACZeroAMRMatrixData) ( A, part - 1, prefinements[part] );
             }
         }
     }
@@ -847,12 +808,12 @@ public:
                         for ( int var = 0; var < gdata->nVars(); ++var )
                         {
                             const double * vals = &rhs[var][part][box][IntVector ( pdata->iLowerD ( box, 0 ), j, k )];
-                            HYPRE ( SStructVectorSetBoxValues ) ( b, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
+                            HYPRE(SStructVectorSetBoxValues) ( b, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
                         }
                     }
         }
         if ( gdata->nParts() > 1 )
-            HYPRE ( SStructFACZeroAMRVectorData ) ( b, plevels, prefinements );
+            HYPRE(SStructFACZeroAMRVectorData) ( b, plevels, prefinements );
     }
 
     virtual void
@@ -875,21 +836,21 @@ public:
                         for ( int var = 0; var < gdata->nVars(); ++var )
                         {
                             const double * vals = &guess[var][part][box][IntVector ( pdata->iLowerD ( box, 0 ), j, k )];
-                            HYPRE ( SStructVectorSetBoxValues ) ( x, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
+                            HYPRE(SStructVectorSetBoxValues) ( x, part, ll.get_pointer(), hh.get_pointer(), var, const_cast<double *> ( vals ) );
                         }
                     }
         }
         if ( gdata->nParts() > 1 )
-            HYPRE ( SStructFACZeroAMRVectorData ) ( x, plevels, prefinements );
+            HYPRE(SStructFACZeroAMRVectorData) ( x, plevels, prefinements );
     }
 
     virtual void
     assemble (
     ) override
     {
-        HYPRE ( SStructMatrixAssemble ) ( A );
-        HYPRE ( SStructVectorAssemble ) ( b );
-        HYPRE ( SStructVectorAssemble ) ( x );
+        HYPRE(SStructMatrixAssemble) ( A );
+        HYPRE(SStructVectorAssemble) ( b );
+        HYPRE(SStructVectorAssemble) ( x );
     }
 
 #ifdef PRINTSYSTEM
@@ -909,7 +870,7 @@ public:
         CCVariable<double> *** solution
     ) override
     {
-        HYPRE ( SStructVectorGather ) ( x );
+        HYPRE(SStructVectorGather) ( x );
 
         for ( int part = 0; part < gdata->nParts(); ++part )
         {
@@ -923,7 +884,7 @@ public:
                         for ( int var = 0; var < gdata->nVars(); ++var )
                         {
                             double * vals = &solution[var][part][box][IntVector ( pdata->iLowerD ( box, 0 ), j, k )];
-                            HYPRE ( SStructVectorGetBoxValues ) ( x, part, ll.get_pointer(), hh.get_pointer(), var, vals );
+                            HYPRE(SStructVectorGetBoxValues) ( x, part, ll.get_pointer(), hh.get_pointer(), var, vals );
                         }
                     }
         }
@@ -933,12 +894,12 @@ public:
     finalize (
     ) override
     {
-        if ( x_initialized ) HYPRE ( SStructVectorDestroy ) ( x );
-        if ( b_initialized ) HYPRE ( SStructVectorDestroy ) ( b );
-        if ( A_initialized ) HYPRE ( SStructMatrixDestroy ) ( A );
-        if ( graph_initialized ) HYPRE ( SStructGraphDestroy ) ( graph );
-        if ( stencil_initialized ) HYPRE ( SStructStencilDestroy ) ( stencil );
-        if ( grid_initialized ) HYPRE ( SStructGridDestroy ) ( grid );
+        if ( x_initialized ) HYPRE(SStructVectorDestroy) ( x );
+        if ( b_initialized ) HYPRE(SStructVectorDestroy) ( b );
+        if ( A_initialized ) HYPRE(SStructMatrixDestroy) ( A );
+        if ( graph_initialized ) HYPRE(SStructGraphDestroy) ( graph );
+        if ( stencil_initialized ) HYPRE(SStructStencilDestroy) ( stencil );
+        if ( grid_initialized ) HYPRE(SStructGridDestroy) ( grid );
 
         const int & nvars = gdata->nVars();
         const int & nparts = gdata->nParts();
@@ -978,4 +939,3 @@ public:
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_Solvers_HypreSStruct_detail_sstructInterface_h
-

@@ -207,7 +207,7 @@ namespace Uintah {
                                       Task::WhichDW      which_b_dw,
                                 const VarLabel        ** guess,
                                       Task::WhichDW      which_guess_dw,
-                                      bool               isFirstSolve = true ) = 0;
+                                      bool               isFirstSolve = true ) {};
 
     virtual std::string getName() = 0;
     

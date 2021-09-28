@@ -8,7 +8,8 @@
 <Uintah_Include>
 
 <Parameters                spec="OPTIONAL NO_DATA"
-                                 attribute1="variable OPTIONAL STRING" >
+                                 attribute1="variable OPTIONAL STRING"
+                                 attribute2="nvars OPTIONAL INTEGER 'positive'" >
   <solver                  spec="OPTIONAL STRING 'Jacobi,jacobi,PFMG,pfmg,SMG,smg,CycRed,cycred,PCG,CG,pcg,cg,conjugategradient,GMRES,gmres,FlexGMRES,flexgmres,LGMRES,lgmres,BiCGSTAB,bicgstab,Hybrid,hybrid,SparseMSG,sparsemsg,AMG,amg,BoomerAMG,boomeramg,FAC,fac,Split,split,SysPFMG,syspfmg'" />
   <preconditioner          spec="OPTIONAL STRING 'None,none,Diagonal,diagonal,Jacobi,jacobi,PFMG,pfmg,SMG,smg,PCG,CG,pcg,cg,conjugategradient,GMRES,gmres,FlexGMRES,flexgmres,LGMRES,lgmres,BiCGSTAB,bicgstab,SparseMSG,sparsemsg,AMG,amg,BoomerAMG,boomeramg,FAC,fac,Split,split,SysPFMG,syspfmg'" />
   <criteria                spec="OPTIONAL STRING 'Absolute absolute Relative relative'" />

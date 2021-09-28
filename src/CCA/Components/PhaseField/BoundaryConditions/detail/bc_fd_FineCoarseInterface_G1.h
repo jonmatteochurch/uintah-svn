@@ -586,10 +586,18 @@ public: // BC FD MEMBERS
     template < DirType DIR >
     inline typename std::enable_if < D == DIR, void >::type
     add_d2_rhs_hypresstruct (
-        const IntVector & _DOXYARG ( id ),
-        V & _DOXYARG ( rhs )
+        const IntVector & id,
+        V & rhs
     ) const
     {
+        if ( VAR == CC )
+        {
+            IntVector ip ( id );
+            ip[D] += SGN;
+            Entries<V> extra = coarse_interp_entries ( ip );
+            rhs += extra.rhs;
+        }
+        else ASSERTFAIL ( "TODO" );
     };
 #endif
 
