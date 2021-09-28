@@ -351,6 +351,7 @@ class extra_entries
     using pair_map = std::map<Index, extra_pair>;
     using pair_it = typename pair_map::iterator;
 
+    int m_nvars;
     pair_map m_extra_entries;
 
     template<typename I>
@@ -386,7 +387,7 @@ class extra_entries
         std::get<2> ( ind ) = -1;
         pair_it it = m_extra_entries.lower_bound ( ind );
 
-        std::get<2> ( ind ) = sstruct_stencil<DIM>::size;
+        std::get<2> ( ind ) = sstruct_stencil<DIM>::size + m_nvars - 1;
         for ( ; it->first.index() == ind.index(); ++it, ++std::get<2> ( ind ) )
         {
             if ( it->first == ind )
@@ -403,11 +404,24 @@ class extra_entries
     }
 
 public:
+    extra_entries (
+    ) : m_nvars ( -1 )
+    {}
+
     ~extra_entries()
     {
         for ( const auto & it : m_extra_entries )
             for ( extra_value * value : it.second.second )
                 delete value;
+    }
+
+    void
+    set_nvars (
+        int nvars
+    )
+    {
+        ASSERT ( m_nvars < 0 );
+        m_nvars =  nvars;
     }
 
     bool
@@ -421,6 +435,7 @@ public:
 #ifdef EXTRA_ENTRIES_DBG
         std::cout << "extra_entries::emplace_back: " << ( op == ADDTO ? "ADDTO " : ( op == SET ? "SET " : "NO_OP " ) ) << "at " << ind <<  " from " << weight << " x stn " << stn << std::endl;
 #endif
+        ASSERT ( m_nvars > 0 );
         extra_value * value = scinew stencil_entry_value<DIM> { stn, weight };
         return insert ( op, ind, value );
     }
@@ -436,6 +451,7 @@ public:
 #ifdef EXTRA_ENTRIES_DBG
         std::cout << "extra_entries::emplace_back: " << ( op == ADDTO ? "ADDTO " : ( op == SET ? "SET " : "NO_OP " ) ) << "at " << ind <<  " from " << weight << " x add " << add << std::endl;
 #endif
+        ASSERT ( m_nvars > 0 );
         extra_value * value = scinew additional_entry_value { add, weight };
         return insert ( op, ind, value );
     }

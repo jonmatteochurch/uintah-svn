@@ -46,13 +46,15 @@ class GlobalData
 
 public:
     GlobalData (
-        const int & nparts
+        const int & nparts,
+        const int & nvars
     ) : RefCounted(),
         m_nparts ( nparts ),
         m_nboxes ( scinew int[nparts] ),
-        m_nvars ( 1 ), // TODO generalize for systems
-        m_vartypes ( scinew HYPRE_SStructVariable[nparts] )
+        m_nvars ( nvars ),
+        m_vartypes ( scinew HYPRE_SStructVariable[m_nvars] )
     {
+        std::fill ( m_vartypes, m_vartypes + m_nvars, HYPRE_SSTRUCT_VARIABLE_CELL );
     };
 
     virtual ~GlobalData()
@@ -97,7 +99,6 @@ public:
     )
     {
         m_nboxes[part] = npatches;
-        m_vartypes[part] = HYPRE_SSTRUCT_VARIABLE_CELL;
     }
 };
 

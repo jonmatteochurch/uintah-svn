@@ -195,6 +195,20 @@ namespace Uintah {
                                       Task::WhichDW      which_guess_dw,
                                       bool               isFirstSolve = true ) = 0;
 
+    virtual void scheduleSolve( int                      nvars,
+                                const LevelP           & level,
+                                      SchedulerP       & sched,
+                                const MaterialSet      * matls,
+                                const VarLabel       *** A,
+                                      Task::WhichDW      which_A_dw,
+                                const VarLabel        ** x,
+                                      bool               modifies_x,
+                                const VarLabel        ** b,
+                                      Task::WhichDW      which_b_dw,
+                                const VarLabel        ** guess,
+                                      Task::WhichDW      which_guess_dw,
+                                      bool               isFirstSolve = true ) = 0;
+
     virtual std::string getName() = 0;
     
     //----------------------------------------------------------------------------------------------

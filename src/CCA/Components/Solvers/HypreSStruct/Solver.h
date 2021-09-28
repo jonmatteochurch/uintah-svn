@@ -80,13 +80,14 @@ private:
 
     // setup in scheduleSolve
     bool m_modifies_solution;
-    const VarLabel * m_stencil_entries_label;
-    const VarLabel * m_additional_entries_label;
+    int m_nvars;
+    const VarLabel *** m_stencil_entries_label;
+    const VarLabel ** m_additional_entries_label;
     Task::WhichDW m_matrix_dw;
-    const VarLabel * m_solution_label;
-    const VarLabel * m_rhs_label;
+    const VarLabel ** m_solution_label;
+    const VarLabel ** m_rhs_label;
     Task::WhichDW  m_rhs_dw;
-    const VarLabel * m_guess_label;
+    const VarLabel ** m_guess_label;
     Task::WhichDW m_guess_dw;
 
     // hypre timers - note that these variables do NOT store timings - rather, each corresponds to
@@ -110,6 +111,11 @@ public:
         , m_hypre_global_data_label ( VarLabel::create ( "hypre_global_data", SoleVariable<GlobalDataP>::getTypeDescription() ) )
         , m_hypre_sstruct_interface_label ()
         , m_params ( scinew SolverParams() )
+        , m_stencil_entries_label ( nullptr )
+        , m_additional_entries_label ( nullptr )
+        , m_solution_label ( nullptr )
+        , m_rhs_label ( nullptr )
+        , m_guess_label ( nullptr )
         , m_moving_average ( 0. )
         , create_sstruct_interface ( sstruct_interface_creator )
     {
@@ -121,6 +127,14 @@ public:
         VarLabel::destroy ( m_hypre_global_data_label );
         for ( auto && l : m_hypre_sstruct_interface_label ) VarLabel::destroy ( l.second );
         delete m_params;
+        if ( m_stencil_entries_label )
+            for ( int var = 0; var < m_nvars; ++var )
+                delete[] m_stencil_entries_label[var];
+        delete[] m_stencil_entries_label;
+        delete[] m_additional_entries_label;
+        delete[] m_solution_label;
+        delete[] m_rhs_label;
+        delete[] m_guess_label;
     }
 
     virtual
@@ -138,6 +152,9 @@ public:
                 std::string variable;
                 if ( param_ps->getAttribute ( "variable", variable ) && variable != varname )
                     continue;
+
+                m_nvars = 1;
+                param_ps->getAttribute ( "nvars", m_nvars );
 
                 int sFreq;
                 int coefFreq;
@@ -219,18 +236,35 @@ public:
         Task::WhichDW rhs_dw,
         const VarLabel * guess_label,
         Task::WhichDW guess_dw,
-        bool /*is_first_solve*/ = true
+        bool /*is_first_solve*/
     ) override
     {
+        ASSERTMSG ( 1 == m_nvars, "Solver parameter 'nvars' is inconsistent" )
+
+        if ( !m_stencil_entries_label )
+        {
+            m_stencil_entries_label = new const VarLabel ** [m_nvars];
+            m_stencil_entries_label[0] = new const VarLabel * [m_nvars];
+        }
+        if ( !m_additional_entries_label )
+            m_additional_entries_label = new const VarLabel * [m_nvars];
+        if ( !m_solution_label )
+            m_solution_label = new const VarLabel * [m_nvars];
+        if ( !m_rhs_label )
+            m_rhs_label = new const VarLabel * [m_nvars];
+        if ( !m_guess_label )
+            m_guess_label = new const VarLabel * [m_nvars];
+
         m_modifies_solution = modifies_solution;
-        m_stencil_entries_label = matrix_label;
-        m_additional_entries_label = VarLabel::find ( matrix_label->getName() + Solver::AdditionalEntriesSuffix );
-        m_rhs_label = rhs_label;
-        m_rhs_dw = rhs_dw;
         m_matrix_dw = matrix_dw;
-        m_solution_label = solution_label;
-        m_guess_label = guess_label;
+        m_rhs_dw = rhs_dw;
         m_guess_dw = guess_dw;
+
+        m_stencil_entries_label[0][0] = matrix_label;
+        m_additional_entries_label[0] = VarLabel::find ( matrix_label->getName() + Solver::AdditionalEntriesSuffix );
+        m_rhs_label[0] = rhs_label;
+        m_solution_label[0] = solution_label;
+        m_guess_label[0] = guess_label;
 
         printSchedule ( level, cout_doing, "HypreSStruct::Solver:scheduleSolve" );
 
@@ -246,24 +280,111 @@ public:
         task->computes ( global_data_label );
         task->computes ( sstruct_interface_label );
 
-        task->requires ( matrix_dw, m_stencil_entries_label, Ghost::None, 0 );
-        task->requires ( matrix_dw, m_additional_entries_label, ( MaterialSubset * ) nullptr );
-
-        task->requires ( m_rhs_dw, m_rhs_label, Ghost::None, 0 );
+        task->requires ( matrix_dw, m_stencil_entries_label[0][0], Ghost::None, 0 );
+        task->requires ( matrix_dw, m_additional_entries_label[0], ( MaterialSubset * ) nullptr );
+        task->requires ( m_rhs_dw, m_rhs_label[0], Ghost::None, 0 );
         task->requires ( Task::NewDW, m_timeStepLabel );
 
         if ( m_guess_label )
-        {
-            task->requires ( m_guess_dw, m_guess_label, Ghost::None, 0 );
-        }
+            task->requires ( m_guess_dw, m_guess_label[0], Ghost::None, 0 );
 
-        task->computes ( m_solution_label );
+        task->computes ( m_solution_label[0] );
 
         task->setType ( Task::OncePerProc );
         task->usesMPI ( true );
 
         scheduler->addTask ( task, patches, materials );
-        scheduler->overrideVariableBehavior ( m_additional_entries_label->getName(), false, false, false, true, true );
+        scheduler->overrideVariableBehavior ( m_additional_entries_label[0]->getName(), false, false, false, true, true );
+    };
+
+    virtual
+    void
+    scheduleSolve
+    (
+        int nvars,
+        const LevelP & level,
+        SchedulerP & scheduler,
+        const MaterialSet * materials,
+        const VarLabel *** matrix_label,
+        Task::WhichDW matrix_dw,
+        const VarLabel ** solution_label,
+        bool modifies_solution,
+        const VarLabel ** rhs_label,
+        Task::WhichDW rhs_dw,
+        const VarLabel ** guess_label,
+        Task::WhichDW guess_dw,
+        bool /*is_first_solve*/ = true
+    ) override
+    {
+        ASSERTMSG ( nvars == m_nvars, "Solver parameter 'nvars' is inconsistent" )
+
+        if ( !m_stencil_entries_label )
+        {
+            m_stencil_entries_label = new const VarLabel ** [m_nvars];
+            for ( int i = 0; i < m_nvars; ++i )
+                m_stencil_entries_label[i] = new const VarLabel * [m_nvars];
+        }
+        if ( !m_additional_entries_label )
+            m_additional_entries_label = new const VarLabel * [m_nvars];
+        if ( !m_solution_label )
+            m_solution_label = new const VarLabel * [m_nvars];
+        if ( !m_rhs_label )
+            m_rhs_label = new const VarLabel * [m_nvars];
+        if ( !m_guess_label )
+            m_guess_label = new const VarLabel * [m_nvars];
+
+        m_modifies_solution = modifies_solution;
+        m_rhs_dw = rhs_dw;
+        m_matrix_dw = matrix_dw;
+        m_guess_dw = guess_dw;
+
+        for ( int i = 0; i < m_nvars; ++i )
+        {
+            std::copy ( matrix_label[i], matrix_label[i] + m_nvars, m_stencil_entries_label[i] );
+            m_additional_entries_label[i] = VarLabel::find ( matrix_label[i][i]->getName() + Solver::AdditionalEntriesSuffix );
+            m_rhs_label[i] = rhs_label[i];
+            m_solution_label[i] = solution_label[i];
+            m_guess_label[i] = guess_label[i];
+        }
+
+        printSchedule ( level, cout_doing, "HypreSStruct::Solver:scheduleSolve" );
+
+        auto global_data_label = hypre_global_data_label();
+        auto sstruct_interface_label = hypre_sstruct_interface_label ( d_myworld->myRank() );
+        auto grid = level->getGrid();
+        auto * patches = scheduler->getLoadBalancer()->getPerProcessorPatchSet ( grid );
+
+        Task * task = scinew Task ( "HypreSStruct::Solver::solve", this, &Solver::solve, global_data_label, sstruct_interface_label );
+        task->requires ( Task::OldDW, sstruct_interface_label );
+        task->requires ( Task::OldDW, global_data_label );
+
+        task->computes ( global_data_label );
+        task->computes ( sstruct_interface_label );
+
+        for ( int i = 0; i < m_nvars; ++i )
+        {
+            for ( int j = 0; j < m_nvars; ++j )
+                task->requires ( matrix_dw, m_stencil_entries_label[i][j], Ghost::None, 0 );
+            task->requires ( matrix_dw, m_additional_entries_label[i], ( MaterialSubset * ) nullptr );
+            task->requires ( m_rhs_dw, m_rhs_label[i], Ghost::None, 0 );
+        }
+        task->requires ( Task::NewDW, m_timeStepLabel );
+
+        if ( m_guess_label )
+        {
+            for ( int i = 0; i < m_nvars; ++i )
+                task->requires ( m_guess_dw, m_guess_label[i], Ghost::None, 0 );
+        }
+
+        for ( int i = 0; i < m_nvars; ++i )
+            task->computes ( m_solution_label[i] );
+
+        task->setType ( Task::OncePerProc );
+        task->usesMPI ( true );
+
+        scheduler->addTask ( task, patches, materials );
+        for ( int i = 0; i < m_nvars; ++i )
+            scheduler->overrideVariableBehavior ( m_additional_entries_label[i]->getName(), false, false, false, true, true );
     };
 
     virtual
@@ -294,7 +415,7 @@ public:
 
         scheduler->overrideVariableBehavior ( global_data_label->getName(), false, false, false, true, true );
         scheduler->overrideVariableBehavior ( sstruct_interface_label->getName(), false, false, false, true, true );
-    };
+    }
 
 
     virtual inline
@@ -308,7 +429,7 @@ public:
     override
     {
         scheduleInitialize ( level, scheduler, matls );
-    };
+    }
 
     virtual
     std::string
@@ -372,7 +493,7 @@ private:
             }
             else
             {
-                global_data = scinew GlobalData ( nparts );
+                global_data = scinew GlobalData ( nparts, m_nvars );
                 SoleVariable<GlobalDataP> global_data_var;
                 global_data_var.setData ( global_data );
                 new_dw->put ( global_data_var, global_data_label );
@@ -386,6 +507,7 @@ private:
 
         if ( !sstruct_interface->isPartSet ( part ) )
         {
+
             sstruct_interface->setPart ( part, npatches, nboxes,
                                          low.get_pointer(), high.get_pointer(),
                                          prefinement.get_pointer(),
@@ -473,7 +595,8 @@ private:
 
         if ( !do_solve )
         {
-            new_dw->transferFrom ( old_dw, m_solution_label, patches, matls, true );
+            for ( int i = 0; i < m_nvars; ++i )
+                new_dw->transferFrom ( old_dw, m_solution_label[i], patches, matls, true );
             return;
         }
 
@@ -503,84 +626,107 @@ private:
 #endif
 
             GridP grd = nullptr;
-            constCCVariable<Stencil7> ** stencil_entries = nullptr;
-            AdditionalEntries *** additional_entries = nullptr;
-            constCCVariable<double> ** rhs = nullptr;
-            constCCVariable<double> ** guess = nullptr;
-            CCVariable<double> ** solution = nullptr;
+            constCCVariable<Stencil7> **** stencil_entries = nullptr;
+            AdditionalEntries **** additional_entries = nullptr;
+            constCCVariable<double> *** rhs = nullptr;
+            constCCVariable<double> *** guess = nullptr;
+            CCVariable<double> *** solution = nullptr;
 
             const GlobalDataP & gdata = sstruct_interface->globalData();
             const int & nparts = gdata->nParts();
+            const int & nvars = gdata->nVars();
 
             if ( patches->size() )
             {
                 grd = patches->get ( 0 )->getLevel()->getGrid();
 
-                stencil_entries = scinew constCCVariable<Stencil7> * [nparts];
-                additional_entries = scinew AdditionalEntries ** [nparts];
-                rhs = scinew constCCVariable<double> * [nparts];
-                solution = scinew CCVariable<double> * [nparts];
-                for ( int part = 0; part < nparts; ++part )
+                stencil_entries = scinew constCCVariable<Stencil7> *** [nvars];
+                additional_entries = scinew AdditionalEntries *** [nvars];
+                rhs = scinew constCCVariable<double> ** [nvars];
+                solution = scinew CCVariable<double> ** [nvars];
+                for ( int var = 0; var < nvars; ++var )
                 {
-                    const PartDataP & pdata = sstruct_interface->partData ( part );
-                    const int & nboxes = gdata->nBoxes ( part );
-                    stencil_entries[part] = scinew constCCVariable<Stencil7> [nboxes];
-                    additional_entries[part] = scinew AdditionalEntries * [nboxes];
-                    rhs[part] = scinew constCCVariable<double> [nboxes];
-                    for ( int box = 0; box < nboxes; ++box )
+                    stencil_entries[var] = scinew constCCVariable<Stencil7> ** [nvars];
+                    for ( int to_var = 0; to_var < nvars; ++to_var ) stencil_entries[var][to_var] = scinew constCCVariable<Stencil7> * [nparts];
+                    additional_entries[var] = scinew AdditionalEntries ** [nparts];
+                    rhs[var] = scinew constCCVariable<double> * [nparts];
+                    solution[var] = scinew CCVariable<double> * [nparts];
+                    for ( int part = 0; part < nparts; ++part )
                     {
-                        const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
-                        matrix_dw->get ( stencil_entries[part][box], m_stencil_entries_label, material, patch, Ghost::None, 0 );
-                        rhs_dw->get ( rhs[part][box], m_rhs_label, material, patch, Ghost::None, 0 );
-
-                        PerPatch<AdditionalEntriesP> patch_additional_entries;
-                        matrix_dw->get ( patch_additional_entries, m_additional_entries_label, material, patch );
-                        additional_entries[part][box] = patch_additional_entries.get().get_rep();
+                        const int & nboxes = gdata->nBoxes ( part );
+                        for ( int to_var = 0; to_var < nvars; ++to_var ) stencil_entries[var][to_var][part] = scinew constCCVariable<Stencil7> [nboxes];
+                        additional_entries[var][part] = scinew AdditionalEntries * [nboxes];
+                        rhs[var][part] = scinew constCCVariable<double> [nboxes];
+                        solution[var][part] = scinew CCVariable<double> [nboxes];
                     }
                 }
-            }
 
-            if ( m_guess_label )
-            {
-                guess = scinew constCCVariable<double> * [nparts];
                 for ( int part = 0; part < nparts; ++part )
                 {
                     const PartDataP & pdata = sstruct_interface->partData ( part );
-                    const int & nboxes = gdata->nBoxes ( part );
-                    guess[part] = scinew constCCVariable<double> [nboxes];
-                    for ( int box = 0; box < nboxes; ++box )
+                    for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
                     {
                         const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
-                        guess_dw->get ( guess[part][box], m_guess_label, material, patch, Ghost::None, 0 );
+                        for ( int var = 0; var < nvars; ++var )
+                        {
+                            for ( int to_var = 0; to_var < nvars; ++to_var )
+                                matrix_dw->get ( stencil_entries[var][to_var][part][box], m_stencil_entries_label[var][to_var], material, patch, Ghost::None, 0 );
+                            rhs_dw->get ( rhs[var][part][box], m_rhs_label[var], material, patch, Ghost::None, 0 );
+
+                            PerPatch<AdditionalEntriesP> patch_additional_entries;
+                            matrix_dw->get ( patch_additional_entries, m_additional_entries_label[var], material, patch );
+                            additional_entries[var][part][box] = patch_additional_entries.get().get_rep();
+                        }
                     }
                 }
-            }
 
-            if ( m_modifies_solution )
-            {
-                for ( int part = 0; part < nparts; ++part )
+                if ( m_guess_label )
                 {
-                    const PartDataP & pdata = sstruct_interface->partData ( part );
-                    const int & nboxes = gdata->nBoxes ( part );
-                    solution[part] = scinew CCVariable<double> [nboxes];
-                    for ( int box = 0; box < nboxes; ++box )
+                    guess = scinew constCCVariable<double> ** [nvars];
+                    for ( int var = 0; var < nvars; ++var )
                     {
-                        const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
-                        new_dw->getModifiable ( solution[part][box], m_solution_label, material, patch );
+                        guess[var] = scinew constCCVariable<double> * [nparts];
+                        for ( int part = 0; part < nparts; ++part )
+                            guess[var][part] = scinew constCCVariable<double> [gdata->nBoxes ( part )];
+                    }
+
+                    for ( int part = 0; part < nparts; ++part )
+                    {
+                        const PartDataP & pdata = sstruct_interface->partData ( part );
+                        for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
+                        {
+                            const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
+                            for ( int var = 0; var < nvars; ++var )
+                                guess_dw->get ( guess[var][part][box], m_guess_label[var], material, patch, Ghost::None, 0 );
+                        }
                     }
                 }
-            }
-            else
-            {
-                for ( int part = 0; part < nparts; ++part )
+
+                if ( m_modifies_solution )
                 {
-                    const PartDataP & pdata = sstruct_interface->partData ( part );
-                    const int & nboxes = gdata->nBoxes ( part );
-                    solution[part] = scinew CCVariable<double> [nboxes];
-                    for ( int box = 0; box < nboxes; ++box )
+                    for ( int part = 0; part < nparts; ++part )
                     {
-                        const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
-                        new_dw->allocateAndPut ( solution[part][box], m_solution_label, material, patch );
+                        const PartDataP & pdata = sstruct_interface->partData ( part );
+                        const int & nboxes = gdata->nBoxes ( part );
+                        for ( int box = 0; box < nboxes; ++box )
+                        {
+                            const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
+                            for ( int var = 0; var < nvars; ++var )
+                                new_dw->getModifiable ( solution[var][part][box], m_solution_label[var], material, patch );
+                        }
+                    }
+                }
+                else
+                {
+                    for ( int part = 0; part < nparts; ++part )
+                    {
+                        const PartDataP & pdata = sstruct_interface->partData ( part );
+                        for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
+                        {
+                            const Patch * patch = grd->getPatchByID ( pdata->patch ( box ), part );
+                            for ( int var = 0; var < nvars; ++var )
+                                new_dw->allocateAndPut ( solution[var][part][box], m_solution_label[var], material, patch );
+                        }
                     }
                 }
             }
@@ -594,7 +740,7 @@ private:
                 sstruct_interface->stencilInitialize ( comm );
 
                 DOUT ( dbg_assembling, rank << "   hypre graph setup" );
-                sstruct_interface->graphInitialize ( comm, grd, &additional_entries );
+                sstruct_interface->graphInitialize ( comm, grd, stencil_entries, additional_entries );
 
                 DOUT ( dbg_assembling, rank << "   hypre matrix setup" );
                 sstruct_interface->matrixInitialize ( comm );
@@ -610,18 +756,18 @@ private:
             }
 
             DOUT ( dbg_assembling, rank << "   hypre rhs vector update coefficients" );
-            sstruct_interface->rhsUpdate ( &rhs );
+            sstruct_interface->rhsUpdate ( rhs );
 
             if ( do_update || restart )
             {
                 DOUT ( dbg_assembling, rank << "   hypre matrix update coefficients" );
-                sstruct_interface->matrixUpdate ( &stencil_entries, &additional_entries );
+                sstruct_interface->matrixUpdate ( stencil_entries, additional_entries );
             }
 
             if ( m_guess_label )
             {
                 DOUT ( dbg_assembling, rank << "   hypre solution update coefficients" );
-                sstruct_interface->guessUpdate ( &guess );
+                sstruct_interface->guessUpdate ( guess );
             }
 
             if ( do_setup || restart )
@@ -636,24 +782,51 @@ private:
             }
 
             if ( stencil_entries )
-                for ( int part = 0; part < nparts; ++part )
-                    delete[] stencil_entries[part];
-            delete[] stencil_entries;
+            {
+                for ( int var = 0; var < nvars; ++var )
+                {
+                    for ( int to_var = 0; to_var < nvars; ++to_var )
+                    {
+                        for ( int part = 0; part < nparts; ++part )
+                            delete[] stencil_entries[var][to_var][part];
+                        delete[] stencil_entries[var][to_var];
+                    }
+                    delete[] stencil_entries[var];
+                }
+                delete[] stencil_entries;
+            }
 
             if ( additional_entries )
-                for ( int part = 0; part < nparts; ++part )
-                    delete additional_entries[part];
-            delete[] additional_entries;
-
+            {
+                for ( int var = 0; var < nvars; ++var )
+                {
+                    for ( int part = 0; part < nparts; ++part )
+                        delete[] additional_entries[var][part];
+                    delete[] additional_entries[var];
+                }
+                delete[] additional_entries;
+            }
             if ( rhs )
-                for ( int part = 0; part < nparts; ++part )
-                    delete[] rhs[part];
-            delete[] rhs;
+            {
+                for ( int var = 0; var < nvars; ++var )
+                {
+                    for ( int part = 0; part < nparts; ++part )
+                        delete[] rhs[var][part];
+                    delete[] rhs[var];
+                }
+                delete[] rhs;
+            }
 
             if ( guess )
-                for ( int part = 0; part < nparts; ++part )
-                    delete[] guess[part];
-            delete[] guess;
+            {
+                for ( int var = 0; var < nvars; ++var )
+                {
+                    for ( int part = 0; part < nparts; ++part )
+                        delete[] guess[var][part];
+                    delete[] guess[var];
+                }
+                delete[] guess;
+            }
 
 #ifdef HYPRE_TIMING
             hypre_EndTiming ( tMatVecSetup_ );
@@ -699,7 +872,10 @@ private:
                 }
                 else
                 {
-                    throw ConvergenceFailure ( "HypreSolver variable: " + m_solution_label->getName(),
+                    std::string var = m_solution_label[0]->getName();
+                    for ( int i = 1; i < m_nvars; ++i )
+                        var += ", " + m_solution_label[i]->getName();
+                    throw ConvergenceFailure ( "HypreSolver variable: " + var,
                                                out.num_iterations, out.res_norm,
                                                m_params->tol, __FILE__, __LINE__ );
                 }
@@ -713,12 +889,18 @@ private:
 
             //__________________________________
             // Push the solution into Uintah data structure
-            sstruct_interface->getSolution ( &solution );
+            sstruct_interface->getSolution ( solution );
 
             if ( solution )
-                for ( int part = 0; part < nparts; ++part )
-                    delete[] solution[part];
-            delete[] solution;
+            {
+                for ( int var = 0; var < nvars; ++var )
+                {
+                    for ( int part = 0; part < nparts; ++part )
+                        delete[] solution[var][part];
+                    delete[] solution[var];
+                }
+                delete[] solution;
+            }
 
 #ifdef HYPRE_TIMING
             hypre_EndTiming ( tHypreAll_ );
@@ -734,7 +916,10 @@ private:
 
             if ( pg->myRank() == 0 )
             {
-                std::cout << "Solve of " << m_solution_label->getName()
+                std::string var = m_solution_label[0]->getName();
+                for ( int i = 1; i < m_nvars; ++i )
+                    var += ", " + m_solution_label[i]->getName();
+                std::cout << "Solve of " << var
                           << " completed in " << timer().seconds()
                           << " s ( solve only: " << solve_timer().seconds() << " s, ";
 

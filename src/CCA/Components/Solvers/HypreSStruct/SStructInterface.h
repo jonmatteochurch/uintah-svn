@@ -91,6 +91,7 @@ public:
     graphInitialize (
         const MPI_Comm & comm,
         const GridP & grd,
+        constCCVariable<Stencil7> **** stencil_entries,
         AdditionalEntries **** additional_entries
     ) = 0;
 
@@ -117,7 +118,7 @@ public:
 
     virtual void
     matrixUpdate (
-        constCCVariable<Stencil7> *** stencil_entries,
+        constCCVariable<Stencil7> **** stencil_entries,
         AdditionalEntries **** additional_entries
     ) = 0;
 

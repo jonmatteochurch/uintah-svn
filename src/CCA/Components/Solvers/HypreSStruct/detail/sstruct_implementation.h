@@ -116,8 +116,13 @@ protected:
             extra_add_entries = scinew extra_entries<add_index, DIM> * [nvars];
             for ( int i = 0; i < nvars; ++i )
             {
-                extra_stn_entries[i] = scinew extra_entries<stn_index, DIM> [ nparts ];
-                extra_add_entries[i] = scinew extra_entries<add_index, DIM> [ nparts ];
+                extra_stn_entries[i] = scinew extra_entries<stn_index, DIM> [nparts];
+                extra_add_entries[i] = scinew extra_entries<add_index, DIM> [nparts];
+                for ( int j = 0; j < nparts; ++j )
+                {
+                    extra_stn_entries[i][j].set_nvars ( nvars );
+                    extra_add_entries[i][j].set_nvars ( nvars );
+                }
             }
         }
     }
@@ -362,6 +367,29 @@ protected:
         return values;
     }
 
+    std::vector<double>
+    get_coupling_values (
+        const PartDataP & pdata,
+        const int & nvars,
+        const int & var,
+        const int & part,
+        const int & box,
+        constCCVariable<Stencil7> **** stencil_entries
+    )
+    {
+        std::vector<double> values ( pdata->boxSize ( box ) * ( nvars - 1 ) );
+
+        std::vector<double>::iterator it = values.begin();
+        for ( int k = pdata->iLowerD ( box, 2 ); k <= pdata->iUpperD ( box, 2 ); ++k )
+            for ( int j = pdata->iLowerD ( box, 1 ); j <= pdata->iUpperD ( box, 1 ); ++j )
+                for ( int i = pdata->iLowerD ( box, 0 ); i <= pdata->iUpperD ( box, 0 ); ++i )
+                    for ( int to_var = 0; to_var < nvars; ++to_var )
+                        if ( to_var != var )
+                            *it++ = stencil_entries[var][to_var][part][box][IntVector ( i, j, k )].p;
+
+        return values;
+    }
+
 public:
 
     virtual const GlobalDataP &
@@ -464,6 +492,28 @@ public:
         for ( int part = 0; part < gdata->nParts(); ++part )
             for ( int var = 0; var < gdata->nVars(); ++var )
                 HYPRE ( SStructGraphSetStencil ) ( graph, part, var, stencil );
+
+        /* set couplings */
+        if ( gdata->nVars() > 1 )
+            for ( int part = 0; part < gdata->nParts(); ++part )
+                for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
+                {
+                    int lower[HYPRE_MAXDIM], upper[HYPRE_MAXDIM];
+                    for ( size_t d = 0; d < HYPRE_MAXDIM; ++d )
+                    {
+                        lower[d] = pdatas[part]->iLowerD ( box, d );
+                        upper[d] = pdatas[part]->iUpperD ( box, d );
+                    }
+
+                    int index[HYPRE_MAXDIM];
+                    for ( index[0] = lower[0]; index[0] <= upper[0]; ++index[0] )
+                        for ( index[1] = lower[1]; index[1] <= upper[1]; ++index[1] )
+                            for ( index[2] = lower[2]; index[2] <= upper[2]; ++index[2] )
+                                for ( int var = 0; var < gdata->nVars(); ++var )
+                                    for ( int to_var = 0; to_var < gdata->nVars(); ++to_var )
+                                        if ( to_var != var )
+                                            HYPRE ( SStructGraphAddEntries ) ( graph, part, index, var, part, index, to_var );
+                }
 
         if ( additional_entries )
         {
@@ -681,26 +731,34 @@ public:
 
     virtual void
     matrixUpdate (
-        constCCVariable<Stencil7> *** stencil_entries,
-        AdditionalEntries ** ** additional_entries
+        constCCVariable<Stencil7> **** stencil_entries,
+        AdditionalEntries **** additional_entries
     ) override
     {
         ASSERT ( A_initialized );
+
+        std::vector<int> stencil_indices ( sstruct_stencil<DIM>::size + gdata->nVars() - 1 );
+        std::iota ( std::begin ( stencil_indices ), std::end ( stencil_indices ), 0 );
 
         for ( int part = 0; part < gdata->nParts(); ++part )
         {
             auto & pdata = pdatas[part];
             for ( int box = 0; box < gdata->nBoxes ( part ); ++box )
             {
-                std::vector<int> stencil_indices ( sstruct_stencil<DIM>::size );
-                std::iota ( std::begin ( stencil_indices ), std::end ( stencil_indices ), 0 );
-
                 for ( int var = 0; var < gdata->nVars(); ++var )
                 {
-                    std::vector<double> values = get_stencil_values ( pdata, box, stencil_entries[var][part][box] );
+                    std::vector<double> values = get_stencil_values ( pdata, box, stencil_entries[var][var][part][box] );
                     HYPRE ( SStructMatrixSetBoxValues ) (
                         A, part, const_cast<int *> ( pdata->iLower ( box ) ), const_cast<int *> ( pdata->iUpper ( box ) ),
                         var, sstruct_stencil<DIM>::size, stencil_indices.data(), values.data() );
+
+                    if ( gdata->nVars() > 1 )
+                    {
+                        values = get_coupling_values ( pdata, gdata->nVars(), var, part, box, stencil_entries );
+                        HYPRE ( SStructMatrixSetBoxValues ) (
+                            A, part, const_cast<int *> ( pdata->iLower ( box ) ), const_cast<int *> ( pdata->iUpper ( box ) ),
+                            var, gdata->nVars() - 1, stencil_indices.data() + sstruct_stencil<DIM>::size, values.data() );
+                    }
                 }
             }
         }
@@ -726,7 +784,7 @@ public:
                     std::cout << "{ extra iterators:" << std::endl;
 #endif
 
-                    for ( const auto & extra : extra_stn_entries[var][part] ( stencil_entries[var][part], additional_entries[var][part] ) )
+                    for ( const auto & extra : extra_stn_entries[var][part] ( stencil_entries[var][var][part], additional_entries[var][part] ) )
                     {
                         if ( extra.get_set_values ( index, nentries, entries, values ) )
                             HYPRE_SStructMatrixSetValues ( A, part, index, var, nentries, entries, values );
@@ -742,7 +800,7 @@ public:
                     std::cout << "{ extra iterators:" << std::endl;
 #endif
 
-                    for ( const auto & extra : extra_add_entries[var][part] ( stencil_entries[var][part], additional_entries[var][part] ) )
+                    for ( const auto & extra : extra_add_entries[var][part] ( stencil_entries[var][var][part], additional_entries[var][part] ) )
                     {
                         if ( extra.get_set_values ( index, nentries, entries, values ) )
                             HYPRE_SStructMatrixSetValues ( A, part, index, var, nentries, entries, values );
@@ -772,7 +830,7 @@ public:
 
     virtual void
     rhsUpdate (
-        constCCVariable<double> ** * rhs
+        constCCVariable<double> *** rhs
     ) override
     {
         ASSERT ( b_initialized );
@@ -799,7 +857,7 @@ public:
 
     virtual void
     guessUpdate (
-        constCCVariable<double> ** * guess
+        constCCVariable<double> *** guess
     ) override
     {
         ASSERT ( x_initialized );

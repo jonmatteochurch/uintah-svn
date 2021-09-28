@@ -31,6 +31,13 @@
 #ifndef Packages_Uintah_CCA_Components_PhaseField_Applications_PureMetal_h
 #define Packages_Uintah_CCA_Components_PhaseField_Applications_PureMetal_h
 
+#include <sci_defs/hypre_defs.h>
+
+#ifdef HAVE_HYPRE
+#   include <CCA/Components/Solvers/HypreSStruct/AdditionalEntriesP.h>
+#   include <CCA/Components/Solvers/HypreSStruct/Solver.h>
+#endif
+
 #include <CCA/Components/PhaseField/Util/Definitions.h>
 #include <CCA/Components/PhaseField/Util/Expressions.h>
 #include <CCA/Components/PhaseField/DataTypes/PureMetalProblem.h>
@@ -47,10 +54,9 @@
 
 #include <CCA/Ports/Regridder.h>
 
-#include <Core/Util/DebugStream.h>
 #include <Core/Util/Factory/Implementation.h>
+#include <Core/Util/DebugStream.h>
 #include <Core/Grid/SimpleMaterial.h>
-#include <Core/Parallel/UintahParallelComponent.h>
 #include <Core/Grid/Variables/PerPatchVars.h>
 #include <Core/Grid/Variables/ReductionVariable.h>
 
@@ -82,7 +88,7 @@ static constexpr bool dbg_pure_metal_scheduling = false;
  *                      + W_0^2 (A^2_y + \partial_y B_{xy} - \partial_y B_{yz}) \psi_y
  *                      + W_0^2 (A^2_z + \partial_y B_{xz} + \partial_y B_{yz}) \psi_z
  * \f]
- * (for 3D problems all quantities with \f$z\f$ in the subscript are null)
+ * (for 2D problems all quantities with \f$z\f$ in the subscript are null)
  *
  * non-dimensional temperature equation for \f$u:\Omega \to \mathbb R\f$
  * \f[
@@ -140,6 +146,8 @@ public:
     static constexpr size_t A2 = 2;  ///< Index for the square of the anisotropy function
     static constexpr size_t B = 3;   ///< Index for the anisotropy terms \f$ B_ij \f$
 
+    static constexpr int NVARS = 2;
+
 private:
 
     /// Number of ghost elements required by STN (on the same level)
@@ -159,6 +167,11 @@ private:
 
     /// Restriction type for coarsening
     using Application< PureMetalProblem<VAR, STN> >::F2C;
+
+#ifdef HAVE_HYPRE
+    /// Non-stencil entries type for implicit matrix
+    using _AdditionalEntries = PerPatch<HypreSStruct::AdditionalEntriesP>;
+#endif
 
     /// If grad_psi_norm2 is less than tol than psi is considered constant when computing anisotropy terms
     static constexpr double tol = 1.e-6;
@@ -191,6 +204,17 @@ protected: // MEMBERS
     /// Label for anisotropy fields B in the DataWarehouse
     std::array<const VarLabel *, BSZ> b_label;
 
+#ifdef HAVE_HYPRE
+    /// Label for the implicit matrix stencil entries in the DataWarehouse
+    const VarLabel *** matrix_label;
+
+    /// Label for the implicit vector in the DataWarehouse
+    const VarLabel ** rhs_label;
+
+    /// Label for the implicit matrix non-stencil entries in the DataWarehouse
+    const VarLabel ** additional_entries_label;
+#endif // HAVE_HYPRE
+
     /// Time step size
     double delt;
 
@@ -218,8 +242,16 @@ protected: // MEMBERS
     /// Threshold for AMR
     double refine_threshold;
 
+#ifdef HAVE_HYPRE
+    /// Time advance scheme
+    TS time_scheme;
+#endif
+
     /// Module for post-processing tip info
     ArmPostProcessModule<VAR, DIM, STN, AMR> * post_process;
+
+    bool is_time_advance_anisotropy_terms_scheduled;
+    bool is_time_advance_solution_scheduled;
 
 public: // CONSTRUCTORS/DESTRUCTOR
 
@@ -449,7 +481,22 @@ protected: // SCHEDULINGS
     );
 
     /**
-     * @brief Schedule task_time_advance_solution (non AMR implementation)
+     * @brief Schedule task_time_advance_solution
+     *
+     * Switches between available implementations depending on the given time
+     * scheme
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    void
+    scheduleTimeAdvance_solution (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+    /**
+     * @brief Schedule task_time_advance_solution_forward_euler
+     * (non AMR implementation)
      *
      * Defines the dependencies and output of the task which updates psi
      * and u allowing sched to control its execution order
@@ -459,13 +506,14 @@ protected: // SCHEDULINGS
      */
     template < bool MG >
     typename std::enable_if < !MG, void >::type
-    scheduleTimeAdvance_solution (
+    scheduleTimeAdvance_solution_forward_euler (
         const LevelP & level,
         SchedulerP & sched
     );
 
     /**
-     * @brief Schedule task_time_advance_solution (AMR implementation)
+     * @brief Schedule task_time_advance_solution_forward_euler
+     * (AMR implementation)
      *
      * Defines the dependencies and output of the task which updates psi
      * and u allowing sched to control its execution order
@@ -475,10 +523,188 @@ protected: // SCHEDULINGS
      */
     template < bool MG >
     typename std::enable_if < MG, void >::type
-    scheduleTimeAdvance_solution (
+    scheduleTimeAdvance_solution_forward_euler (
         const LevelP & level,
         SchedulerP & sched
     );
+
+#ifdef HAVE_HYPRE
+    /**
+     * @brief Schedule task_time_advance_solution_implicit
+     * (non AMR implementation)
+     *
+     * Switches between available implementations depending on the given
+     * time solver
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_solution_implicit (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_implicit
+     * (AMR implementation)
+     *
+     * Switches between available implementations depending on the given
+     * time solver
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_solution_implicit (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_backward_euler_assemble_hypre
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles
+     * the implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_solution_backward_euler_assemble_hypre (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_backward_euler_assemble_hypre
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles
+     * the implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_solution_backward_euler_assemble_hypre (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_backward_euler_assemble_hypresstruct
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_backward_euler_assemble_hypresstruct
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypre
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypre
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypresstruct
+     * (coarsest level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < !MG, void >::type
+    scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    /**
+     * @brief Schedule task_time_advance_solution_crank_nicolson_assemble_hypresstruct
+     * (refinement level implementation)
+     *
+     * Defines the dependencies and output of the task which assembles the
+     * implicit system allowing sched to control its execution order
+     *
+     * @param level grid level to be updated
+     * @param sched scheduler to manage the tasks
+     */
+    template < bool MG >
+    typename std::enable_if < MG, void >::type
+    scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+
+    void
+    scheduleTimeAdvannce_comunicate_before_solve_hypresstruct (
+        const LevelP & level,
+        SchedulerP & sched
+    );
+#endif // HAVE_HYPRE
 
     /**
      * @brief Schedule the refinement tasks
@@ -691,6 +917,29 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+#ifdef HAVE_HYPRE
+    /**
+     * @brief Initialize hypre sstruct structures on restart task
+     *
+     * Allocate and save variables for non-stencil variables for each
+     * one of the patches and save them to dw_new
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old unused
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_restart_initialize_hypresstruct (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+#endif // HAVE_HYPRE
+
     /**
      * @brief Initialize grad psi task
      *
@@ -780,10 +1029,11 @@ protected: // TASKS
     );
 
     /**
-     * @brief Advance solution task
+     * @brief Advance solution task (Forward Euler implementation)
      *
-     * Computes new value of psi and u using the newly computed anisotropy terms
-     * together with the value of the solution and grad_psi at the previous timestep
+     * Computes new value of psi and u using the newly computed
+     * anisotropy terms together with the value of the solution and
+     * grad_psi at the previous timestep
      *
      * @param myworld data structure to manage mpi processes
      * @param patches list of patches to be initialized
@@ -792,13 +1042,276 @@ protected: // TASKS
      * @param dw_new DataWarehouse to be initialized
      */
     void
-    task_time_advance_solution (
+    task_time_advance_solution_forward_euler (
         const ProcessorGroup * myworld,
         const PatchSubset * patches,
         const MaterialSubset * matls,
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
     );
+
+#ifdef HAVE_HYPRE
+    /**
+     * @brief Assemble hypre system task (Backward Euler implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_backward_euler_assemble_hypre (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre system task (Backward Euler, full implementation)
+     *
+     * Assemble both implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_backward_euler_assemble_hypre_full (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre system task (Backward Euler, rhs implementation)
+     *
+     * Assemble only implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_backward_euler_assemble_hypre_rhs (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system task (Backward Euler implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_backward_euler_assemble_hypresstruct (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system task (Backward Euler, full implementation)
+     *
+     * Assemble both implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_backward_euler_assemble_hypresstruct_full (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system task (Backward Euler, rhs implementation)
+     *
+     * Assemble only implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_backward_euler_assemble_hypresstruct_rhs (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre system task (Crank Nicolson implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hypre (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre system task (Crank Nicolson, full implementation)
+     *
+     * Assemble both implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hypre_full (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre system task (Crank Nicolson, rhs implementation)
+     *
+     * Assemble only implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hypre_rhs (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system task (Crank Nicolson implementation)
+     *
+     * Switches between available implementations to avoid assembling the matrix
+     * when not required
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hypresstruct (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system task (Crank Nicolson, full implementation)
+     *
+     * Assemble both implicit matrix and vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system task (Crank Nicolson, rhs implementation)
+     *
+     * Assemble only implicit vector for hypre using the value of the
+     * solution and at previous timestep
+     *
+     * @param myworld data structure to manage mpi processes
+     * @param patches list of patches to be initialized
+     * @param matls unused
+     * @param dw_old DataWarehouse for previous timestep
+     * @param dw_new DataWarehouse to be initialized
+     */
+    void
+    task_time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs (
+        const ProcessorGroup * myworld,
+        const PatchSubset * patches,
+        const MaterialSubset * matls,
+        DataWarehouse * dw_old,
+        DataWarehouse * dw_new
+    );
+
+    void
+    task_empty (
+        const ProcessorGroup * /*myworld*/,
+        const PatchSubset * /*patches*/,
+        const MaterialSubset * /*matls*/,
+        DataWarehouse * /*dw_old*/,
+        DataWarehouse * /*dw_new*/
+    ) {}
+#endif // HAVE_HYPRE
 
     /**
      * @brief Refine solution task
@@ -886,22 +1399,36 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
-    /**
-     * @brief empty task
-     *
-     * Empty task used in schedulings to force mpi communication of
-     * psi values accross neighbor patches
-     */
-    void
-    task_empty (
-        const ProcessorGroup *,
-        const PatchSubset *,
-        const MaterialSubset *,
-        DataWarehouse *,
-        DataWarehouse *
-    ) {}
-
 protected: // IMPLEMENTATIONS
+
+    template <int D = DIM>
+    typename std::enable_if<D == D2, double>::type
+    anisotropy_term
+    (
+        const IntVector & id,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b
+    )
+    {
+        return ( ( a2.dx ( id ) - b[XY].dy ( id ) ) * grad_psi[X][id]
+                 + ( a2.dy ( id ) + b[XY].dx ( id ) ) * grad_psi[Y][id] );
+    }
+
+    template <int D = DIM>
+    typename std::enable_if<D == D3, double>::type
+    anisotropy_term
+    (
+        const IntVector & id,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b
+    )
+    {
+        return ( ( a2.dx ( id ) - b[XY].dy ( id ) - b[XZ].dz ( id ) ) * grad_psi[X][id]
+                 + ( a2.dy ( id ) + b[XY].dx ( id ) - b[YZ].dz ( id ) ) * grad_psi[Y][id]
+                 + ( a2.dz ( id ) + b[XZ].dx ( id ) + b[YZ].dy ( id ) ) * grad_psi[Z][id] );
+    }
 
     /**
      * @brief Initialize solution implementation
@@ -936,7 +1463,7 @@ protected: // IMPLEMENTATIONS
     void
     time_advance_grad_psi (
         const IntVector & id,
-        FDView < ScalarField<const double>, STN > & psi,
+        const FDView < ScalarField<const double>, STN > & psi,
         View < VectorField<double, DIM > > & grad_psi,
         View < ScalarField<double> > & grad_psi_norm2
     );
@@ -958,8 +1485,8 @@ protected: // IMPLEMENTATIONS
     void
     time_advance_anisotropy_terms_dflt (
         const IntVector & id,
-        View < VectorField<const double, DIM> > & grad_psi,
-        View < ScalarField<const double> > & grad_psi_norm2,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & grad_psi_norm2,
         View < ScalarField<double> > & a,
         View < ScalarField<double> > & a2,
         View < VectorField<double, BSZ> > & b
@@ -968,17 +1495,17 @@ protected: // IMPLEMENTATIONS
     void
     time_advance_anisotropy_terms_diag (
         const IntVector & id,
-        View < VectorField<const double, DIM> > & grad_psi,
-        View < ScalarField<const double> > & grad_psi_norm2,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & grad_psi_norm2,
         View < ScalarField<double> > & a,
         View < ScalarField<double> > & a2,
         View < VectorField<double, BSZ> > & b
     );
 
-    void (PureMetal::*time_advance_anisotropy_terms) (
+    void ( PureMetal::*time_advance_anisotropy_terms ) (
         const IntVector &,
-        View < VectorField<const double, DIM> > &,
-        View < ScalarField<const double> > &,
+        const View < VectorField<const double, DIM> > &,
+        const View < ScalarField<const double> > &,
         View < ScalarField<double> > &,
         View < ScalarField<double> > &,
         View < VectorField<double, BSZ> > &
@@ -1002,17 +1529,207 @@ protected: // IMPLEMENTATIONS
      * @param[out] u_new view of the temperature field in the new dw
      */
     void
-    time_advance_solution (
+    time_advance_solution_forward_euler (
         const IntVector & id,
-        FDView < ScalarField<const double>, STN > & psi_old,
-        FDView < ScalarField<const double>, STN > & u_old,
-        View < VectorField<const double, DIM> > & grad_psi,
-        View < ScalarField<const double> > & a,
-        FDView < ScalarField<const double>, STN > & a2,
-        FDView < VectorField<const double, BSZ>, STN > & b,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
         View < ScalarField<double> > & psi_new,
         View < ScalarField<double> > & u_new
     );
+
+#ifdef HAVE_HYPRE
+    /**
+     * @brief Assemble hypre system implementation (Backward Euler, full implementation)
+     *
+     * compute both implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_backward_euler_assemble_hypre_full (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+
+    /**
+     * @brief Assemble hypre system implementation (Backward Euler, rhs implementation)
+     *
+     * compute only implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_backward_euler_assemble_hypre_rhs (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system implementation (Backward Euler, full implementation)
+     *
+     * compute both implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] A_additional view of the implicit matrix non-stencil field in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_backward_euler_assemble_hypresstruct_full (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+        HypreSStruct::AdditionalEntries * ( & A_additional ) [NVARS],
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system implementation (Backward Euler, rhs implementation)
+     *
+     * compute only implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_backward_euler_assemble_hypresstruct_rhs (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+
+    /**
+     * @brief Assemble hypre system implementation (Crank Nicolson, full implementation)
+     *
+     * compute both implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_crank_nicolson_assemble_hypre_full (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+
+    /**
+     * @brief Assemble hypre system implementation (Crank Nicolson, rhs implementation)
+     *
+     * compute only implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_crank_nicolson_assemble_hypre_rhs (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system implementation (Crank Nicolson, full implementation)
+     *
+     * compute both implicit matrix stencil and vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] A view of the implicit matrix stencil field in the new dw
+     * @param[out] A_additional view of the implicit matrix non-stencil field in the new dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_crank_nicolson_assemble_hypresstruct_full (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+        HypreSStruct::AdditionalEntries * ( & A_additional ) [NVARS],
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+
+    /**
+     * @brief Assemble hypre sstruct system implementation (Crank Nicolson, rhs implementation)
+     *
+     * compute only implicit vector entries at a given grid
+     * position using the value of the solution and at previous timestep
+     *
+     * @param id grid index
+     * @param u_old view of the solution field in the old dw
+     * @param[out] b view of the implicit vector field in the new dw
+     */
+    void
+    time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs (
+        const IntVector & id,
+        const FDView < ScalarField<const double>, STN > & psi_old,
+        const FDView < ScalarField<const double>, STN > & u_old,
+        const View < VectorField<const double, DIM> > & grad_psi,
+        const View < ScalarField<const double> > & a,
+        const FDView < ScalarField<const double>, STN > & a2,
+        const FDView < VectorField<const double, BSZ>, STN > & b,
+        View < ScalarField<double> > * ( & rhs ) [NVARS]
+    );
+#endif // HAVE_HYPRE
 
     /**
      * @brief Refine solution implementation
@@ -1110,6 +1827,21 @@ PureMetal<VAR, DIM, STN, AMR>::PureMetal (
         b_label[XZ] = VarLabel::create ( "Bxz", Variable<VAR, double>::getTypeDescription() );
         b_label[YZ] = VarLabel::create ( "Byz", Variable<VAR, double>::getTypeDescription() );
     }
+
+#ifdef HAVE_HYPRE
+    matrix_label = scinew const VarLabel ** [NVARS];
+    for ( int i = 0; i < NVARS; ++i ) matrix_label[i] = scinew const VarLabel * [NVARS];
+    additional_entries_label = scinew const VarLabel * [NVARS];
+    rhs_label = scinew const VarLabel * [NVARS];
+    matrix_label[PSI][PSI] = VarLabel::create ( "A_psipsi", Variable<VAR, Stencil7>::getTypeDescription() );
+    matrix_label[PSI][U] = VarLabel::create ( "A_psiu", Variable<VAR, Stencil7>::getTypeDescription() );
+    matrix_label[U][PSI] = VarLabel::create ( "A_upsi", Variable<VAR, Stencil7>::getTypeDescription() );
+    matrix_label[U][U] = VarLabel::create ( "A_uu", Variable<VAR, Stencil7>::getTypeDescription() );
+    additional_entries_label[PSI] = VarLabel::create ( "A_psipsi" + HypreSStruct::Solver<DIM>::AdditionalEntriesSuffix, _AdditionalEntries::getTypeDescription() );
+    additional_entries_label[U] = VarLabel::create ( "A_uu" + HypreSStruct::Solver<DIM>::AdditionalEntriesSuffix, _AdditionalEntries::getTypeDescription() );
+    rhs_label[PSI] = VarLabel::create ( "b_psi", Variable<VAR, double>::getTypeDescription() );
+    rhs_label[U] = VarLabel::create ( "b_u", Variable<VAR, double>::getTypeDescription() );
+#endif
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1126,6 +1858,21 @@ PureMetal<VAR, DIM, STN, AMR>::~PureMetal()
         VarLabel::destroy ( grad_psi_label[d] );
     for ( size_t d = 0; d < BSZ; ++d )
         VarLabel::destroy ( b_label[d] );
+
+#ifdef HAVE_HYPRE
+    VarLabel::destroy ( matrix_label[PSI][PSI] );
+    VarLabel::destroy ( matrix_label[PSI][U] );
+    VarLabel::destroy ( matrix_label[U][PSI] );
+    VarLabel::destroy ( matrix_label[U][U] );
+    VarLabel::destroy ( additional_entries_label[PSI] );
+    VarLabel::destroy ( additional_entries_label[U] );
+    VarLabel::destroy ( rhs_label[PSI] );
+    VarLabel::destroy ( rhs_label[U] );
+    for ( int i = 0; i < NVARS; ++i ) delete[] matrix_label[i];
+    delete[] matrix_label;
+    delete[] additional_entries_label;
+    delete[] rhs_label;
+#endif
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1149,7 +1896,7 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     pure_metal->getWithDefault ( "gamma_psi", gamma_psi, 1. );
     pure_metal->getWithDefault ( "gamma_u", gamma_u, 1. );
 
-    if (DIM==D3 && epsilon<0)
+    if ( DIM == D3 && epsilon < 0 )
     {
         epsilon = -epsilon;
         time_advance_anisotropy_terms = &PureMetal::time_advance_anisotropy_terms_diag;
@@ -1161,6 +1908,33 @@ PureMetal<VAR, DIM, STN, AMR>::problemSetup (
     // coupling parameter
     lambda = alpha / 0.6267;
 
+    std::string scheme;
+    pure_metal->getWithDefault ( "scheme", scheme, "forward_euler" );
+#ifdef HAVE_HYPRE
+    time_scheme = str_to_ts ( scheme );
+
+    if ( VAR == NC )
+    {
+        if ( time_scheme & TS::Implicit )
+            SCI_THROW ( InternalError ( "\n ERROR: implicit solver not implemented for node centered variables", __FILE__, __LINE__ ) );
+    }
+
+    if ( time_scheme & TS::Implicit )
+    {
+        ProblemSpecP solv = params->findBlock ( "Solver" );
+        this->m_solver = dynamic_cast<SolverInterface *> ( this->getPort ( "solver" ) );
+        if ( !this->m_solver )
+        {
+            SCI_THROW ( InternalError ( "PureMetal:couldn't get solver port", __FILE__, __LINE__ ) );
+        }
+        this->m_solver->readParameters ( solv, "" );
+        this->m_solver->getParameters()->setSymmetric ( false );
+        this->m_solver->getParameters()->setSolveOnExtraCells ( false );
+    }
+#else
+    if ( scheme != "forward_euler" )
+        SCI_THROW ( InternalError ( "\n ERROR: Implicit time scheme requires HYPRE\n", __FILE__, __LINE__ ) );
+#endif
     this->setBoundaryVariables ( psi_label, u_label, a2_label, b_label );
 
     if ( AMR )
@@ -1291,6 +2065,9 @@ void PureMetal<VAR, DIM, STN, AMR>::scheduleComputeStableTimeStep ( LevelP const
     Task * task = scinew Task ( "PureMetal::task_compute_stable_timestep", this, &PureMetal::task_compute_stable_timestep );
     task->computes ( this->getDelTLabel(), level.get_rep() );
     sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+
+    is_time_advance_anisotropy_terms_scheduled = false;
+    is_time_advance_solution_scheduled = false;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1302,7 +2079,7 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance (
 {
     scheduleTimeAdvance_grad_psi<AMR> ( level, sched );
     scheduleTimeAdvance_anisotropy_terms ( level, sched );
-    scheduleTimeAdvance_solution<AMR> ( level, sched );
+    scheduleTimeAdvance_solution ( level, sched );
     if ( !AMR ) post_process->scheduleDoAnalysis ( sched, level );
 }
 
@@ -1340,26 +2117,57 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_anisotropy_terms (
     SchedulerP & sched
 )
 {
-    Task * task = scinew Task ( "PureMetal::task_time_advance_anisotropy_terms", this, &PureMetal::task_time_advance_anisotropy_terms );
-    task->requires ( Task::OldDW, grad_psi_norm2_label, Ghost::None, 0 );
-    for ( size_t d = 0; d < DIM; ++d )
-        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
-    task->computes ( a_label );
-    task->computes ( a2_label );
-    for ( size_t d = 0; d < BSZ; ++d )
-        task->computes ( b_label[d] );
-    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+    if ( is_time_advance_anisotropy_terms_scheduled ) return;
+
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_anisotropy_terms on all levels " );
+    GridP grid = level->getGrid();
+
+    for ( int l = 0; l < grid->numLevels(); ++l )
+    {
+        DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_dbg_derivatives on level " << l << " " );
+
+        Task * task = scinew Task ( "PureMetal::task_time_advance_anisotropy_terms", this, &PureMetal::task_time_advance_anisotropy_terms );
+        task->requires ( Task::OldDW, grad_psi_norm2_label, Ghost::None, 0 );
+        for ( size_t d = 0; d < DIM; ++d )
+            task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+        task->computes ( a_label );
+        task->computes ( a2_label );
+        for ( size_t d = 0; d < BSZ; ++d )
+            task->computes ( b_label[d] );
+        sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
+    }
+
+    is_time_advance_anisotropy_terms_scheduled = true;
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
-template < bool MG >
-typename std::enable_if < !MG, void >::type
+void
 PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
     const LevelP & level,
     SchedulerP & sched
 )
 {
-    Task * task = scinew Task ( "PureMetal::task_time_advance_solution", this, &PureMetal::task_time_advance_solution );
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution on level " << level->getIndex() << " " );
+
+#ifdef HAVE_HYPRE
+    if ( time_scheme == TS::ForwardEuler )
+#endif
+        scheduleTimeAdvance_solution_forward_euler<AMR> ( level, sched );
+#ifdef HAVE_HYPRE
+    else
+        scheduleTimeAdvance_solution_implicit<AMR> ( level, sched );
+#endif
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_forward_euler (
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution", this, &PureMetal::task_time_advance_solution_forward_euler );
     task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
     task->requires ( Task::OldDW, psi_label, FGT, FGN );
     task->requires ( Task::OldDW, u_label, FGT, FGN );
@@ -1377,15 +2185,20 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 template < bool MG >
 typename std::enable_if < MG, void >::type
-PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_forward_euler (
     const LevelP & level,
     SchedulerP & sched
 )
 {
-    if ( !level->hasCoarserLevel() ) scheduleTimeAdvance_solution < !MG > ( level, sched );
-    else
+    if ( is_time_advance_solution_scheduled ) return;
+
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_forward_euler on all levels " );
+    GridP grid = level->getGrid();
+
+    scheduleTimeAdvance_solution_forward_euler < !MG > ( grid->getLevel ( 0 ), sched );
+    for ( int l = 1; l < grid->numLevels(); ++l )
     {
-        Task * task = scinew Task ( "PureMetal::task_time_advance_solution", this, &PureMetal::task_time_advance_solution );
+        Task * task = scinew Task ( "PureMetal::task_time_advance_solution_forward_euler", this, &PureMetal::task_time_advance_solution_forward_euler );
         task->requires ( Task::OldDW, this->getSubProblemsLabel(), Ghost::None, 0 );
         task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
         task->requires ( Task::OldDW, psi_label, FGT, FGN );
@@ -1407,9 +2220,492 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution (
         }
         task->computes ( psi_label );
         task->computes ( u_label );
-        sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+        sched->addTask ( task, grid->getLevel ( l )->eachPatch(), this->m_materialManager->allMaterials() );
     }
 }
+
+#ifdef HAVE_HYPRE
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_implicit
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_implicit on level " << level->getIndex() << " " );
+
+    void ( PureMetal::*scheduleTimeAdvance_assemble ) ( const LevelP &, SchedulerP & );
+
+    switch ( time_scheme )
+    {
+    case TS::BackwardEuler:
+        scheduleTimeAdvance_assemble = &PureMetal::scheduleTimeAdvance_solution_backward_euler_assemble_hypre<AMR>;
+        break;
+    case TS::CrankNicolson:
+        scheduleTimeAdvance_assemble = &PureMetal::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre<AMR>;
+        break;
+    default:
+        SCI_THROW ( InternalError ( "\n ERROR: Unknown time scheme\n", __FILE__, __LINE__ ) );
+    }
+
+    ( this->*scheduleTimeAdvance_assemble ) ( level, sched );
+
+    const VarLabel * labels[NVARS] = { psi_label, u_label };
+    this->m_solver->scheduleSolve ( NVARS, level, sched,
+                                    this->m_materialManager->allMaterials(),
+                                    matrix_label, Task::NewDW, // A
+                                    labels, false,             // x
+                                    rhs_label, Task::NewDW,    // b
+                                    labels, Task::OldDW        // guess
+                                  );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_implicit
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    if ( is_time_advance_solution_scheduled ) return;
+
+    if ( this->m_solver->getName() == "hypre_sstruct" )
+    {
+        void ( PureMetal::*scheduleTimeAdvance_assemble_sg ) ( const LevelP &, SchedulerP & );
+        void ( PureMetal::*scheduleTimeAdvance_assemble_mg ) ( const LevelP &, SchedulerP & );
+
+        switch ( time_scheme )
+        {
+        case TS::BackwardEuler:
+            scheduleTimeAdvance_assemble_sg = &PureMetal::scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct < !MG >;
+            scheduleTimeAdvance_assemble_mg = &PureMetal::scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct<MG>;
+            break;
+        case TS::CrankNicolson:
+            scheduleTimeAdvance_assemble_sg = &PureMetal::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct < !MG >;
+            scheduleTimeAdvance_assemble_mg = &PureMetal::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct<MG>;
+            break;
+        default:
+            SCI_THROW ( InternalError ( "\n ERROR: Unknown time scheme\n", __FILE__, __LINE__ ) );
+        }
+
+        DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_implicit on all levels " );
+        GridP grid = level->getGrid();
+
+        ( this->*scheduleTimeAdvance_assemble_sg ) ( grid->getLevel ( 0 ), sched );
+
+        for ( int l = 1; l < grid->numLevels(); ++l )
+            ( this->*scheduleTimeAdvance_assemble_mg ) ( grid->getLevel ( l ), sched );
+
+        for ( int l = 0; l < grid->numLevels(); ++l )
+            scheduleTimeAdvannce_comunicate_before_solve_hypresstruct ( grid->getLevel ( l ), sched );
+
+        const VarLabel * labels[NVARS] = { psi_label, u_label };
+        this->m_solver->scheduleSolve ( NVARS, level, sched,
+                                        this->m_materialManager->allMaterials(),
+                                        matrix_label, Task::NewDW, // A
+                                        labels, false,             // x
+                                        rhs_label, Task::NewDW,    // b
+                                        labels, Task::OldDW        // guess
+                                      );
+    }
+    else
+    {
+        void ( PureMetal::*scheduleTimeAdvance_assemble_sg ) ( const LevelP &, SchedulerP & );
+        void ( PureMetal::*scheduleTimeAdvance_assemble_mg ) ( const LevelP &, SchedulerP & );
+
+        switch ( time_scheme )
+        {
+        case TS::BackwardEuler:
+            scheduleTimeAdvance_assemble_sg = &PureMetal::scheduleTimeAdvance_solution_backward_euler_assemble_hypre < !MG >;
+            scheduleTimeAdvance_assemble_mg = &PureMetal::scheduleTimeAdvance_solution_backward_euler_assemble_hypre < MG >;
+            break;
+        case TS::CrankNicolson:
+            scheduleTimeAdvance_assemble_sg = &PureMetal::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < !MG >;
+            scheduleTimeAdvance_assemble_mg = &PureMetal::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre < MG >;
+            break;
+        default:
+            SCI_THROW ( InternalError ( "\n ERROR: Unknown time scheme\n", __FILE__, __LINE__ ) );
+        }
+
+        GridP grid = level->getGrid();
+
+        ( this->*scheduleTimeAdvance_assemble_sg ) ( grid->getLevel ( 0 ), sched );
+
+        const VarLabel * labels[NVARS] = { psi_label, u_label };
+        this->m_solver->scheduleSolve ( NVARS, grid->getLevel ( 0 ), sched,
+                                        this->m_materialManager->allMaterials(),
+                                        matrix_label, Task::NewDW, // A
+                                        labels, false,             // x
+                                        rhs_label, Task::NewDW,    // b
+                                        labels, Task::OldDW        // guess
+                                      );
+
+        for ( int l = 1; l < grid->numLevels(); ++l )
+        {
+            ( this->*scheduleTimeAdvance_assemble_mg ) ( grid->getLevel ( l ), sched );
+
+            const VarLabel * labels[NVARS] = { psi_label, u_label };
+            this->m_solver->scheduleSolve ( NVARS, grid->getLevel ( l ), sched,
+                                            this->m_materialManager->allMaterials(),
+                                            matrix_label, Task::NewDW, // A
+                                            labels, false,             // x
+                                            rhs_label, Task::NewDW,    // b
+                                            labels, Task::OldDW        // guess
+                                          );
+        }
+    }
+
+    is_time_advance_solution_scheduled = true;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_hypre
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypre on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_backward_euler_assemble_hypre", this, &PureMetal::task_time_advance_solution_backward_euler_assemble_hypre );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_hypre
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypre on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_backward_euler_assemble_hypre", this, &PureMetal::task_time_advance_solution_backward_euler_assemble_hypre );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::NewDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    task->requires ( Task::NewDW, a2_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+    {
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+        task->requires ( Task::NewDW, b_label[d], nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    }
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_backward_euler_assemble_hypresstruct", this, &PureMetal::task_time_advance_solution_backward_euler_assemble_hypresstruct );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( additional_entries_label[PSI] );
+    task->computes ( additional_entries_label[U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_backward_euler_assemble_hypresstruct on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_backward_euler_assemble_hypresstruct", this, &PureMetal::task_time_advance_solution_backward_euler_assemble_hypresstruct );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::OldDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    task->requires ( Task::NewDW, a2_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+    {
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+        task->requires ( Task::NewDW, b_label[d], nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    }
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( additional_entries_label[PSI] );
+    task->computes ( additional_entries_label[U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypre", this, &PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypre );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypre on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypre", this, &PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypre );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::NewDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::NewDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    task->requires ( Task::NewDW, a2_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+    {
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+        task->requires ( Task::NewDW, b_label[d], nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    }
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < !MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypresstruct", this, &PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypresstruct );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( additional_entries_label[PSI] );
+    task->computes ( additional_entries_label[U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+template < bool MG >
+typename std::enable_if < MG, void >::type
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    DOUTR ( dbg_pure_metal_scheduling, "scheduleTimeAdvance_solution_crank_nicolson_assemble_hypresstruct on level " << level->getIndex() << " " );
+
+    Task * task = scinew Task ( "PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypresstruct", this, &PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypresstruct );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), FGT, FGN );
+    task->requires ( Task::OldDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, psi_label, FGT, FGN );
+    task->requires ( Task::OldDW, psi_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    task->requires ( Task::OldDW, u_label, FGT, FGN );
+    task->requires ( Task::OldDW, u_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < DIM; ++d )
+        task->requires ( Task::OldDW, grad_psi_label[d], Ghost::None, 0 );
+    task->requires ( Task::NewDW, a_label, Ghost::None, 0 );
+    task->requires ( Task::NewDW, a2_label, FGT, FGN );
+    task->requires ( Task::NewDW, a2_label, nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    for ( size_t d = 0; d < BSZ; ++d )
+    {
+        task->requires ( Task::NewDW, b_label[d], FGT, FGN );
+        task->requires ( Task::NewDW, b_label[d], nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    }
+    task->requires ( Task::OldDW, matrix_label[PSI][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[PSI][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, matrix_label[U][U], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[PSI], Ghost::None, 0 );
+    task->requires ( Task::OldDW, additional_entries_label[U], Ghost::None, 0 );
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    task->computes ( additional_entries_label[PSI] );
+    task->computes ( additional_entries_label[U] );
+    task->computes ( rhs_label[PSI] );
+    task->computes ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::scheduleTimeAdvannce_comunicate_before_solve_hypresstruct
+(
+    const LevelP & level,
+    SchedulerP & sched
+)
+{
+    // add empty task to force receiving of all pending mpi messages before hypre solve
+    Task * task = scinew Task ( "task_communicate_before_solve", this, &PureMetal::task_empty );
+
+    task->requires ( Task::NewDW, this->getSubProblemsLabel(), FGT, FGN );
+    if ( level->hasCoarserLevel() )
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::CoarseLevel, nullptr, Task::NormalDomain, CGT, CGN );
+    if ( level->hasFinerLevel() )
+        task->requires ( Task::NewDW, this->getSubProblemsLabel(), nullptr, Task::FineLevel, nullptr, Task::NormalDomain, Ghost::None, 0 );
+
+    task->modifies ( matrix_label[PSI][PSI] );
+    task->modifies ( matrix_label[PSI][U] );
+    task->modifies ( matrix_label[U][PSI] );
+    task->modifies ( matrix_label[U][U] );
+    task->modifies ( additional_entries_label[PSI] );
+    task->modifies ( additional_entries_label[U] );
+    task->modifies ( rhs_label[PSI] );
+    task->modifies ( rhs_label[U] );
+    sched->addTask ( task, level->eachPatch(), this->m_materialManager->allMaterials() );
+}
+#endif // HAVE_HYPRE
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
@@ -1449,6 +2745,16 @@ PureMetal<VAR, DIM, STN, AMR>::scheduleRefine_solution (
     task->computes ( psi_label );
     task->computes ( u_label );
     sched->addTask ( task, patches, this->m_materialManager->allMaterials() );
+
+#ifdef HAVE_HYPRE
+    /*************************** WORKAROUND ***************************/
+    /* on new patches of finer level need to create matrix variables  */
+    task->computes ( matrix_label[PSI][PSI] );
+    task->computes ( matrix_label[PSI][U] );
+    task->computes ( matrix_label[U][PSI] );
+    task->computes ( matrix_label[U][U] );
+    /************************* END WORKAROUND *************************/
+#endif
 }
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
@@ -1736,7 +3042,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_anisotropy_terms (
 
         BlockRange range ( this->get_range ( patch ) );
         DOUT ( this->m_dbg_lvl3,  myrank << "= Iterating over range " << range );;
-        parallel_for ( range, [&grad_psi, &grad_psi_norm2, &a, &a2, &b, this] ( int i, int j, int k )->void { (this->*time_advance_anisotropy_terms) ( {i, j, k}, grad_psi, grad_psi_norm2, a, a2, b ); } );
+        parallel_for ( range, [&grad_psi, &grad_psi_norm2, &a, &a2, &b, this] ( int i, int j, int k )->void { ( this->*time_advance_anisotropy_terms ) ( {i, j, k}, grad_psi, grad_psi_norm2, a, a2, b ); } );
     }
 
     DOUT ( this->m_dbg_lvl2,  myrank );;
@@ -1744,7 +3050,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_anisotropy_terms (
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
-PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_forward_euler (
     const ProcessorGroup * myworld,
     const PatchSubset * patches,
     const MaterialSubset *,
@@ -1753,7 +3059,7 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
 )
 {
     int myrank = myworld->myRank();
-    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_time_advance_solution ====" );;
+    DOUT ( this->m_dbg_lvl1,  myrank << "==== PureMetal::task_time_advance_solution_forward_euler ====" );;
 
     for ( int p = 0; p < patches->size(); ++p )
     {
@@ -1775,12 +3081,602 @@ PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution (
             FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
             FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
             FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
-            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &psi_new, &u_new, this] ( int i, int j, int k )->void { time_advance_solution ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, psi_new, u_new ); } );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &psi_new, &u_new, this] ( int i, int j, int k )->void { time_advance_solution_forward_euler ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, psi_new, u_new ); } );
         }
     }
 
     DOUT ( this->m_dbg_lvl2,  myrank );;
 }
+
+#ifdef HAVE_HYPRE
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hypre
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    timeStep_vartype timeStepVar;
+    dw_old->get ( timeStepVar, VarLabel::find ( timeStep_name ) );
+    double timeStep = timeStepVar;
+
+    if ( timeStep == 1 || this->isRegridTimeStep() )
+        task_time_advance_solution_backward_euler_assemble_hypre_full ( myworld, patches, matls, dw_old, dw_new );
+    else
+        task_time_advance_solution_backward_euler_assemble_hypre_rhs ( myworld, patches, matls, dw_old, dw_new );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hypre_full
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset *,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_backward_euler_assemble_hypre_full ====" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View< ScalarField<Stencil7> > * A [NVARS][NVARS] =
+        {
+            {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][U], material, patch )
+            }, {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][U], material, patch )
+            }
+        };
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &A, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypre_full ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, A, rhs ); } );
+        }
+
+        delete A[PSI][PSI];
+        delete A[PSI][U];
+        delete A[U][PSI];
+        delete A[U][U];
+
+        delete rhs[PSI];
+        delete rhs[U];
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hypre_rhs
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_backward_euler_assemble_hypre_rhs ====" );
+
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][U], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][U], patches, matls );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypre_rhs ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, rhs ); } );
+        }
+
+        delete rhs[PSI];
+        delete rhs[U];
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hypresstruct
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    timeStep_vartype timeStepVar;
+    dw_old->get ( timeStepVar, VarLabel::find ( timeStep_name ) );
+    double timeStep = timeStepVar;
+
+    if ( timeStep == 1 || this->isRegridTimeStep() )
+        task_time_advance_solution_backward_euler_assemble_hypresstruct_full ( myworld, patches, matls, dw_old, dw_new );
+    else
+        task_time_advance_solution_backward_euler_assemble_hypresstruct_rhs ( myworld, patches, matls, dw_old, dw_new );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hypresstruct_full
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset *,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_backward_euler_assemble_hypresstruct_full ====" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View< ScalarField<Stencil7> > * A_stencil [NVARS][NVARS] =
+        {
+            {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][U], material, patch )
+            }, {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][U], material, patch )
+            }
+        };
+
+        HypreSStruct::AdditionalEntries * A_additional[NVARS]
+        {
+            scinew HypreSStruct::AdditionalEntries,
+            scinew HypreSStruct::AdditionalEntries
+        };
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &A_stencil, &A_additional, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypresstruct_full ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, A_stencil, A_additional, rhs ); } );
+        }
+
+        delete A_stencil[PSI][PSI];
+        delete A_stencil[PSI][U];
+        delete A_stencil[U][PSI];
+        delete A_stencil[U][U];
+
+        delete rhs[PSI];
+        delete rhs[U];
+
+        _AdditionalEntries additional_entries[NVARS];
+        additional_entries[PSI].setData ( A_additional[PSI] );
+        additional_entries[U].setData ( A_additional[U] );
+        dw_new->put ( additional_entries[PSI], additional_entries_label[PSI], material, patch );
+        dw_new->put ( additional_entries[U], additional_entries_label[U], material, patch );
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_backward_euler_assemble_hypresstruct_rhs
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_backward_euler_assemble_hypresstruct_rhs ====" );
+
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][U], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][U], patches, matls );
+    dw_new->transferFrom ( dw_old, additional_entries_label[PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, additional_entries_label[U], patches, matls );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypresstruct_rhs ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, rhs ); } );
+        }
+
+        delete rhs[PSI];
+        delete rhs[U];
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hypre
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    timeStep_vartype timeStepVar;
+    dw_old->get ( timeStepVar, VarLabel::find ( timeStep_name ) );
+    double timeStep = timeStepVar;
+
+    if ( timeStep == 1 || this->isRegridTimeStep() )
+        task_time_advance_solution_crank_nicolson_assemble_hypre_full ( myworld, patches, matls, dw_old, dw_new );
+    else
+        task_time_advance_solution_crank_nicolson_assemble_hypre_rhs ( myworld, patches, matls, dw_old, dw_new );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hypre_full
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset *,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypre_full ====" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View< ScalarField<Stencil7> > * A [NVARS][NVARS] =
+        {
+            {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][U], material, patch )
+            }, {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][U], material, patch )
+            }
+        };
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &A, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypre_full ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, A, rhs ); } );
+        }
+
+        delete A[PSI][PSI];
+        delete A[PSI][U];
+        delete A[U][PSI];
+        delete A[U][U];
+
+        delete rhs[PSI];
+        delete rhs[U];
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hypre_rhs
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypre_rhs ====" );
+
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][U], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][U], patches, matls );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypre_rhs ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, rhs ); } );
+        }
+
+        delete rhs[PSI];
+        delete rhs[U];
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hypresstruct
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    timeStep_vartype timeStepVar;
+    dw_old->get ( timeStepVar, VarLabel::find ( timeStep_name ) );
+    double timeStep = timeStepVar;
+
+    if ( timeStep == 1 || this->isRegridTimeStep() )
+        task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full ( myworld, patches, matls, dw_old, dw_new );
+    else
+        task_time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs ( myworld, patches, matls, dw_old, dw_new );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * /*matls*/,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_full ====" );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View< ScalarField<Stencil7> > * A_stencil [NVARS][NVARS] =
+        {
+            {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[PSI][U], material, patch )
+            }, {
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][PSI], material, patch ),
+                scinew DWView< ScalarField<Stencil7>, VAR, DIM > ( dw_new, matrix_label[U][U], material, patch )
+            }
+        };
+
+        HypreSStruct::AdditionalEntries * A_additional[NVARS]
+        {
+            scinew HypreSStruct::AdditionalEntries,
+            scinew HypreSStruct::AdditionalEntries
+        };
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &A_stencil, &A_additional, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_backward_euler_assemble_hypresstruct_full ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, A_stencil, A_additional, rhs ); } );
+        }
+
+        delete A_stencil[PSI][PSI];
+        delete A_stencil[PSI][U];
+        delete A_stencil[U][PSI];
+        delete A_stencil[U][U];
+
+        delete rhs[PSI];
+        delete rhs[U];
+
+        _AdditionalEntries additional_entries[NVARS];
+        additional_entries[PSI].setData ( A_additional[PSI] );
+        additional_entries[U].setData ( A_additional[U] );
+        dw_new->put ( additional_entries[PSI], additional_entries_label[PSI], material, patch );
+        dw_new->put ( additional_entries[U], additional_entries_label[U], material, patch );
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs
+(
+    const ProcessorGroup * myworld,
+    const PatchSubset * patches,
+    const MaterialSubset * matls,
+    DataWarehouse * dw_old,
+    DataWarehouse * dw_new
+)
+{
+    int myrank = myworld->myRank();
+
+    DOUT ( this->m_dbg_lvl1, myrank << "==== PureMetal::task_time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs ====" );
+
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[PSI][U], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, matrix_label[U][U], patches, matls );
+    dw_new->transferFrom ( dw_old, additional_entries_label[PSI], patches, matls );
+    dw_new->transferFrom ( dw_old, additional_entries_label[U], patches, matls );
+
+    for ( int p = 0; p < patches->size(); ++p )
+    {
+        const Patch * patch = patches->get ( p );
+        DOUT ( this->m_dbg_lvl2, myrank << "== Patch: " << *patch << " Level: " << patch->getLevel()->getIndex() << " " );
+
+        DWView < VectorField<const double, DIM>, VAR, DIM > grad_psi ( dw_old, grad_psi_label, material, patch );
+        DWView < ScalarField<const double>, VAR, DIM > a ( dw_new, a_label, material, patch );
+
+        View < ScalarField<double> > * rhs[NVARS] =
+        {
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[PSI], material, patch ),
+            scinew DWView < ScalarField<double>, VAR, DIM > ( dw_new, rhs_label[U], material, patch )
+        };
+
+        SubProblems < PureMetalProblem<VAR, STN> > subproblems ( dw_old, this->getSubProblemsLabel(), material, patch );
+
+        for ( const auto & p : subproblems )
+        {
+            DOUT ( this->m_dbg_lvl3, myrank << "= Iterating over " << p );
+
+            FDView < ScalarField<const double>, STN > & psi_old = p.template get_fd_view<PSI> ( dw_old );
+            FDView < ScalarField<const double>, STN > & u_old = p.template get_fd_view<U> ( dw_old );
+            FDView < ScalarField<const double>, STN > & a2 = p.template get_fd_view<A2> ( dw_new );
+            FDView < VectorField<const double, BSZ>, STN > b = p.template get_fd_view<B> ( dw_new );
+            parallel_for ( p.get_range(), [&psi_old, &u_old, &grad_psi, &a, &a2, &b, &rhs, this] ( int i, int j, int k )->void { time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs ( {i, j, k}, psi_old, u_old, grad_psi, a, a2, b, rhs ); } );
+        }
+
+        delete rhs[PSI];
+        delete rhs[U];
+    }
+
+    DOUT ( this->m_dbg_lvl2, myrank );
+}
+#endif // HAVE_HYPRE
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
@@ -1955,7 +3851,7 @@ template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
 PureMetal<VAR, DIM, STN, AMR>::time_advance_grad_psi (
     const IntVector & id,
-    FDView < ScalarField<const double>, STN > & psi,
+    const FDView < ScalarField<const double>, STN > & psi,
     View < VectorField<double, DIM> > & grad_psi,
     View < ScalarField<double> > & grad_psi_norm2
 )
@@ -1973,8 +3869,8 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_grad_psi (
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_dflt (
     const IntVector & id,
-    View < VectorField<const double, DIM> > & grad_psi,
-    View < ScalarField<const double> > & grad_psi_norm2,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & grad_psi_norm2,
     View < ScalarField<double> > & a,
     View < ScalarField<double> > & a2,
     View < VectorField<double, BSZ> > & b
@@ -2021,8 +3917,8 @@ void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_dflt (
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_diag (
     const IntVector & id,
-    View < VectorField<const double, DIM> > & grad_psi,
-    View < ScalarField<const double> > & grad_psi_norm2,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & grad_psi_norm2,
     View < ScalarField<double> > & a,
     View < ScalarField<double> > & a2,
     View < VectorField<double, BSZ> > & b
@@ -2048,9 +3944,15 @@ void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_diag (
             grad2[d] = grad[d] * grad[d];
         }
 
-        double sum4 = grad[X]+grad[Y]; sum4*=sum4; sum4*=sum4;
-        double dif4 = grad[X]-grad[Y]; dif4*=dif4; dif4*=dif4;
-        double tmp4 = grad2[Z]; tmp4*=tmp4; tmp4*=4.;
+        double sum4 = grad[X] + grad[Y];
+        sum4 *= sum4;
+        sum4 *= sum4;
+        double dif4 = grad[X] - grad[Y];
+        dif4 *= dif4;
+        dif4 *= dif4;
+        double tmp4 = grad2[Z];
+        tmp4 *= tmp4;
+        tmp4 *= 4.;
         tmp4 += sum4 + dif4;
         tmp4 /= n4;
 
@@ -2065,14 +3967,15 @@ void PureMetal<VAR, DIM, STN, AMR>::time_advance_anisotropy_terms_diag (
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
-PureMetal<VAR, DIM, STN, AMR>::time_advance_solution (
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_forward_euler
+(
     const IntVector & id,
-    FDView < ScalarField<const double>, STN > & psi_old,
-    FDView < ScalarField<const double>, STN > & u_old,
-    View < VectorField<const double, DIM> > & grad_psi,
-    View < ScalarField<const double> > & a,
-    FDView < ScalarField<const double>, STN > & a2,
-    FDView < VectorField<const double, BSZ>, STN > & b,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
     View < ScalarField<double> > & psi_new,
     View < ScalarField<double> > & u_new
 )
@@ -2080,28 +3983,322 @@ PureMetal<VAR, DIM, STN, AMR>::time_advance_solution (
     double source = 1. - psi_old[id] * psi_old[id];
     source *= ( psi_old[id] - lambda * u_old[id] * source );
 
-    double delta_psi = 0;
-
-    if ( DIM == 2 )
-    {
-        delta_psi = delt * ( psi_old.laplacian ( id ) * a2[id]
-                             + ( a2.dx ( id ) - b[XY].dy ( id ) ) * grad_psi[X][id]
-                             + ( a2.dy ( id ) + b[XY].dx ( id ) ) * grad_psi[Y][id]
-                             + source ) / a[id];
-
-    }
-    if ( DIM == 3 )
-        delta_psi = delt * ( psi_old.laplacian ( id ) * a2[id]
-                             + ( a2.dx ( id ) - b[XY].dy ( id ) - b[XZ].dz ( id ) ) * grad_psi[X][id]
-                             + ( a2.dy ( id ) + b[XY].dx ( id ) - b[YZ].dz ( id ) ) * grad_psi[Y][id]
-                             + ( a2.dz ( id ) + b[XZ].dx ( id ) + b[YZ].dy ( id ) ) * grad_psi[Z][id]
-                             + source ) / a[id];
+    double delta_psi = delt * ( psi_old.laplacian ( id ) * a2[id]
+                                + anisotropy_term ( id, grad_psi, a2, b )
+                                + source ) / a[id];
 
     double delta_u = delt * u_old.laplacian ( id ) * alpha + delta_psi / 2.;
 
     psi_new[id] = psi_old[id] + delta_psi;
     u_new[id] = u_old[id] + delta_u;
 }
+
+#ifdef HAVE_HYPRE
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hypre_full
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    double source_psi = 1. - psi_old[id] * psi_old[id];
+    double source_u = - lambda * source_psi * source_psi;
+
+    const double c0_psi = delt * a[id];
+    const double c1_psi = delt / a[id];
+    const double c_u = delt * alpha;
+
+    auto psi_sys = psi_old.laplacian_sys_hypre ( id );
+    Stencil7 psi_stn = std::get<0> ( psi_sys );
+    double psi_rhs = std::get<1> ( psi_sys );
+
+    auto u_sys = u_old.laplacian_sys_hypre ( id );
+    Stencil7 u_stn = std::get<0> ( u_sys );
+    double u_rhs = std::get<1> ( u_sys );
+
+    for ( int i = 0; i < 7; ++i )
+    {
+        ( *A[PSI][PSI] ) [id][i] = -c0_psi * psi_stn[i];
+        ( *A[U][U] ) [id][i] = -c_u * u_stn[i];
+    }
+
+    ( *A[PSI][PSI] ) [id].p += 1. - c1_psi * source_psi;
+    ( *A[PSI][U] ) [id].p += - c1_psi * source_u;
+    ( *A[U][PSI] ) [id].p += -1.;
+    ( *A[U][U] ) [id].p += 1.;
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hypre_rhs
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    const double c0_psi = delt * a[id];
+    const double c1_psi = delt / a[id];
+    const double c_u = delt * alpha;
+
+    const double & psi_rhs = psi_old.laplacian_rhs_hypre ( id );
+    const double & u_rhs = u_old.laplacian_rhs_hypre ( id );
+
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hypresstruct_full
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+    HypreSStruct::AdditionalEntries * ( & A_additional ) [NVARS],
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    double source_psi = 1. - psi_old[id] * psi_old[id];
+    double source_u = - lambda * source_psi * source_psi;
+
+    const double c0_psi = delt * a[id];
+    const double c1_psi = delt / a[id];
+    const double c_u = delt * alpha;
+
+    auto psi_sys = psi_old.laplacian_sys_hypresstruct ( id );
+    Stencil7 psi_stn = std::get<0> ( psi_sys );
+    HypreSStruct::AdditionalEntries psi_add = std::get<1> ( psi_sys );
+    double psi_rhs = std::get<2> ( psi_sys );
+
+    auto u_sys = u_old.laplacian_sys_hypresstruct ( id );
+    Stencil7 u_stn = std::get<0> ( u_sys );
+    HypreSStruct::AdditionalEntries u_add = std::get<1> ( u_sys );
+    double u_rhs = std::get<2> ( u_sys );
+
+    for ( int i = 0; i < 7; ++i )
+    {
+        ( *A[PSI][PSI] ) [id][i] = -c0_psi * psi_stn[i];
+        ( *A[U][U] ) [id][i] = -c_u * u_stn[i];
+    }
+
+    for ( auto & entry : psi_add )
+        *A_additional[PSI] += -c0_psi * entry;
+
+    for ( auto & entry : u_add )
+        *A_additional[U] += -c_u * entry;
+
+    ( *A[PSI][PSI] ) [id].p += 1. - c1_psi * source_psi;
+    ( *A[PSI][U] ) [id].p += - c1_psi * source_u;
+    ( *A[U][PSI] ) [id].p += -1.;
+    ( *A[U][U] ) [id].p += 1.;
+
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_backward_euler_assemble_hypresstruct_rhs
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    const double c0_psi = delt * a[id];
+    const double c1_psi = delt / a[id];
+    const double c_u = delt * alpha;
+
+    double psi_rhs = psi_old.laplacian_rhs_hypresstruct ( id );
+    double u_rhs = u_old.laplacian_rhs_hypresstruct ( id );
+
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs;
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs;
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hypre_full
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    double source_psi = 1. - psi_old[id] * psi_old[id];
+    double source_u = - lambda * source_psi * source_psi;
+
+    const double c0_psi = 0.5 * delt * a[id];
+    const double c1_psi = 0.5 * delt / a[id];
+    const double c_u = 0.5 * delt * alpha;
+
+    auto psi_sys = psi_old.laplacian_sys_hypre ( id );
+    Stencil7 psi_stn = std::get<0> ( psi_sys );
+    double psi_rhs = std::get<1> ( psi_sys );
+
+    auto u_sys = u_old.laplacian_sys_hypre ( id );
+    Stencil7 u_stn = std::get<0> ( u_sys );
+    double u_rhs = std::get<1> ( u_sys );
+
+    for ( int i = 0; i < 7; ++i )
+    {
+        ( *A[PSI][PSI] ) [id][i] = -c0_psi * psi_stn[i];
+        ( *A[U][U] ) [id][i] = -c_u * u_stn[i];
+    }
+
+    ( *A[PSI][PSI] ) [id].p += 1. - c1_psi * source_psi;
+    ( *A[PSI][U] ) [id].p += - c1_psi * source_u;
+    ( *A[U][PSI] ) [id].p += -1.;
+    ( *A[U][U] ) [id].p += 1.;
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
+                         + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs + c_u * u_old.laplacian ( id );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hypre_rhs
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    double source_psi = 1. - psi_old[id] * psi_old[id];
+    double source_u = - lambda * source_psi * source_psi;
+
+    const double c0_psi = 0.5 * delt * a[id];
+    const double c1_psi = 0.5 * delt / a[id];
+    const double c_u = 0.5 * delt * alpha;
+
+    double psi_rhs = psi_old.laplacian_rhs_hypre ( id );
+    double u_rhs = u_old.laplacian_rhs_hypre ( id );
+
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
+                         + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs + c_u * u_old.laplacian ( id );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hypresstruct_full
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<Stencil7> > * ( & A ) [NVARS][NVARS],
+    HypreSStruct::AdditionalEntries * ( & A_additional ) [NVARS],
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    double source_psi = 1. - psi_old[id] * psi_old[id];
+    double source_u = - lambda * source_psi * source_psi;
+
+    const double c0_psi = 0.5 * delt * a[id];
+    const double c1_psi = 0.5 * delt / a[id];
+    const double c_u = 0.5 * delt * alpha;
+
+    auto psi_sys = psi_old.laplacian_sys_hypresstruct ( id );
+    Stencil7 psi_stn = std::get<0> ( psi_sys );
+    HypreSStruct::AdditionalEntries psi_add = std::get<1> ( psi_sys );
+    double psi_rhs = std::get<2> ( psi_sys );
+
+    auto u_sys = u_old.laplacian_sys_hypresstruct ( id );
+    Stencil7 u_stn = std::get<0> ( u_sys );
+    HypreSStruct::AdditionalEntries u_add = std::get<1> ( u_sys );
+    double u_rhs = std::get<2> ( u_sys );
+
+    for ( int i = 0; i < 7; ++i )
+    {
+        ( *A[PSI][PSI] ) [id][i] = -c0_psi * psi_stn[i];
+        ( *A[U][U] ) [id][i] = -c_u * u_stn[i];
+    }
+
+    for ( auto & entry : psi_add )
+        *A_additional[PSI] += -c0_psi * entry;
+
+    for ( auto & entry : u_add )
+        *A_additional[U] += -c_u * entry;
+
+    ( *A[PSI][PSI] ) [id].p += 1. - c1_psi * source_psi;
+    ( *A[PSI][U] ) [id].p += - c1_psi * source_u;
+    ( *A[U][PSI] ) [id].p += -1.;
+    ( *A[U][U] ) [id].p += 1.;
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
+                         + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs + c_u * u_old.laplacian ( id );
+}
+
+template<VarType VAR, DimType DIM, StnType STN, bool AMR>
+void
+PureMetal<VAR, DIM, STN, AMR>::time_advance_solution_crank_nicolson_assemble_hypresstruct_rhs
+(
+    const IntVector & id,
+    const FDView < ScalarField<const double>, STN > & psi_old,
+    const FDView < ScalarField<const double>, STN > & u_old,
+    const View < VectorField<const double, DIM> > & grad_psi,
+    const View < ScalarField<const double> > & a,
+    const FDView < ScalarField<const double>, STN > & a2,
+    const FDView < VectorField<const double, BSZ>, STN > & b,
+    View < ScalarField<double> > * ( & rhs ) [NVARS]
+)
+{
+    double source_psi = 1. - psi_old[id] * psi_old[id];
+    double source_u = - lambda * source_psi * source_psi;
+
+    const double c0_psi = 0.5 * delt * a[id];
+    const double c1_psi = 0.5 * delt / a[id];
+    const double c_u = 0.5 * delt * alpha;
+
+    double psi_rhs = psi_old.laplacian_rhs_hypresstruct ( id );
+    double u_rhs = u_old.laplacian_rhs_hypresstruct ( id );
+
+    ( *rhs[PSI] ) [id] = psi_old[id] + c1_psi * anisotropy_term ( id, grad_psi, a2, b ) + c0_psi * psi_rhs
+                         + c0_psi * psi_old.laplacian ( id ) + c1_psi * ( source_psi * psi_old[id] + source_u * u_old[id] );
+    ( *rhs[U] ) [id] = u_old[id] - psi_old[id] + c_u * u_rhs + c_u * u_old.laplacian ( id );
+}
+#endif
 
 template<VarType VAR, DimType DIM, StnType STN, bool AMR>
 void
@@ -2179,3 +4376,4 @@ PureMetal<VAR, DIM, STN, AMR>::error_estimate_grad_psi (
 } // namespace Uintah
 
 #endif // Packages_Uintah_CCA_Components_PhaseField_Applications_PureMetal_h
+

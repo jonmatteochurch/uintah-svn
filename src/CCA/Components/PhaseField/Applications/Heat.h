@@ -150,10 +150,10 @@ private: // STATIC MEMBERS
     /// Restriction type for coarsening
     using Application< HeatProblem<VAR, STN, TST> >::F2C;
 
-    /// Number of ghost elements required by intepolation scheme
+    /// Number of ghost elements required by interpolation scheme
     using Application< HeatProblem<VAR, STN, TST> >::IGN;
 
-    /// Type of ghost elements required by intepolation scheme
+    /// Type of ghost elements required by interpolation scheme
     using Application< HeatProblem<VAR, STN, TST> >::IGT;
 
 #ifdef HAVE_HYPRE
@@ -222,7 +222,7 @@ protected: // MEMBERS
     /// Label for the implicit vector in the DataWarehouse
     const VarLabel * rhs_label;
 
-    /// Label for the implicit matrix non-stecil entries in the DataWarehouse
+    /// Label for the implicit matrix non-stencil entries in the DataWarehouse
     const VarLabel * additional_entries_label;
 
 #   ifdef PhaseField_Heat_DBG_MATRIX
@@ -1023,6 +1023,7 @@ protected: // TASKS
         DataWarehouse * dw_new
     );
 
+#ifdef HAVE_HYPRE
     /**
      * @brief Initialize hypre sstruct structures on restart task
      *
@@ -1043,6 +1044,7 @@ protected: // TASKS
         DataWarehouse * dw_old,
         DataWarehouse * dw_new
     );
+#endif // HAVE_HYPRE
 
     /**
      * @brief Compute timestep task
@@ -1419,6 +1421,7 @@ protected: // TASKS
         DataWarehouse * /*dw_new*/
     ) {}
 
+#   ifdef PhaseField_Heat_DBG_MATRIX
     /**
      * @brief Update stencil entries debugging views task
      *
@@ -1430,7 +1433,6 @@ protected: // TASKS
      * @param dw_old DataWarehouse for previous timestep
      * @param dw_new DataWarehouse to be initialized
      */
-#   ifdef PhaseField_Heat_DBG_MATRIX
     void
     task_time_advance_update_dbg_matrix (
         const ProcessorGroup * myworld,
@@ -1907,6 +1909,7 @@ protected: // IMPLEMENTATIONS
         View < ScalarField<double> > & b
     );
 
+#   ifdef PhaseField_Heat_DBG_MATRIX
     /**
      * @brief Update stencil entries debugging views implementation
      *
@@ -1923,7 +1926,6 @@ protected: // IMPLEMENTATIONS
      * @param[out] Ab view of the bottom stencil entry in the new dw
      * @param[out] At view of the top stencil entry in the new dw
      */
-#   ifdef PhaseField_Heat_DBG_MATRIX
     void
     time_advance_update_dbg_matrix (
         const IntVector & id,
@@ -2231,6 +2233,7 @@ Heat<VAR, DIM, STN, AMR, TST>::~Heat()
         VarLabel::destroy ( error_u_label );
         VarLabel::destroy ( error_norm2_L2_label );
     }
+
 #ifdef HAVE_HYPRE
     VarLabel::destroy ( matrix_label );
     VarLabel::destroy ( additional_entries_label );
@@ -2245,6 +2248,7 @@ Heat<VAR, DIM, STN, AMR, TST>::~Heat()
     VarLabel::destroy ( Ab_label );
 #   endif
 #endif
+
 #ifdef PhaseField_Heat_DBG_DERIVATIVES
     for ( size_t D = 0; D < DIM; ++D )
     {
