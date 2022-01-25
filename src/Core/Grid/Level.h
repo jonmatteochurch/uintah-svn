@@ -262,8 +262,8 @@ public:
   //  overlapping patches:  Used to keep track of patches that overlap in non-cubic levels
   struct overlap {
     std::pair <int,int> patchIDs{-9,-9};        // overlapping patch IDs
-    IntVector lowIndex{ IntVector(-9,-9,-9)};   // low/high index of overlap
-    IntVector highIndex{IntVector(-9,-9,-9)};
+    IntVector lowIndex {-9,-9,-9};   // low/high index of overlap
+    IntVector highIndex{-9,-9,-9};
   };
 
   // for a set of patches and region return the min/max number of overlapping cells

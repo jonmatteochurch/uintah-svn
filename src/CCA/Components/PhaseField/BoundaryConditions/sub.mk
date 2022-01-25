@@ -31,38 +31,10 @@ SRCDIR := CCA/Components/PhaseField/BoundaryConditions
 
 SRCS += \
   $(SRCDIR)/BCFDViewFactory-bld.cc \
-  $(SRCDIR)/BCFDViewScalarProblemCCP5-bld.cc \
-  $(SRCDIR)/BCFDViewScalarProblemCCP7-bld.cc \
-  $(SRCDIR)/BCFDViewScalarProblemNCP5-bld.cc \
-  $(SRCDIR)/BCFDViewScalarProblemNCP7-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemCCP5-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-0-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-1-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemCCP7-2-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemNCP5-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-0-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-1-bld.cc \
-  $(SRCDIR)/BCFDViewHeatTestProblemNCP7-2-bld.cc \
-  $(SRCDIR)/BCFDViewPureMetalProblemCCP5-bld.cc \
-  $(SRCDIR)/BCFDViewPureMetalProblemNCP5-bld.cc \
-  $(SRCDIR)/BCFDViewPureMetalProblemCCP7-bld.cc \
+  $(SRCDIR)/BCFDView-bld.cc \
 
 BLDDIR := $(SRCTOP)/$(SRCDIR)
 
 BLDSRCS += \
   $(BLDDIR)/BCFDViewFactory-bld.cc \
-  $(BLDDIR)/BCFDViewScalarProblemCCP5-bld.cc \
-  $(BLDDIR)/BCFDViewScalarProblemCCP7-bld.cc \
-  $(BLDDIR)/BCFDViewScalarProblemNCP5-bld.cc \
-  $(BLDDIR)/BCFDViewScalarProblemNCP7-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemCCP5-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-0-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-1-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemCCP7-2-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemNCP5-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-0-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-1-bld.cc \
-  $(BLDDIR)/BCFDViewHeatTestProblemNCP7-2-bld.cc \
-  $(BLDDIR)/BCFDViewPureMetalProblemCCP5-bld.cc \
-  $(BLDDIR)/BCFDViewPureMetalProblemNCP5-bld.cc \
-  $(BLDDIR)/BCFDViewPureMetalProblemCCP7-bld.cc \
+  $(BLDDIR)/BCFDView-bld.cc \

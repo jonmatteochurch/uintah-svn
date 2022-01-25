@@ -394,7 +394,7 @@ Level::totalCells() const
 long
 Level::getTotalCellsInRegion(const TypeDescription::Type varType,
                              const IntVector& boundaryLayer,
-                             const IntVector& lowIndex, 
+                             const IntVector& lowIndex,
                              const IntVector& highIndex) const {
 
   // Not all simulations are cubic.  Some simulations might be L shaped, or T shaped, or + shaped, etc.
@@ -595,7 +595,7 @@ void
 Level::setIsNonCubicLevel()
 {
   double patchesVol = 0.0;
-  
+
   // loop over all patches and sum the patch's volume
   for (size_t p = 0; p < m_real_patches.size(); ++p) {
     const Patch* patch = m_real_patches[p];
@@ -619,7 +619,7 @@ Level::setIsNonCubicLevel()
                      ( hiPt.z() - loPt.z() ) );
 
   double levelVol = levelSides.x() * levelSides.y() * levelSides.z();
-  
+
   m_isNonCubicDomain = false;
   double fuzz = 0.5 * cellVolume(); // 100 * DBL_EPSILON;
   if ( std::fabs( patchesVol - levelVol ) > fuzz ) {
@@ -631,7 +631,7 @@ Level::setIsNonCubicLevel()
 //  Loop through all patches on the level and if they overlap with each other then store that info.
 //  You need this information when a level has a patch distribution with inside corners
 void Level::setOverlappingPatches()
-{ 
+{
 
   if ( m_isNonCubicDomain == false ){     //  for cubic domains just return
     return;
@@ -642,28 +642,28 @@ void Level::setOverlappingPatches()
     Box b1 = patch->getExtraBox();
     IntVector lowEC   = patch->getExtraCellLowIndex();
     IntVector highEC  = patch->getExtraCellHighIndex();
-    
+
     bool includeExtraCells  = true;
     Patch::selectType neighborPatches;
     selectPatches(lowEC, highEC, neighborPatches, includeExtraCells);
-    
+
     for ( size_t j = 0; j < neighborPatches.size(); ++j) {
       const Patch* neighborPatch = neighborPatches[j];
-      
+
       if ( patch != neighborPatch){
-        
+
         Box b2 = neighborPatch->getExtraBox();
 
         //  Are the patches overlapping?
         if ( b1.overlaps(b2) ) {
-        
+
           IntVector nLowEC  = neighborPatch->getExtraCellLowIndex();
           IntVector nHighEC = neighborPatch->getExtraCellHighIndex();
-          
+
           // find intersection of the patches
           IntVector intersectLow  = Max( lowEC,  nLowEC );
           IntVector intersectHigh = Min( highEC, nHighEC );
-          
+
           // create overlap
           overlap newOverLap;
           std::pair<int,int> patchIds  = std::make_pair( patch->getID(), neighborPatch->getID() );
@@ -681,7 +681,7 @@ void Level::setOverlappingPatches()
     }
   }
 
-  // debugging 
+  // debuggin
 #if 0
   for (auto itr=m_overLapPatches.begin(); itr!=m_overLapPatches.end(); ++itr) {
     pair<int,int> patchIDs = itr->first;
@@ -706,7 +706,7 @@ Level::getOverlapCellsInRegion( const selectType & patches,
 
   int minOverlapCells   = INT_MAX;
   int totalOverlapCells = 0;
-  
+
   // loop over patches in this region
   for (size_t i = 0; i < patches.size(); ++i) {
     for (size_t j = i+1; j < patches.size(); ++j) {    //  the i+1 prevents examining the transposed key pairs, i.e. 8,9 and 9,8
@@ -716,6 +716,7 @@ Level::getOverlapCellsInRegion( const selectType & patches,
       std::pair<int,int> patchIds = std::make_pair( Id, neighborId );
 
       auto result = m_overLapPatches.find( patchIds );
+      if(result == m_overLapPatches.end()) continue;
       overlap ol  = result->second;
 
       // does the overlapping patches intersect with the region extents?
@@ -725,22 +726,22 @@ Level::getOverlapCellsInRegion( const selectType & patches,
 
         IntVector diff    = IntVector ( intrsctHigh - intrsctLow );
         int nOverlapCells = std::abs( diff.x() * diff.y() * diff.z() );
-       
+
         minOverlapCells    = std::min( minOverlapCells, nOverlapCells );
         totalOverlapCells += nOverlapCells;
-        
+
 #if 0   // debugging
         std::cout << "  getOverlapCellsInRegion  patches: " << ol.patchIDs.first << ", " << ol.patchIDs.second
-                  << "\n   region:      " << regionLow   << ",              " << regionHigh        
+                  << "\n   region:      " << regionLow   << ",              " << regionHigh
                   << "\n   ol.low:      " << ol.lowIndex << " ol.high:      " << ol.highIndex  << " nCells: " << ol.nCells
-                  << "\n   intrsct.low: " << ol.lowIndex << " intrsct.high: " << ol.highIndex 
+                  << "\n   intrsct.low: " << ol.lowIndex << " intrsct.high: " << ol.highIndex
                   << " overlapCells: " << nOverlapCells  << " minOverlapCells: " << minOverlapCells << " totalOverlapCells: " << totalOverlapCells << std::endl;
 #endif
       }
     }
   }
   std::pair<int,int> overLapCells_minMax = std::make_pair(minOverlapCells,totalOverlapCells);
-  return overLapCells_minMax; 
+  return overLapCells_minMax;
 }
 
 

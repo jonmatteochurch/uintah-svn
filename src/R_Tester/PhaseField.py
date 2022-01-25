@@ -79,14 +79,24 @@ benchmark04_ups    = modUPS2( the_dir, "benchmark04/benchmark04_cc_n096.ups", [ 
   ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: 3001" ), \
 ])
 
+#BENCHTEST = [
+  #( "benchmark01_cc", benchmark01_cc_ups, 4, "All", ["exactComparison"] ),
+  #( "benchmark01_nc", benchmark01_nc_ups, 4, "All", ["exactComparison"] ),
+  #( "benchmark02_cc", benchmark02_cc_ups, 4, "All", ["exactComparison"] ),
+  #( "benchmark02_nc", benchmark02_nc_ups, 4, "All", ["exactComparison"] ),
+  #( "benchmark03_cc", benchmark03_cc_ups, 2, "All", ["exactComparison"] ),
+  #( "benchmark03_nc", benchmark03_nc_ups, 2, "All", ["exactComparison"] ),
+  #( "benchmark04",    benchmark04_ups,    4, "All", ["exactComparison"] ),
+#]
+
 BENCHTEST = [
-  ( "benchmark01_cc", benchmark01_cc_ups, 4, "All", ["exactComparison"] ),
-  ( "benchmark01_nc", benchmark01_nc_ups, 4, "All", ["exactComparison"] ),
-  ( "benchmark02_cc", benchmark02_cc_ups, 4, "All", ["exactComparison"] ),
-  ( "benchmark02_nc", benchmark02_nc_ups, 4, "All", ["exactComparison"] ),
-  ( "benchmark03_cc", benchmark03_cc_ups, 2, "All", ["exactComparison"] ),
-  ( "benchmark03_nc", benchmark03_nc_ups, 2, "All", ["exactComparison"] ),
-  ( "benchmark04",    benchmark04_ups,    4, "All", ["exactComparison"] ),
+  ( "benchmark01_cc", benchmark01_cc_ups, 1, "All", ["exactComparison"] ),
+  ( "benchmark01_nc", benchmark01_nc_ups, 1, "All", ["exactComparison"] ),
+  ( "benchmark02_cc", benchmark02_cc_ups, 1, "All", ["exactComparison"] ),
+  ( "benchmark02_nc", benchmark02_nc_ups, 1, "All", ["exactComparison"] ),
+  ( "benchmark03_cc", benchmark03_cc_ups, 1, "All", ["exactComparison"] ),
+  ( "benchmark03_nc", benchmark03_nc_ups, 1, "All", ["exactComparison"] ),
+  ( "benchmark04",    benchmark04_ups,    1, "All", ["exactComparison"] ),
 ]
 
 VAR = ["cc", "nc"]
@@ -108,7 +118,8 @@ for dim in DIM:
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
     HEATTEST   .append( ( "heat_periodic_%s_%s_fe"     % (var,dim), ups, 1, "All", ["exactComparison"] ) )
-    HEATMPITEST.append( ( "heat_periodic_%s_%s_fe_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
+    #HEATMPITEST.append( ( "heat_periodic_%s_%s_fe_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
+    HEATMPITEST.append( ( "heat_periodic_%s_%s_fe_mpi" % (var,dim), ups, 1, "All", ["exactComparison"] ) )
 
 HEATBCTEST    = []
 HEATBCMPITEST = []
@@ -122,7 +133,8 @@ for dim in DIM:
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
     HEATBCTEST   .append( ( "heat_test_%s_%s_fe"     % (var,dim), ups, 1, "All", ["exactComparison"] ) )
-    HEATBCMPITEST.append( ( "heat_test_%s_%s_fe_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
+    #HEATBCMPITEST.append( ( "heat_test_%s_%s_fe_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
+    HEATBCMPITEST.append( ( "heat_test_%s_%s_fe_mpi" % (var,dim), ups, 1, "All", ["exactComparison"] ) )
 
 HEATAMRTEST    = []
 HEATAMRMPITEST = []
@@ -130,14 +142,17 @@ HEATAMRMPITEST = []
 freq = {"2d": 50, "3d": 8}
 for dim in DIM:
   for f2c in F2C[dim]:
-    for var in VAR:
+    #for var in VAR:
+    if dim == "2d" and f2c == "fclinear":
+      var = "nc"
       ups = modUPS2 ( the_dir, "heat/heat_periodic_%s_%s_fe_amr_%s.ups" % (var,dim,f2c), [ \
         ("update", "/Uintah_specification/DataArchiver/outputTimestepInterval: %d " % (freq[dim]) ), \
         ("update", "/Uintah_specification/DataArchiver/checkpoint/@timestepInterval: %d " % (5*freq[dim]) ), \
         ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
       ])
       HEATAMRTEST   .append( ( "heat_periodic_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
-      HEATAMRMPITEST.append( ( "heat_periodic_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      #HEATAMRMPITEST.append( ( "heat_periodic_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      HEATAMRMPITEST.append( ( "heat_periodic_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
 
 HEATAMRBCTEST    = []
 HEATAMRBCMPITEST = []
@@ -152,7 +167,8 @@ for dim in DIM:
         ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
       ])
       HEATAMRBCTEST   .append( ( "heat_test_%s_%s_fe_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
-      HEATAMRBCMPITEST.append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      #HEATAMRBCMPITEST.append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      HEATAMRBCMPITEST.append( ( "heat_test_%s_%s_fe_amr_%s_mpi" % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
 
 HEATHYPRETEST    = []
 HEATHYPREMPITEST = []
@@ -168,7 +184,8 @@ for dim in DIM:
           ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
         ])
         HEATHYPRETEST   .append( ( "heat_periodic_%s_%s_%s"     % (var,dim,im), ups, 1, "All", ["exactComparison"] ) )
-        HEATHYPREMPITEST.append( ( "heat_periodic_%s_%s_%s_mpi" % (var,dim,im), ups, 4, "All", ["exactComparison"] ) )
+        #HEATHYPREMPITEST.append( ( "heat_periodic_%s_%s_%s_mpi" % (var,dim,im), ups, 4, "All", ["exactComparison"] ) )
+        HEATHYPREMPITEST.append( ( "heat_periodic_%s_%s_%s_mpi" % (var,dim,im), ups, 1, "All", ["exactComparison"] ) )
 
 HEATHYPREAMRTEST    = []
 HEATHYPREAMRMPITEST = []
@@ -185,7 +202,8 @@ for dim in DIM:
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREAMRTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREAMRMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          #HEATHYPREAMRMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          HEATHYPREAMRMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
 
 HEATHYPREAMRBCTEST    = []
 HEATHYPREAMRBCMPITEST = []
@@ -202,7 +220,8 @@ for dim in DIM:
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREAMRBCTEST   .append( ( "heat_test_%s_%s_%s_amr_hypre_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREAMRBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          #HEATHYPREAMRBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          HEATHYPREAMRBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_%s_mpi" % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
 
 HEATHYPREFACTEST    = []
 HEATHYPREFACMPITEST = []
@@ -219,7 +238,8 @@ for dim in DIM:
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREFACTEST   .append( ( "heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREFACMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          #HEATHYPREFACMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          HEATHYPREFACMPITEST.append( ( "heat_periodic_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
 
 HEATHYPREFACBCTEST    = []
 HEATHYPREFACBCMPITEST = []
@@ -236,7 +256,8 @@ for dim in DIM:
             ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
           ])
           HEATHYPREFACBCTEST   .append( ( "heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s"     % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
-          HEATHYPREFACBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          #HEATHYPREFACBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 4, "All", ["exactComparison"] ) )
+          HEATHYPREFACBCMPITEST.append( ( "heat_test_%s_%s_%s_amr_hypre_sstruct_fac_%s_mpi" % (var,dim,im,f2c), ups, 1, "All", ["exactComparison"] ) )
 
 PUREMETALTEST    = []
 PUREMETALMPITEST = []
@@ -250,7 +271,8 @@ for dim in DIM:
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
     PUREMETALTEST   .append( ( "pure_metal_%s_%s"     % (var,dim), ups, 1, "All", ["exactComparison"] ) )
-    PUREMETALMPITEST.append( ( "pure_metal_%s_%s_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
+    #PUREMETALMPITEST.append( ( "pure_metal_%s_%s_mpi" % (var,dim), ups, 4, "All", ["exactComparison"] ) )
+    PUREMETALMPITEST.append( ( "pure_metal_%s_%s_mpi" % (var,dim), ups, 1, "All", ["exactComparison"] ) )
 
 PUREMETALAMRTEST      = []
 PUREMETALAMRMPITEST   = []
@@ -265,7 +287,8 @@ for dim in DIM:
       ("append", "/Uintah_specification/Time/initTime:elem:max_Timesteps: %d " % (20*freq[dim]+1) ), \
     ])
       PUREMETALAMRTEST   .append( ( "pure_metal_%s_%s_amr_%s"     % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
-      PUREMETALAMRMPITEST.append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      #PUREMETALAMRMPITEST.append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 4, "All", ["exactComparison"] ) )
+      PUREMETALAMRMPITEST.append( ( "pure_metal_%s_%s_amr_%s_mpi" % (var,dim,f2c), ups, 1, "All", ["exactComparison"] ) )
 #__________________________________
 # The following list is parsed by the local RT script
 # and allows the user to select the tests to run
@@ -333,17 +356,17 @@ def getTestList(me) :
     TESTS = PUREMETALAMRMPITEST
 
   elif me == "AMRTESTS":
-    TESTS = HEATAMRTEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCTEST + HEATHYPREAMRBCMPITEST + PUREMETALAMRTEST + PUREMETALAMRMPITEST
+    TESTS = HEATAMRTEST + HEATAMRMPITEST + HEATAMRBCTEST + HEATAMRBCMPITEST + HEATHYPREAMRTEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCTEST + HEATHYPREAMRBCMPITEST + PUREMETALAMRTEST
 
   elif me == "DEBUGTESTS":
     TESTS = PUREMETALAMRMPITEST
 
   elif me == "LOCALTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRMPITEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRTEST
   elif me == "NIGHTLYTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRMPITEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRTEST
   elif me == "BUILDBOTTESTS":
-    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRMPITEST
+    TESTS = BENCHTEST + HEATMPITEST + HEATBCMPITEST + HEATAMRMPITEST + HEATAMRBCMPITEST + HEATHYPREMPITEST + HEATHYPREAMRMPITEST + HEATHYPREAMRBCMPITEST + HEATHYPREFACMPITEST + HEATHYPREFACBCMPITEST + PUREMETALMPITEST + PUREMETALAMRTEST
 
   else:
     print("\nERROR:PhaseField.py  getTestList:  The test list (%s) does not exist!\n\n" % me)
