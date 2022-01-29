@@ -72,5 +72,5 @@ include $(SCIRUN_SCRIPTS)/recurse.mk
 
 include $(SCIRUN_SCRIPTS)/smallso_epilogue.mk
 
-$(BLDSRCS): %-bld.cc: %-bld.sh
+$(BLDSRCS): %-bld.cc: %-bld.sh $(BLDDEPS)
 	bash $<

@@ -1,7 +1,8 @@
+#!/bin/bash
 #
 #  The MIT License
 #
-#  Copyright (c) 1997-2020 The University of Utah
+#  Copyright (c) 1997-2019 The University of Utah
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to
@@ -21,23 +22,6 @@
 #  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 #  IN THE SOFTWARE.
 #
-#
-#
-#
-#
-# Makefile fragment for this subdirectory
 
-SRCDIR := CCA/Components/PhaseField/BoundaryConditions
-
-SRCS += \
-  $(SRCDIR)/BCFDViewFactory-bld.cc \
-  $(SRCDIR)/BCFDView-bld.cc \
-
-BLDDIR := $(SRCTOP)/$(SRCDIR)
-
-BLDDEPS := $(SRCDIR)/BCFDViewFactory-bld.sh \
-  $(SRCDIR)/BCFDView-bld.sh \
-
-BLDSRCS += \
-  $(BLDDIR)/BCFDViewFactory-bld.cc \
-  $(BLDDIR)/BCFDView-bld.cc \
+SCRIPT="`dirname \"$0\"`"/AMRFDView-bld.sh
+${SCRIPT} -p ScalarProblem -v CC -c FC0New

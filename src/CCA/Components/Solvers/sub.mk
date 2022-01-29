@@ -53,15 +53,15 @@ LIBS := $(XML2_LIBRARY) $(MPI_LIBRARY)  $(LAPACK_LIBRARY) $(BLAS_LIBRARY)
 
 ifeq ($(HAVE_HYPRE),yes)
 
-  INCLUDES += $(HYPRE_INCLUDE)
-  LIBS := $(LIBS) $(HYPRE_LIBRARY) 
+	INCLUDES += $(HYPRE_INCLUDE)
+	LIBS := $(LIBS) $(HYPRE_LIBRARY) 
 
-  SRCS += $(SRCDIR)/HypreSolver.cc
+	SRCS += $(SRCDIR)/HypreSolver.cc
 
-  SUBDIRS := $(SRCDIR)/AMR \
-             $(SRCDIR)/HypreSStruct \
+	SUBDIRS := $(SRCDIR)/AMR \
+		$(SRCDIR)/HypreSStruct \
 
-  include $(SCIRUN_SCRIPTS)/recurse.mk
+	include $(SCIRUN_SCRIPTS)/recurse.mk
 
 endif # HAVE_HYPRE
 
